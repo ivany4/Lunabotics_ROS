@@ -1,0 +1,11 @@
+if [ -n "$1" ]
+then
+	if [ -n "$2" ]
+	then
+		roslaunch `rospack find lunabotics`/lunabotics.launch port:=$1 ip:=$2
+	else
+		roslaunch `rospack find lunabotics`/lunabotics.launch port:=$1 ip:=192.168.218.128
+	fi
+else
+	roslaunch `rospack find lunabotics`/lunabotics.launch port:=5555 ip:=192.168.218.128
+fi

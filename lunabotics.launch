@@ -1,0 +1,10 @@
+<launch>
+  <node name="luna_gui_gw" pkg="lunabotics" type="luna_gui_gw" args="$(arg port) $(arg ip)" />
+  <node name="luna_mech_gw" pkg="lunabotics" type="luna_mech_gw" />
+  <node name="luna_pilot" pkg="lunabotics" type="luna_pilot" />
+  <node name="luna_fear" pkg="lunabotics" type="luna_fear" />
+  <node name="luna_navigator" pkg="lunabotics" type="luna_navigator" />
+  <node name="luna_planner" pkg="lunabotics" type="luna_planner" />
+  <node name="luna_slam" pkg="lunabotics" type="luna_slam" />
+  <node name="luna_aut_gw" pkg="lunabotics" type="luna_aut_gw" />
+</launch>

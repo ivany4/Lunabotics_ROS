@@ -1,0 +1,2 @@
+sensor_msgs/PointCloud rgbd_data
+sensor_msgs/LaserScan lidar_data
