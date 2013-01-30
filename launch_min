@@ -1,0 +1,13 @@
+rosrun lunabotics luna_mech_gw
+
+if [ -n "$1" ]
+then
+	if [ -n "$2" ]
+	then
+		rosrun lunabotics luna_gui_gw $1 $2
+	else
+		rosrun lunabotics luna_gui_gw $1 192.168.218.128
+	fi
+else
+	rosrun lunabotics luna_gui_gw 5555 192.168.218.128
+fi

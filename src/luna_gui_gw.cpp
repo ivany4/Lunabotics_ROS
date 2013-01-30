@@ -9,15 +9,22 @@
 #include <string>
 #include <unistd.h>
 #include <netinet/in.h>
-#define MAXPENDING 5        /* Max connection requests */
+#include <pthread.h>
+
 #define BUFFSIZE 256
+#define SERVER_ADDR	"192.168.218.1"
+#define SERVER_PORT	"5555"
 
 using namespace std;
 
-union bytesToFloat
+int sock;
+struct sockaddr_in server;
+pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
+    
+union doubleToBytes
 {
-    char    bytes[4];
-    float   floatValue;
+    char    bytes[8];
+    double	doubleValue;
 };
 
 void sendMsg(const char *msg, int sock) {
@@ -28,123 +35,117 @@ void sendMsg(const char *msg, int sock) {
 }
 
 void telemetryCallback(const lunabotics::Telemetry& msg)
-{
-	//Use msg to send telemetry to GUI and display it
+{    
+    int size = sizeof(double)*3;
+    char send_buffer[size];
+    
+    ////////////DATA ENCODING////////////////////
+    
+    int pointer = 0;
+    
+	union doubleToBytes doubleConverter;
+	doubleConverter.doubleValue = msg.odometry.pose.pose.position.x;
+	send_buffer[pointer++] = doubleConverter.bytes[0];
+	send_buffer[pointer++] = doubleConverter.bytes[1];
+	send_buffer[pointer++] = doubleConverter.bytes[2];
+	send_buffer[pointer++] = doubleConverter.bytes[3];
+	send_buffer[pointer++] = doubleConverter.bytes[4];
+	send_buffer[pointer++] = doubleConverter.bytes[5];
+	send_buffer[pointer++] = doubleConverter.bytes[6];
+	send_buffer[pointer++] = doubleConverter.bytes[7];
+	doubleConverter.doubleValue = msg.odometry.pose.pose.position.y;
+	send_buffer[pointer++] = doubleConverter.bytes[0];
+	send_buffer[pointer++] = doubleConverter.bytes[1];
+	send_buffer[pointer++] = doubleConverter.bytes[2];
+	send_buffer[pointer++] = doubleConverter.bytes[3];
+	send_buffer[pointer++] = doubleConverter.bytes[4];
+	send_buffer[pointer++] = doubleConverter.bytes[5];
+	send_buffer[pointer++] = doubleConverter.bytes[6];
+	send_buffer[pointer++] = doubleConverter.bytes[7];
+	doubleConverter.doubleValue = msg.odometry.pose.pose.position.z;
+	send_buffer[pointer++] = doubleConverter.bytes[0];
+	send_buffer[pointer++] = doubleConverter.bytes[1];
+	send_buffer[pointer++] = doubleConverter.bytes[2];
+	send_buffer[pointer++] = doubleConverter.bytes[3];
+	send_buffer[pointer++] = doubleConverter.bytes[4];
+	send_buffer[pointer++] = doubleConverter.bytes[5];
+	send_buffer[pointer++] = doubleConverter.bytes[6];
+	send_buffer[pointer++] = doubleConverter.bytes[7];
+    
+    /////////////////////////////////////////////
+    
+    
+    int sent_bytes = 0;
+    
+    
+	pthread_mutex_lock(&sock_mutex);
+    /* Send the word to the server */
+    if ((sent_bytes = write(sock, send_buffer, size)) != size) {
+        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+		pthread_mutex_unlock(&sock_mutex);
+        return;
+    }
+    else {
+		ROS_INFO("Sending data: OK");
+	}
+	pthread_mutex_unlock(&sock_mutex);
+    
+    
+    //Currently do not wait for reply from server
+    /*
+    int received = 0;
+    char recv_buffer[BUFFSIZE];
+    bzero(recv_buffer, BUFFSIZE);
+    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
+        ROS_ERROR("Failed to receive additional bytes from client");
+        return;
+    }
+    */
+    
+    /* Print server message */
+    //ROS_INFO("Server answeded: %s", recv_buffer);
+    
 }
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_gui_gw");
-	
-	if (argc < 2 || argc > 3) {
-		ROS_FATAL("USAGE: rosrun lunabotics lunabotics <port> [<ip address>]");
-		ros::shutdown();
-	}
-	
 	ros::NodeHandle nodeHandle;
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
-	ros::Publisher autonomyPublisher = nodeHandle.advertise<lunabotics::BoolValue>("luna_auto", 256);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
 	
-	int serverSocket, clientSocket;
-	struct sockaddr_in server, client;
-	
-	/* Create the TCP socket */
-    if ((serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        ROS_FATAL("Failed to create socket");
-        ros::shutdown();
-    }
+    
     
     /* Construct the server sockaddr_in structure */
-    memset(&server, 0, sizeof(server));         /* Clear struct */
-    server.sin_family = AF_INET;                    /* Internet/IP */
-    server.sin_addr.s_addr = argc == 3 ? inet_addr(argv[2]) :
-    //inet_addr("127.0.0.1"); 
-    htonl(INADDR_ANY);     /* Incoming addr */
-    server.sin_port = htons(atoi(argv[1]));         /* server port */
+    memset(&server, 0, sizeof(server));         	/* Clear struct */
+    server.sin_family = AF_INET;                    /* Internet/IP */ 
+    server.sin_addr.s_addr = argc > 2 ? inet_addr(argv[2]) : inet_addr(SERVER_ADDR);
+    server.sin_port = argc > 1 ? htons(atoi(argv[1])) : htons(atoi(SERVER_PORT)); 
+    
+    
     
     /* Print connection details */
     char *z;
     z = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
-    ROS_INFO("Server ready on %s:%s", z, argv[1]);
     
-    /* Bind the server socket */
-    if (bind(serverSocket, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to bind the server socket");
+    /* Create the TCP socket */
+    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        ROS_FATAL("Failed to create socket");
         ros::shutdown();
     }
     
-    /* Listen on the server socket */
-    if (listen(serverSocket, MAXPENDING) < 0) {
-        ROS_ERROR("Failed to listen on server socket");
+    /* Establish connection */
+    if (connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0) {
+        ROS_ERROR("Failed to connect to server %s:%hu", z, ntohs(server.sin_port));
         ros::shutdown();
     }
     
-	ros::Rate loop_rate(50);
-  
-	union bytesToFloat converter;  
-	float v = 0.0, w = 0.0;
+    ROS_INFO("Connected to server on %s:%hu (socket %d)", z, ntohs(server.sin_port), sock);
+   	ROS_INFO("GUI Gateway ready");
+   	
+	ros::spin();	
 	
-	while (ros::ok()) {
-        unsigned int clientLenth = sizeof(client);
-        
-        
-        /* Wait for client connection */
-        if ((clientSocket = accept(serverSocket, (struct sockaddr *) &client, &clientLenth)) < 0) {
-            ROS_WARN("Failed to accept client connection");
-        }
-        
-		char buffer[BUFFSIZE];
-		int received = 0;
-    
-		bzero(buffer,BUFFSIZE);
-	    if ((received = read(clientSocket, buffer, BUFFSIZE)) < 0) {
-	        sendMsg("FAIL", clientSocket);
-	        ROS_WARN("Failed to receive additional bytes from client");
-	    }
-    
-    
-		/* Print client message */
-        ROS_INFO("Message from client on %s: %s", inet_ntoa(client.sin_addr), buffer);
-    
-    
-		converter.bytes[0] = buffer[0];
-		converter.bytes[1] = buffer[1];
-		converter.bytes[2] = buffer[2];
-		converter.bytes[3] = buffer[3];
-		v = converter.floatValue;
-		converter.bytes[0] = buffer[4];
-		converter.bytes[1] = buffer[5];
-		converter.bytes[2] = buffer[6];
-		converter.bytes[3] = buffer[7];
-		w = converter.floatValue;
-    
-		bool controlOrAutonomy = true;
-		
-		if (controlOrAutonomy) {
-			lunabotics::Control controlMsg;
-			controlMsg.motion.linear.x = v;
-			controlMsg.motion.angular.z = w;
-			controlPublisher.publish(controlMsg);
-		}
-		else {
-			lunabotics::BoolValue autonomyMsg;
-			autonomyMsg.flag = false;
-			autonomyPublisher.publish(autonomyMsg);
-		}
-		
-		
-	    /* Send back reply */
-	    sendMsg("OK", clientSocket);
-    
-	    close(clientSocket);
-        
-        
-        
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
+	close(sock);
 	
 	return 0;
 }

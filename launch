@@ -1,11 +1,32 @@
-if [ -n "$1" ]
+#!/bin/bash 
+inc_port="5555"
+inc_addr="192.168.218.129"
+out_port="5556"
+out_addr="192.168.218.1"
+
+
+if [ -n "$1" ] 
 then
-	if [ -n "$2" ]
-	then
-		roslaunch `rospack find lunabotics`/lunabotics.launch port:=$1 ip:=$2
-	else
-		roslaunch `rospack find lunabotics`/lunabotics.launch port:=$1 ip:=192.168.218.128
-	fi
-else
-	roslaunch `rospack find lunabotics`/lunabotics.launch port:=5555 ip:=192.168.218.128
+	inc_port=$1
 fi
+if [ -n "$2" ] 
+then
+	inc_addr=$2
+fi
+if [ -n "$3" ] 
+then
+	out_port=$3
+fi
+if [ -n "$4" ] 
+then
+	out_addr=$4
+fi
+
+echo "/////////////////////////////////////// IVANY4 ////////////////////////////////////////////////"
+echo "//"
+echo "//"
+echo "Launching with incoming connection $inc_addr:$inc_port; outgoing connection $out_addr:$out_port"
+echo "//"
+echo "//"
+
+roslaunch `rospack find lunabotics`/lunabotics.launch iport:=inc_port iip:=inc_addr oport:=out_port oip:=out_addr
