@@ -40,7 +40,17 @@ do
 	c)	close=1;;
 	d)  clean=1;;
 	n)  rebuild=0;;
-	\?) echo "Usage: $0 [-d] [-c] [-n] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]" >&2; exit 1;;
+	\?) echo "Usage: $0 [-d] [-c] [-n] [-h] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]" >&2
+		echo ""
+		echo "Options:"
+		echo "-d					Delete build target before compiling"
+		echo "-c					Close running nodes. All other options are ignored when using -c"
+		echo "-n					Do not recompile"
+		echo "-a ADDR					Specify GUI IP address"
+		echo "-A ADDR					Specify IP address for incoming connections"
+		echo "-p PORT					Specify GUI TCP port"
+		echo "-P ADDR					Specify TCP port for incoming connections"
+		exit 1;;
 	esac
 done
 shift $((OPTIND-1))
