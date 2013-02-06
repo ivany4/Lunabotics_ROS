@@ -11,16 +11,23 @@ kill_if_running() {
 	fi
 }
 
+clrecho() {
+	echo "$(tput setaf $1)$(tput bold)$2$(tput sgr0)"
+}
+
 kill_nodes() {
-	echo "Cleaning up..."
+	clrecho 3 "Killing nodes..."
 	kill_if_running "luna_gui_listener"
-	kill_if_running "luna_slam"
-	kill_if_running "luna_mech_gw"
+	kill_if_running "luna_gui_gw"
 	kill_if_running "luna_pilot"
 	kill_if_running "luna_navigator"
-	kill_if_running "luna_gui_gw"
+	kill_if_running "luna_slam"
+	kill_if_running "luna_mech_gw"
+	kill_if_running "luna_aut_gw"
+	kill_if_running "luna_fear"
 	echo "-------------------------"
 }
+	
 
 ########################################################################
 
@@ -40,8 +47,8 @@ do
 	c)	close=1;;
 	d)  clean=1;;
 	n)  rebuild=0;;
-	\?) echo "Usage: $0 [-d] [-c] [-n] [-h] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]" >&2
-		echo ""
+	\?) echo "$(tput bold)Usage: $0 [-d] [-c] [-n] [-h] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]$(tput sgr0)" >&2
+		echo ""$(tput sgr0)
 		echo "Options:"
 		echo "-d					Delete build target before compiling"
 		echo "-c					Close running nodes. All other options are ignored when using -c"
@@ -62,28 +69,38 @@ else
 	if [ `pgrep -n roscore` ]
 	then
 		kill_nodes
+		halt=0
 		if [ $rebuild -eq 1 ]
 		then
 			if [ $clean ]
 			then
-				echo "Cleaning targets..."
+				clrecho 3 "Cleaning targets..."
 				cd ~/ROS/pkgs/lunabotics
 				make clean
 			fi
-			echo "Building package..."
+			clrecho 3 "Building package..."
 			rosmake lunabotics
+			halt=$?
 		fi
-		echo "Launching nodes..."
-		echo "Using incoming connection $in_addr:$in_port"
-		echo "Using outgoing connection $out_addr:$out_port"
-		gnome-terminal --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
-		gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'"
-		gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw"
-		gnome-terminal --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam"
-		gnome-terminal --tab -t "Pilot" -e "bash rosrun lunabotics luna_pilot"
-		gnome-terminal --tab -t "Navigator" -e "bash rosrun lunabotics luna_navigator"
-		echo "Nodes are up and running. Enjoy! :)"
+		
+		if [ $halt -eq 0 ]
+		then
+			clrecho 3 "Launching nodes..."
+			echo "Using incoming connection $in_addr:$in_port"
+			echo "Using outgoing connection $out_addr:$out_port"
+			gnome-terminal --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
+			gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'"
+			gnome-terminal --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam"
+			gnome-terminal --tab -t "Navigator" -e "bash rosrun lunabotics luna_navigator"
+			gnome-terminal --tab -t "Pilot" -e "bash rosrun lunabotics luna_pilot"
+			#gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw"
+			#gnome-terminal --tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw"
+			#gnome-terminal --tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+			clrecho 2 "Nodes are up and running. Enjoy! :)"
+		else
+			clrecho 1 "Build failed"
+		fi
 	else
-		echo "roscore is not running!!!"
+		clrecho 1 "Roscore is not running!!!"
 	fi
 fi

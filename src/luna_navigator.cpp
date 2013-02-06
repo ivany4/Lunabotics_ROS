@@ -19,14 +19,13 @@ bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 	if (mapClient.call(mapService)) {
 		ROS_INFO("Got map from service (%d nodes)", mapService.response.map.data.size());
 		ROS_INFO("------------------------------------");
-		cout << mapService.response.map.data;
 		for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
 		    stringstream sstr;
 			for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
-				//int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
-				cout << setw(3) << mapService.response.map.data.at(i*mapService.response.map.info.width+j);
+				int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
+				sstr << static_cast<int>(probability) << " ";
 			}
-			cout << endl;
+			ROS_INFO("%s", sstr.str().c_str());
 		}
 		ROS_INFO("\n");
 		
