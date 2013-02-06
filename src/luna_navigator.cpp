@@ -34,13 +34,16 @@ bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 		//Generate a path
 		a_star_graph pathPlan;
 		float resolution = mapService.response.map.info.resolution;
+		
+		int start_x = round(req.start.pose.position.x/resolution);
+		int start_y = round(req.start.pose.position.y/resolution);
+		int goal_x = round(req.goal.pose.position.x/resolution);
+		int goal_y = round(req.goal.pose.position.y/resolution);
+		
 		vector<a_star_node> graph = pathPlan.find_path(mapService.response.map.data, 
 												mapService.response.map.info.width, 
 												mapService.response.map.info.height,
-												req.start.pose.position.x/resolution,
-												req.start.pose.position.y/resolution,
-												req.goal.pose.position.x/resolution,
-												req.goal.pose.position.y/resolution);
+												start_x, start_y, goal_x, goal_y);
 		
 		if (graph.size() == 0) {
 			ROS_INFO("Path is not found");

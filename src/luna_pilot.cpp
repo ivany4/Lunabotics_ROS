@@ -58,7 +58,9 @@ int main(int argc, char **argv)
 			pathService.request.start = start;
 			pathService.request.goal = goal;
 			
-			ROS_INFO("Requesting path");
+			ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
+					  start.pose.position.x, start.pose.position.y,
+					  goal.pose.position.x = 0.4, goal.pose.position.y);
 			
 			if (pathClient.call(pathService)) {
 				stringstream sstr;
