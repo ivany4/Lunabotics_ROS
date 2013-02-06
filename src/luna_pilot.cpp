@@ -4,6 +4,7 @@
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "nav_msgs/GetPlan.h"
+using namespace std;
 
 bool request_path = false;
 
@@ -56,18 +57,16 @@ int main(int argc, char **argv)
 			pathService.request.tolerance = 1.0;
 			pathService.request.start = start;
 			pathService.request.goal = goal;
+			
+			ROS_INFO("Requesting path");
+			
 			if (pathClient.call(pathService)) {
-				
-				for (int i = 0; i < pathService.response.plan.poses.size(); i++) {
-					geometry_msgs::PoseStamped poseStamped = pathService.response.plan.poses.at(i);
-					ROS_INFO("-> %f %f", poseStamped.pose.position.x, poseStamped.pose.position.y);
+				stringstream sstr;
+				for (vector<geometry_msgs::PoseStamped>::iterator it = pathService.response.plan.poses.begin(); it != pathService.response.plan.poses.end(); it++) {
+					geometry_msgs::PoseStamped poseStamped = *it;
+					sstr << "->(" << poseStamped.pose.position.x << "," << poseStamped.pose.position.y << ")";
 				}
-				ROS_INFO("-------------------------");
-				//Use path
-				ROS_INFO("Returned %d waypoints", pathService.response.plan.poses.size());
-				
-				
-				ROS_INFO("Got path from service");
+				ROS_INFO("Returned path: %s", sstr.str().c_str());
 			}
 			else {
 				ROS_ERROR("Failed to call service luna_path");

@@ -17,7 +17,7 @@ bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 	ROS_INFO("Got a path request with tolerance %.2f", req.tolerance);
 	bool result = true;
 	if (mapClient.call(mapService)) {
-		ROS_INFO("Got map from service (%d nodes)", mapService.response.map.data.size());
+		ROS_INFO("Got map from service (%ld nodes)", mapService.response.map.data.size());
 		ROS_INFO("------------------------------------");
 		for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
 		    stringstream sstr;
@@ -29,10 +29,12 @@ bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 		}
 		ROS_INFO("\n");
 		
+		ROS_INFO("Looking for a path...");
+		
 		//Generate a path
 		a_star_graph pathPlan;
 		float resolution = mapService.response.map.info.resolution;
-		vector<a_star_node> graph = pathPlan.get_graph(mapService.response.map.data, 
+		vector<a_star_node> graph = pathPlan.find_path(mapService.response.map.data, 
 												mapService.response.map.info.width, 
 												mapService.response.map.info.height,
 												req.start.pose.position.x/resolution,
@@ -40,12 +42,20 @@ bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 												req.goal.pose.position.x/resolution,
 												req.goal.pose.position.y/resolution);
 		
+		if (graph.size() == 0) {
+			ROS_INFO("Path is not found");
+		}
+		else {
+			ROS_INFO("Path found");
+		}
+		
 		ros::Time now = ros::Time::now();
 		
 		res.plan.header.seq = seq;
 		res.plan.header.frame_id = 1;
 		res.plan.header.stamp = now;
-			
+		
+		
 		//Static path
 		for (int i = 0; i < (int)graph.size(); i++) {
 			a_star_node graphNode = graph.at(i);
@@ -89,7 +99,6 @@ int main(int argc, char **argv)
 	
 	
 	ROS_INFO("Navigator ready"); 
-	
 	
 	ros::Rate loop_rate(50);
 	while (ros::ok())

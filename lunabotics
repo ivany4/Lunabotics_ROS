@@ -7,7 +7,7 @@ kill_if_running() {
 	if [ $pid_to_kill ]
 	then
 		echo "Killing $1 (pid $pid_to_kill)"
-		killall $1
+		killall -s 2 $1
 	fi
 }
 
@@ -88,14 +88,8 @@ else
 			clrecho 3 "Launching nodes..."
 			echo "Using incoming connection $in_addr:$in_port"
 			echo "Using outgoing connection $out_addr:$out_port"
-			gnome-terminal --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
-			gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'"
-			gnome-terminal --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam"
-			gnome-terminal --tab -t "Navigator" -e "bash rosrun lunabotics luna_navigator"
-			gnome-terminal --tab -t "Pilot" -e "bash rosrun lunabotics luna_pilot"
-			#gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw"
-			#gnome-terminal --tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw"
-			#gnome-terminal --tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+			gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
+			gnome-terminal --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Pilot" -e "bash rosrun lunabotics luna_pilot" --tab -t "Navigator" -e "bash rosrun lunabotics luna_navigator" #--tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" --tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
 			clrecho 2 "Nodes are up and running. Enjoy! :)"
 		else
 			clrecho 1 "Build failed"

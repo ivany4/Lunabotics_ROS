@@ -3,20 +3,15 @@
 class a_star_graph
 {
 private:
-	int dif(int w1, int w2);
-	bool enter(int start_x, int start_y, int goal_x, int goal_y);
-	double prune(int start_x, int start_y, int goal_x, int goal_y);
 	int width;
 	int height;
-	std::vector<int8_t> tmap;
-	a_star_node expand(int start_x, int start_y, int x, int y, double cost);
-	int goal_x;
-	int goal_y;
+	bool in_set(std::list<a_star_node> set, a_star_node node);
+	double distance(a_star_node node1, a_star_node node2);
+	std::vector<a_star_node> reconstruct_path(std::list<a_star_node> came_from, a_star_node current);
 
 public:
 	a_star_graph();
-	int counter;
-	std::vector<a_star_node> get_graph(std::vector<int8_t> map, 
+	std::vector<a_star_node> find_path(std::vector<int8_t> map, 
 								int width, int height, 
 								int start_x, int start_y, 
 								int goal_x, int goal_y);

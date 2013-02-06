@@ -1,196 +1,114 @@
+/* Check http://en.wikipedia.org/wiki/A*_search_algorithm#Pseudocode for details */
 #include "ros/ros.h"
 #include "a_star_graph.h"
 #include <math.h>
 #include <list>
-
-#define OCC_THRESHOLD	0.8
-
+#include <sstream>
 using namespace std;
 
-vector<a_star_node> a_star_graph::get_graph(vector<int8_t> map, int width, int height, int start_x, int start_y, int goal_x, int goal_y)
+vector<a_star_node> a_star_graph::find_path(vector<int8_t> map, int width, int height, int start_x, int start_y, int goal_x, int goal_y)
 {
+	ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start_x, start_y, goal_x, goal_y);	
 	vector<a_star_node> graph;
-	
     if (map.at(goal_x+goal_y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); return graph; }
     if (map.at(start_x+start_y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); return graph; }
     
+    
+	list<a_star_node> open_set;
+	list<a_star_node> closed_set;
+	list<a_star_node> came_from;
+	
     this->width = width;
     this->height = height;
-    this->goal_x = goal_x;
-    this->goal_y = goal_y;
     
-    counter = 0;
+    a_star_node goal_node = a_star_node(goal_x, goal_y);  
+	
+      
+    a_star_node start_node = a_star_node(start_x, start_y);
+    start_node.H = this->distance(start_node, goal_node);	//Distance
+    start_node.G = 0;										//Cost
+    start_node.F = start_node.H+start_node.G;				//Admissible heuristics
+    start_node.parent_x = start_x;
+    start_node.parent_y = start_y;
+    open_set.push_back(start_node);
+    
+    stringstream sstr;
+    
+    while (!open_set.empty()) {
+        open_set.sort();
+		a_star_node current = open_set.front();
+		sstr.str(string());
+		sstr << current;
+		ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
 
-	list<a_star_node> act;
-	list<a_star_node> pass;
-
-	for (int i = 0; i < width*height; i++) {
-		this->tmap.push_back(map.at(i));
-	}
-
-    list<a_star_node>::iterator ci;
-
-    a_star_node A;
-    A.x = start_x;
-    A.y = start_y;
-    A.F = prune(start_x, start_y, goal_x, goal_x) + tmap.at(goal_x+goal_y*width);
-    A.G = tmap.at(start_x+start_y*width);
-    A.H = prune(start_x, start_y, goal_x, goal_x);
-    A.px = start_x;
-    A.py = start_y;
-    act.push_back(A);
-
-    bool found = false;
-
-    while(!found && !act.empty()) {
-        if(counter!=0) {
-            act.sort();
-            A = act.front();
-            start_x = A.x;
-            start_y = A.y;
-        }
-
-        a_star_node B;
-        B = expand(start_x, start_y, start_x+1, start_y, A.G);
-        if (B.used) act.push_back(B);
-
-        a_star_node C;
-        C = expand(start_x, start_y, start_x-1, start_y, A.G);
-        if (C.used) act.push_back(C);
-
-        a_star_node D;
-        D = expand(start_x,start_y,start_x,start_y+1, A.G);
-        if (D.used) act.push_back(D);
-
-        a_star_node F;
-        F = expand(start_x,start_y,start_x,start_y-1, A.G);
-        if (F.used) act.push_back(F);
-
-        pass.push_back(A);
-        act.remove(A);
-        tmap.at(start_x+start_y*width) = 1;
-
-        //if(counter>30)break;
-
-        if (A.x == goal_x && A.y == goal_y) {
-			found = true;
+        if (current == goal_node) {
+			ROS_INFO("Found goal %s", sstr.str().c_str());
+			graph = this->reconstruct_path(came_from, current);
+			reverse(graph.begin(), graph.end());
+			break;
 		}
-
-        counter++;
-    }
-
-    if (!found) ROS_ERROR("Unable to find a route");
-
-    list<a_star_node> to_go;
-    bool way_ok = false;
-    while (!way_ok && found) {
-        a_star_node AA;
-        for(ci = pass.begin(); ci != pass.end(); ci++) {
-            AA = *ci;
-            //cout << A << start_x <<endl;
-            if (AA.x == start_x && AA.y == start_y) {
-                to_go.push_front(AA);
-                start_x = AA.px;
-                start_y = AA.py;
-                break;
-            }
-
-        }
-        //Anfang gefunden. Knoten verweist auf sich selbst.
-        if (start_x == AA.x && start_y == AA.y) {
-			 way_ok = true;  
+		
+        open_set.remove(current);
+        closed_set.push_back(current);
+        
+        list<a_star_node> neighbours = current.neighbours(this->width, this->height, map);
+        
+        for (list<a_star_node>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			a_star_node neighbour = *it;
+			if (this->in_set(closed_set, neighbour)) {
+				continue;
+			}
+			
+			double tentative_G = current.G + this->distance(current, neighbour);
+			
+			if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G) {
+				came_from.push_back(current);
+				neighbour.parent_x = current.x;
+				neighbour.parent_y = current.y;
+				neighbour.G = tentative_G;
+				neighbour.H = this->distance(neighbour, goal_node);
+				neighbour.F = neighbour.G + neighbour.H;
+				if (!this->in_set(open_set, neighbour)) {
+					open_set.push_back(neighbour);
+				}
+			}
 		}
-    }
-
-    if(found) {
-        for(ci = to_go.begin(); ci != to_go.end(); ci++) {
-            graph.push_back(*ci);
-        }
     }
 
     return graph;
 }
 
-
-double a_star_graph::prune(int sx, int sy, int gx, int gy) {
-    if (sx >= 0 && sx < this->width && 
-       gx >= 0 && gx < this->width && 
-       sy >=0 && sy < this->height && 
-       gy >= 0 && gy < this->height) {
-        double a;
-        double b;
-        a = (double)sx - (double)gx;
-        b = (double)sy - (double)gy;
-        return (int(sqrt(a*a + b*b)));
+vector<a_star_node> a_star_graph::reconstruct_path(list<a_star_node> came_from, a_star_node current)
+{	
+	vector<a_star_node> path;
+	a_star_node parent = current.parent(came_from);
+	if (parent != current) {
+		path = this->reconstruct_path(came_from, parent);
+		path.insert(path.begin(), current);
+	}
+	else {
+		path.push_back(current);
+	}
+	return path;
+}
+	
+bool a_star_graph::in_set(list<a_star_node> set, a_star_node node) {
+	list<a_star_node>::iterator it = find(set.begin(), set.end(), node);
+	return it != set.end();
+}
+	
+double a_star_graph::distance(a_star_node node1, a_star_node node2) {
+    if (node1.x >= 0 && node1.x < this->width && 
+       node2.x >= 0 && node2.x < this->width && 
+       node1.y >=0 && node1.y < this->height && 
+       node2.y >= 0 && node2.y < this->height) {
+		int dx = node1.x-node2.x;
+		int dy = node1.y-node2.y;
+		return sqrt(pow(dx, 2) + pow(dy, 2));
     }
-    else return width*height;
+    return this->width*this->height;
 }
 
-
-
-bool a_star_graph::enter(int sx, int sy, int gx, int gy) {
-    if (sx >= 0 && sx < this->width && 
-        gx >= 0 && gx < this->width && 
-        sy >= 0 && sy < this->height && 
-        gy >= 0 && gy < this->height) {
-        if (tmap.at(gx+gy*this->width) < OCC_THRESHOLD && tmap.at(sx+sy*this->width) < OCC_THRESHOLD) {
-            if (dif(sx, gx) >= OCC_THRESHOLD && dif(sy, gy) >= OCC_THRESHOLD) {
-                  return true;
-            }
-        }
-    }
-	return false;
-}
-
-int a_star_graph::dif(int w1, int w2) {
-	int temp = w1 - w2;
-	if (temp < 0) temp *= -1;
-	return temp;
-}
-
-a_star_node a_star_graph::expand(int sx, int sy, int x, int y, double cost)
-{
-    a_star_node B;
-    if (enter(sx, sy, x, y)) {
-        B.x = x;
-        B.y = y;
-        B.G = tmap[x+(y)*this->width]+cost*0.5;
-        B.H = prune(x, y, this->goal_x, this->goal_y);
-        B.F = B.H + B.G;
-        B.px = sx;
-        B.py = sy;
-        B.used = true;
-
-
-/*
-        for(ci=act.begin(); ci!=act.end(); ci++)
-        {
-            a_star_node x = *ci;
-            if(x==B)
-            {
-                cout << "found\n";
-                if(x.G<B.G)
-                {
-                    //cout << "found better\n";
-                    act.remove(x);
-                    x.px = sx;
-                    x.py = sy;
-                    x.G = tmap[x.x+x.y*w];
-                    x.H = prune(x.x,x.y,gx,gy);
-                    x.F = x.G+x.H;
-                    act.push_back(x);
-                }
-
-                break;
-            }
-        }
-*/
-
-
-    }
-    return B;
-}
-
-a_star_graph::a_star_graph(): width(), height(), tmap(), goal_x(), goal_y(), counter()
+a_star_graph::a_star_graph(): width(0), height(0)
 {
 }
