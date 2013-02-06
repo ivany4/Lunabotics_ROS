@@ -3,16 +3,20 @@
 #include "lunabotics/BoolValue.h"
 #include <iostream>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string>
+#include <signal.h>
 #include <unistd.h>
-#include <netinet/in.h>
+
 #define MAXPENDING 5        /* Max connection requests */
 #define BUFFSIZE 256
+#define SERVER_PORT "5555"
 
 using namespace std;
 
+int serverSocket, clientSocket;
 
 enum CTRL_MODE_TYPE {
     ACKERMANN 		 = 0,
@@ -36,7 +40,13 @@ union BytesToUint8 {
     char bytes[1];
     uint8_t uint8Value;
 };
-	
+
+void quit(int sig) { 
+    close(serverSocket); 
+    close(clientSocket); 
+    ros::shutdown(); 
+    exit(0); 
+}	
 
 void replyToGUI(const char *msg, int sock) {
     int replylen = sizeof(msg);
@@ -79,7 +89,9 @@ int main(int argc, char **argv)
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<lunabotics::BoolValue>("luna_auto", 256);
 	
-	int serverSocket, clientSocket;
+	
+    signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
+	
 	struct sockaddr_in server, client;
 	
 	/* Create the TCP socket */
@@ -88,32 +100,30 @@ int main(int argc, char **argv)
         ros::shutdown();
     }
     
-    const char *port = argc > 2 ? argv[2] : "5555";
-    
     /* Construct the server sockaddr_in structure */
     memset(&server, 0, sizeof(server));         /* Clear struct */
     server.sin_family = AF_INET;                    /* Internet/IP */
     server.sin_addr.s_addr = inet_addr(argv[1]);
-    server.sin_port = htons(atoi(port));         /* server port */
+    server.sin_port = argc > 2 ? htons(atoi(argv[2])) : htons(atoi(SERVER_PORT));
     
     /* Print connection details */
-    char *z;
-    z = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
+    char *addr;
+    addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
     
     /* Bind the server socket */
     if (bind(serverSocket, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to bind the server socket on %s:%s", z, port);
+        ROS_ERROR("Failed to bind the server socket on %s:%hu", addr, ntohs(server.sin_port));
         ros::shutdown();
     }
     
     /* Listen on the server socket */
     if (listen(serverSocket, MAXPENDING) < 0) {
-        ROS_ERROR("Unable to listen to socket on %s:%s", z, port);
+        ROS_ERROR("Unable to listen to socket on %s:%hu", addr, ntohs(server.sin_port));
         ros::shutdown();
     }
     
-    ROS_INFO("GUI Listener ready on %s:%s", z, port);
+    ROS_INFO("GUI Listener ready on %s:%hu", addr, ntohs(server.sin_port));
     
 	ros::Rate loop_rate(50);
   	

@@ -13,7 +13,7 @@
 
 #define BUFFSIZE 256
 #define SERVER_ADDR	"192.168.218.1"
-#define SERVER_PORT	"5555"
+#define SERVER_PORT	"5556"
 
 using namespace std;
 
@@ -118,14 +118,14 @@ int main(int argc, char **argv)
     /* Construct the server sockaddr_in structure */
     memset(&server, 0, sizeof(server));         	/* Clear struct */
     server.sin_family = AF_INET;                    /* Internet/IP */ 
-    server.sin_addr.s_addr = argc > 2 ? inet_addr(argv[2]) : inet_addr(SERVER_ADDR);
-    server.sin_port = argc > 1 ? htons(atoi(argv[1])) : htons(atoi(SERVER_PORT)); 
+    server.sin_addr.s_addr = argc > 1 ? inet_addr(argv[1]) : inet_addr(SERVER_ADDR); 
+    server.sin_port = argc > 2 ? htons(atoi(argv[2])) : htons(atoi(SERVER_PORT));
     
     
     
     /* Print connection details */
-    char *z;
-    z = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
+    char *addr;
+    addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
     
     /* Create the TCP socket */
@@ -136,11 +136,11 @@ int main(int argc, char **argv)
     
     /* Establish connection */
     if (connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to connect to server %s:%hu", z, ntohs(server.sin_port));
+        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
         ros::shutdown();
     }
     
-    ROS_INFO("Connected to server on %s:%hu (socket %d)", z, ntohs(server.sin_port), sock);
+    ROS_INFO("Connected to server on %s:%hu (socket %d)", addr, ntohs(server.sin_port), sock);
    	ROS_INFO("GUI Gateway ready");
    	
 	ros::spin();	
