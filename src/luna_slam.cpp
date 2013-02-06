@@ -3,11 +3,32 @@
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
 
+int seq = 0;
+
 bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
-{
-	//Return map
-	//res.map = 
-	ROS_INFO("Got a map request. Sending map back.");
+{	
+	ROS_INFO("Got a map request");
+	ros::Time now = ros::Time::now();
+	res.map.header.seq = seq;
+	res.map.header.frame_id = 1;
+	res.map.header.stamp = now;
+	res.map.info.width = 10;
+	res.map.info.height = 10;
+	res.map.info.resolution = 1/10.0;
+	res.map.info.map_load_time = now;
+	res.map.info.origin.position.x = 0;
+	res.map.info.origin.position.y = 0;
+	res.map.info.origin.position.z = 0;
+	res.map.info.origin.orientation.x = 0;
+	res.map.info.origin.orientation.y = 0;
+	res.map.info.origin.orientation.z = 0;
+	res.map.info.origin.orientation.w = 0;
+	
+	for (int i = 0; i < res.map.info.width*res.map.info.height; i++) {
+		res.map.data.push_back(5);
+	}
+	
+	seq++;
 	return true;
 }
 

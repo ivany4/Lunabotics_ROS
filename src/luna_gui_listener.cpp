@@ -14,38 +14,64 @@
 using namespace std;
 
 
-union bytesToFloat
-{
+enum CTRL_MODE_TYPE {
+    ACKERMANN 		 = 0,
+    TURN_IN_SPOT     = 1,
+    LATERAL   		 = 2
+};
+
+enum RX_CONTENT_TYPE {
+	STEERING		 = 0,
+	AUTONOMY		 = 1,
+	CTRL_MODE		 = 2,
+	ROUTE			 = 3
+};
+
+union BytesToFloat {
     char    bytes[4];
     float   floatValue;
 };
 
-enum ControlType
-{
-    ControlAckermann = 0,
-    ControlSpot      = 1,
-    ControlLateral   = 2
-};
-
-union BytesToUint8
-{
+union BytesToUint8 {
     char bytes[1];
     uint8_t uint8Value;
 };
+	
 
-void sendMsg(const char *msg, int sock) {
+void replyToGUI(const char *msg, int sock) {
     int replylen = sizeof(msg);
     if (write(sock, msg, replylen) != replylen) {
         ROS_WARN("Failed to send bytes to client");
     }
 }
 
+RX_CONTENT_TYPE contentTypeFromChar(char c)
+{
+	union BytesToUint8 enumConverter;
+	enumConverter.bytes[0] = c;
+	uint8_t val = enumConverter.uint8Value;
+	if (val == 1) return AUTONOMY;
+	else if (val == 2) return CTRL_MODE;
+	else if (val == 3) return ROUTE;
+	return STEERING;
+}
+
+CTRL_MODE_TYPE controlModeFromChar(char c)
+{
+	union BytesToUint8 enumConverter;
+	enumConverter.bytes[0] = c;
+	uint8_t val = enumConverter.uint8Value;
+	if (val == 1) return TURN_IN_SPOT;
+	else if (val == 2) return LATERAL;
+	return ACKERMANN;
+}		
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_gui_listener");
 	
 	if (argc < 2 || argc > 3) {
-		ROS_FATAL("USAGE: rosrun lunabotics lunabotics <port> [<ip address>]");
+		ROS_FATAL("USAGE: rosrun lunabotics lunabotics <ip address> [port]");
 		ros::shutdown();
 	}
 	
@@ -62,33 +88,32 @@ int main(int argc, char **argv)
         ros::shutdown();
     }
     
+    const char *port = argc > 2 ? argv[2] : "5555";
+    
     /* Construct the server sockaddr_in structure */
     memset(&server, 0, sizeof(server));         /* Clear struct */
     server.sin_family = AF_INET;                    /* Internet/IP */
-    server.sin_addr.s_addr = argc == 3 ? inet_addr(argv[2]) :
-    //inet_addr("127.0.0.1"); 
-    htonl(INADDR_ANY);     /* Incoming addr */
-    server.sin_port = htons(atoi(argv[1]));         /* server port */
+    server.sin_addr.s_addr = inet_addr(argv[1]);
+    server.sin_port = htons(atoi(port));         /* server port */
     
     /* Print connection details */
     char *z;
     z = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
-    ROS_INFO("GUI Listener ready on %s:%s", z, argv[1]);
     
     /* Bind the server socket */
     if (bind(serverSocket, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to bind the server socket");
+        ROS_ERROR("Failed to bind the server socket on %s:%s", z, port);
         ros::shutdown();
     }
     
     /* Listen on the server socket */
     if (listen(serverSocket, MAXPENDING) < 0) {
-        ROS_ERROR("Failed to listen on server socket");
+        ROS_ERROR("Unable to listen to socket on %s:%s", z, port);
         ros::shutdown();
     }
     
-	bool autonomyEnabled = false;
+    ROS_INFO("GUI Listener ready on %s:%s", z, port);
     
 	ros::Rate loop_rate(50);
   	
@@ -106,109 +131,111 @@ int main(int argc, char **argv)
     
 		bzero(buffer,BUFFSIZE);
 	    if ((received = read(clientSocket, buffer, BUFFSIZE)) < 0) {
-	        sendMsg("FAIL", clientSocket);
+	        replyToGUI("FAILED TO READ", clientSocket);
 	        ROS_WARN("Failed to receive additional bytes from client");
 	    }
     
     
 		/* Print client message */
-        ROS_INFO("Message from client on %s: %s", inet_ntoa(client.sin_addr), buffer);
-
+        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
+			
 		//Parse autonomy flag
-		bool autoDrive = buffer[0];
+		RX_CONTENT_TYPE contentType = contentTypeFromChar(buffer[0]);
 		
-		if (autoDrive != autonomyEnabled) {
-			autonomyEnabled = autoDrive;
-			
-			lunabotics::BoolValue autonomyMsg;
-			autonomyMsg.flag = autoDrive;
-			autonomyPublisher.publish(autonomyMsg);
-		}
-		else {
-			lunabotics::Control controlMsg;
-			
-			union BytesToUint8 intConverter;
-			union bytesToFloat floatConverter;
-			 
-			//Parse motion control type flag
-			intConverter.bytes[0] = buffer[1];
-			uint8_t intType = intConverter.uint8Value;
-			ControlType motionControlType = ControlAckermann;
-			if (intType == 1) {
-				motionControlType = ControlSpot;
+		switch (contentType) {
+			case AUTONOMY: {
+				union BytesToUint8 boolConverter;
+				boolConverter.bytes[0] = buffer[1];
+				bool enabled = boolConverter.uint8Value;
+				
+				ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
+				
+				lunabotics::BoolValue autonomyMsg;
+				autonomyMsg.flag = enabled;
+				autonomyPublisher.publish(autonomyMsg);
+				
+				replyToGUI("OK", clientSocket);
 			}
-			else if (intType == 2) {
-				motionControlType = ControlLateral;
+			break;
+			
+			case CTRL_MODE: {
+				
+				CTRL_MODE_TYPE type = controlModeFromChar(buffer[1]);
+				
+				ROS_INFO("Switching control mode to %s", (type == ACKERMANN ? "Ackermann" : type == LATERAL ? "Lateral" : "Spot"));
+				
+			    replyToGUI("OK", clientSocket);
 			}
+			break;
+			
+			case STEERING: {
+				lunabotics::Control controlMsg;
+				union BytesToFloat floatConverter;
+			
+				//Parse linear velocity value
+				floatConverter.bytes[0] = buffer[1];
+				floatConverter.bytes[1] = buffer[2];
+				floatConverter.bytes[2] = buffer[3];
+				floatConverter.bytes[3] = buffer[4];
+			    float linearSpeed = floatConverter.floatValue;
+			
+				//Parse control type dependent value
+			    floatConverter.bytes[0] = buffer[5];
+			    floatConverter.bytes[1] = buffer[6];
+			    floatConverter.bytes[2] = buffer[7];
+			    floatConverter.bytes[3] = buffer[8];
+			    float dependentValue = floatConverter.floatValue;
+			
+	
+			    bool driveForward = buffer[9];
+			    bool driveBackward = buffer[10];
+			    bool driveLeft = buffer[11];
+			    bool driveRight = buffer[12];
+	
+				ROS_INFO("Limits: %f %f %s%s%s%s", linearSpeed, dependentValue, driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
+				
 				
 
-			//Parse linear velocity value
-			floatConverter.bytes[0] = buffer[2];
-			floatConverter.bytes[1] = buffer[3];
-			floatConverter.bytes[2] = buffer[4];
-			floatConverter.bytes[3] = buffer[5];
-		    float linearSpeed = floatConverter.floatValue;
-		
-			//Parse control type dependent value
-		    floatConverter.bytes[0] = buffer[6];
-		    floatConverter.bytes[1] = buffer[7];
-		    floatConverter.bytes[2] = buffer[8];
-		    floatConverter.bytes[3] = buffer[9];
-		    float dependentValue = floatConverter.floatValue;
-		
-		    bool driveForward = buffer[10];
-		    bool driveBackward = buffer[11];
-		    bool driveLeft = buffer[12];
-		    bool driveRight = buffer[13];
-
-			ROS_INFO("Autonomy enabled: %d", autoDrive);
-			ROS_INFO("Control Type: %s", (motionControlType == ControlAckermann ? "Ackermann" : motionControlType == ControlLateral ? "Lateral" : "Spot"));
-			ROS_INFO("Linear speed: %f", linearSpeed);
-			ROS_INFO("Dependent value: %f", dependentValue);
-			ROS_INFO("Driving mask: ");
-			ROS_INFO("   Forward: %d", driveForward);
-			ROS_INFO("   Backward: %d", driveBackward);
-			ROS_INFO("   Left: %d", driveLeft);
-			ROS_INFO("   Right: %d", driveRight);
-
-
-			//Just to work with Stageros
-			////////////////////////////////////////////////////////////////
-			float stageLinearSpeed = 0;
-			if (driveForward && !driveBackward) {
-				stageLinearSpeed = 5.0;
+				//Just to work with Stageros
+				////////////////////////////////////////////////////////////////
+				float stageLinearSpeed = 0;
+				if (driveForward && !driveBackward) {
+					stageLinearSpeed = 5.0;
+				}
+				else if (!driveForward && driveBackward) {
+					stageLinearSpeed = -3.0;
+				}
+				
+				float stageAngularSpeed = 0;
+				if (driveLeft && !driveRight) {
+					stageAngularSpeed = 1.0;
+				}
+				else if (!driveLeft && driveRight) {
+					stageAngularSpeed = -1.0;
+				}
+				
+				controlMsg.control_type = 0;	//Motion only
+				controlMsg.motion.linear.x = stageLinearSpeed;
+				controlMsg.motion.angular.z = stageAngularSpeed;
+				//////////////////////////////////////////////////////////////////
+				
+				
+				
+				controlPublisher.publish(controlMsg);
+				
+			    replyToGUI("OK", clientSocket);
 			}
-			else if (!driveForward && driveBackward) {
-				stageLinearSpeed = -3.0;
-			}
+			break;
 			
-			float stageAngularSpeed = 0;
-			if (driveLeft && !driveRight) {
-				stageAngularSpeed = 1.0;
-			}
-			else if (!driveLeft && driveRight) {
-				stageAngularSpeed = -1.0;
-			}
+			case ROUTE:
+				replyToGUI("NOT IMPLEMENTED", clientSocket);
+			break;
 			
-			controlMsg.control_type = 0;	//Motion only
-			controlMsg.motion.linear.x = stageLinearSpeed;
-			controlMsg.motion.angular.z = stageAngularSpeed;
-			//////////////////////////////////////////////////////////////////
-			
-			
-			
-			controlPublisher.publish(controlMsg);
+			default:
+				replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
+			break;
 		}
-		
-		
-		ROS_INFO("Replying with OK");
-		
-	    /* Send back reply */
-	    sendMsg("OK", clientSocket);
-    
-        
-        
-        
+		       
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

@@ -1,0 +1,74 @@
+#!/bin/bash 
+
+#roscore
+
+kill_if_running() {
+	[ "$1" = "" ]  && return 0
+	if [ `pgrep -n $1` ]
+	then
+		echo "Killing $1"
+		killall $2 $1
+	fi
+}
+
+echo "Cleaning up..."
+kill_if_running "luna_slam"
+kill_if_running "luna_mech_gw"
+kill_if_running "luna_pilot"
+kill_if_running "luna_navigator"
+kill_if_running "luna_gui_gw"
+kill_if_running "luna_gui_listener" -15
+
+inc_port="5555"
+inc_addr=`ifconfig eth0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
+out_port="5556"
+out_addr="192.168.218.1"
+close=0
+clean=0
+do_not_rebuild=0
+
+while getopts "a:p:A:P:cdn" opt; 
+do	
+	case $opt in
+	a)	inc_addr="$OPTARG";;
+	p)	inc_port="$OPTARG";;
+	A)	out_addr="$OPTARG";;
+	P)	out_port="$OPTARG";;
+	d)	close=1;;
+	c)  clean=1;;
+	n)  do_not_rebuild=1;;
+	\?) echo "Usage: $0 [-d] [-c] [-n] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]" >&2; exit 1;;
+	esac
+done
+shift $((OPTIND-1))
+
+if [ $close -eq 0 ]
+then
+	echo "-------------------------"
+	if [ `pgrep -n roscore` ]
+	then
+		if [ $do_not_rebuild -eq 0 ]
+		then
+			if [ $clean -eq 1 ]
+			then
+				echo "Cleaning targets..."
+				cd ~/ROS/pkgs/lunabotics
+				make clean
+			fi
+			echo "Building package..."
+			rosmake lunabotics
+		fi
+		echo "Launching nodes..."
+		echo "Using incoming connection $inc_addr:$inc_port"
+		echo "Using outgoing connection $out_addr:$out_port"
+		gnome-terminal --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$inc_addr' '$inc_port'"
+		#gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'"
+		#gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw"
+		#gnome-terminal --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam"
+		#gnome-terminal --tab -t "Pilot" -e "bash rosrun lunabotics luna_pilot"
+		#gnome-terminal --tab -t "Navigator" -e "bash rosrun lunabotics luna_navigator"
+		echo "Nodes are up and running. Enjoy! :)"
+	else
+		echo "roscore is not running!!!"
+	fi
+fi

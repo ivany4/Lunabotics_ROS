@@ -5,16 +5,72 @@
 #include "nav_msgs/GetPlan.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
+#include "planning/a_star_graph.h"
+using namespace std;
 
+int seq = 0;
+nav_msgs::GetMap mapService;
+ros::ServiceClient mapClient;
 
 bool getPath(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
 {
-	//Use req.start as a start pose and req.goal as a goal pose
-	//And req.tolerance if the goal is obstructed, how many meters the planner can relax the constraint in x and y before failing. 
-	//Return path
-	//res.plan = 
 	ROS_INFO("Got a path request with tolerance %.2f", req.tolerance);
-	return true;
+	bool result = true;
+	if (mapClient.call(mapService)) {
+		ROS_INFO("Got map from service (%d nodes)", mapService.response.map.data.size());
+		ROS_INFO("------------------------------------");
+		for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
+		    stringstream sstr;
+			for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
+				int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
+				sstr << probability << " ";
+			}
+			ROS_INFO("%s", sstr.str().c_str());
+		}
+		ROS_INFO("\n");
+		
+		//Generate a path
+		a_star_graph pathPlan;
+		float resolution = mapService.response.map.info.resolution;
+		vector<a_star_node> graph = pathPlan.get_graph(mapService.response.map.data, 
+												mapService.response.map.info.width, 
+												mapService.response.map.info.height,
+												req.start.pose.position.x/resolution,
+												req.start.pose.position.y/resolution,
+												req.goal.pose.position.x/resolution,
+												req.goal.pose.position.y/resolution);
+		
+		ros::Time now = ros::Time::now();
+		
+		res.plan.header.seq = seq;
+		res.plan.header.frame_id = 1;
+		res.plan.header.stamp = now;
+			
+		//Static path
+		for (int i = 0; i < (int)graph.size(); i++) {
+			a_star_node graphNode = graph.at(i);
+			geometry_msgs::PoseStamped poseStamped;
+			poseStamped.header.seq = i;
+			poseStamped.header.frame_id = 1;	//Global frame
+			poseStamped.header.stamp = now;
+			poseStamped.pose.position.x = graphNode.x;
+			poseStamped.pose.position.y = graphNode.y;
+			poseStamped.pose.position.z = 0;
+			poseStamped.pose.orientation.x = 0.5;
+			poseStamped.pose.orientation.y = 0.1;
+			poseStamped.pose.orientation.z = 0;
+			poseStamped.pose.orientation.w = 1;
+			
+			res.plan.poses.push_back(poseStamped);
+		}
+			
+		seq++;
+	}
+	else {
+		result = false;
+		ROS_ERROR("Failed to call service luna_map");
+	}
+	return result;
 }
 
 void emergencyCallback(const lunabotics::Emergency& msg)
@@ -27,9 +83,9 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_navigator");
 	ros::NodeHandle nodeHandle;
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
-	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	ros::ServiceServer pathServer = nodeHandle.advertiseService("luna_path", getPath);
-	nav_msgs::GetMap mapService;
+	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
+	
 	
 	
 	ROS_INFO("Navigator ready"); 

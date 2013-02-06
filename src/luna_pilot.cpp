@@ -5,9 +5,14 @@
 #include "lunabotics/Control.h"
 #include "nav_msgs/GetPlan.h"
 
+bool request_path = false;
+
 void autonomyCallback(const lunabotics::BoolValue& msg)
 {
 	//Use msg to toggle autonomy
+	if (msg.flag) {
+		request_path = true;
+	}
 }
 
 void emergencyCallback(const lunabotics::Emergency& msg)
@@ -32,14 +37,36 @@ int main(int argc, char **argv)
 	while (ros::ok()) {    
 		
 		//Whenever needed to get a path
-		if (false) {
+		if (request_path) {
+			request_path = false;
+			
 			//Specify params
+			geometry_msgs::PoseStamped start;
+			geometry_msgs::PoseStamped goal;
+			start.header.seq = 0;
+			goal.header.seq = 1;
+			start.header.frame_id = goal.header.frame_id = 1;
+			start.pose.position.x = 0.1;
+			start.pose.position.y = 0.1;
+			start.pose.position.z = 0;
+			goal.pose.position.x = 0.4;
+			goal.pose.position.y = 0.4;
+			goal.pose.position.z = 0;
+			
 			pathService.request.tolerance = 1.0;
-			//pathService.request.start = 
-			//pathService.request.goal = 
+			pathService.request.start = start;
+			pathService.request.goal = goal;
 			if (pathClient.call(pathService)) {
+				
+				for (int i = 0; i < pathService.response.plan.poses.size(); i++) {
+					geometry_msgs::PoseStamped poseStamped = pathService.response.plan.poses.at(i);
+					ROS_INFO("-> %f %f", poseStamped.pose.position.x, poseStamped.pose.position.y);
+				}
+				ROS_INFO("-------------------------");
 				//Use path
-				//srv.response.plan
+				ROS_INFO("Returned %d waypoints", pathService.response.plan.poses.size());
+				
+				
 				ROS_INFO("Got path from service");
 			}
 			else {

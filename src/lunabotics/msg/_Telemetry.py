@@ -7,10 +7,11 @@ import struct
 import geometry_msgs.msg
 import std_msgs.msg
 import lunabotics.msg
+import nav_msgs.msg
 import sensor_msgs.msg
 
 class Telemetry(genpy.Message):
-  _md5sum = "707c5a1c8bf9bec7e2cfe5d9cbe361ad"
+  _md5sum = "d0e35cb7fd7b0bb1bd91ffa77aa78063"
   _type = "lunabotics/Telemetry"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """# Telemetry data from Mech Interface
@@ -47,6 +48,8 @@ sensor_msgs/Imu imu_data	# Accelerometer + Gyro data (Orientation quaternion is 
 BoolValue[] bumpers			# Triggered/Not triggered for each bumper
 
 sensor_msgs/Range[] proximity_data	# Ranges for each of the proximity sensors
+
+nav_msgs/Odometry odometry  # Odometry data
 
 # Load information
 float32[] weights			# Load info for each load sensor [kg/sensor]
@@ -155,9 +158,62 @@ float32 range           # range data [m]
 		 	# (Note: values < range_min or > range_max
 		 	# should be discarded)
 
+================================================================================
+MSG: nav_msgs/Odometry
+# This represents an estimate of a position and velocity in free space.  
+# The pose in this message should be specified in the coordinate frame given by header.frame_id.
+# The twist in this message should be specified in the coordinate frame given by the child_frame_id
+Header header
+string child_frame_id
+geometry_msgs/PoseWithCovariance pose
+geometry_msgs/TwistWithCovariance twist
+
+================================================================================
+MSG: geometry_msgs/PoseWithCovariance
+# This represents a pose in free space with uncertainty.
+
+Pose pose
+
+# Row-major representation of the 6x6 covariance matrix
+# The orientation parameters use a fixed-axis representation.
+# In order, the parameters are:
+# (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+float64[36] covariance
+
+================================================================================
+MSG: geometry_msgs/Pose
+# A representation of pose in free space, composed of postion and orientation. 
+Point position
+Quaternion orientation
+
+================================================================================
+MSG: geometry_msgs/Point
+# This contains the position of a point in free space
+float64 x
+float64 y
+float64 z
+
+================================================================================
+MSG: geometry_msgs/TwistWithCovariance
+# This expresses velocity in free space with uncertianty.
+
+Twist twist
+
+# Row-major representation of the 6x6 covariance matrix
+# The orientation parameters use a fixed-axis representation.
+# In order, the parameters are:
+# (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+float64[36] covariance
+
+================================================================================
+MSG: geometry_msgs/Twist
+# This expresses velocity in free space broken into it's linear and angular parts. 
+Vector3  linear
+Vector3  angular
+
 """
-  __slots__ = ['wheel_roll_angle_front_left','wheel_roll_angle_front_right','wheel_roll_angle_rear_left','wheel_roll_angle_rear_right','wheel_yaw_angle_front_left','wheel_yaw_angle_front_right','wheel_yaw_angle_rear_left','wheel_yaw_angle_rear_right','motor_driving_current_front_left','motor_driving_current_front_right','motor_driving_current_rear_left','motor_driving_current_rear_right','motor_steering_current_front_left','motor_steering_current_front_right','motor_steering_current_rear_left','motor_steering_current_rear_right','front_axis_tilt','laser_tilt','imu_data','bumpers','proximity_data','weights','total_weight','regolith_weight','bucket_weight','voltages','remainings']
-  _slot_types = ['float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','sensor_msgs/Imu','lunabotics/BoolValue[]','sensor_msgs/Range[]','float32[]','float32','float32','float32','float32[]','float32[]']
+  __slots__ = ['wheel_roll_angle_front_left','wheel_roll_angle_front_right','wheel_roll_angle_rear_left','wheel_roll_angle_rear_right','wheel_yaw_angle_front_left','wheel_yaw_angle_front_right','wheel_yaw_angle_rear_left','wheel_yaw_angle_rear_right','motor_driving_current_front_left','motor_driving_current_front_right','motor_driving_current_rear_left','motor_driving_current_rear_right','motor_steering_current_front_left','motor_steering_current_front_right','motor_steering_current_rear_left','motor_steering_current_rear_right','front_axis_tilt','laser_tilt','imu_data','bumpers','proximity_data','odometry','weights','total_weight','regolith_weight','bucket_weight','voltages','remainings']
+  _slot_types = ['float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','sensor_msgs/Imu','lunabotics/BoolValue[]','sensor_msgs/Range[]','nav_msgs/Odometry','float32[]','float32','float32','float32','float32[]','float32[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -167,7 +223,7 @@ float32 range           # range data [m]
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       wheel_roll_angle_front_left,wheel_roll_angle_front_right,wheel_roll_angle_rear_left,wheel_roll_angle_rear_right,wheel_yaw_angle_front_left,wheel_yaw_angle_front_right,wheel_yaw_angle_rear_left,wheel_yaw_angle_rear_right,motor_driving_current_front_left,motor_driving_current_front_right,motor_driving_current_rear_left,motor_driving_current_rear_right,motor_steering_current_front_left,motor_steering_current_front_right,motor_steering_current_rear_left,motor_steering_current_rear_right,front_axis_tilt,laser_tilt,imu_data,bumpers,proximity_data,weights,total_weight,regolith_weight,bucket_weight,voltages,remainings
+       wheel_roll_angle_front_left,wheel_roll_angle_front_right,wheel_roll_angle_rear_left,wheel_roll_angle_rear_right,wheel_yaw_angle_front_left,wheel_yaw_angle_front_right,wheel_yaw_angle_rear_left,wheel_yaw_angle_rear_right,motor_driving_current_front_left,motor_driving_current_front_right,motor_driving_current_rear_left,motor_driving_current_rear_right,motor_steering_current_front_left,motor_steering_current_front_right,motor_steering_current_rear_left,motor_steering_current_rear_right,front_axis_tilt,laser_tilt,imu_data,bumpers,proximity_data,odometry,weights,total_weight,regolith_weight,bucket_weight,voltages,remainings
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -218,6 +274,8 @@ float32 range           # range data [m]
         self.bumpers = []
       if self.proximity_data is None:
         self.proximity_data = []
+      if self.odometry is None:
+        self.odometry = nav_msgs.msg.Odometry()
       if self.weights is None:
         self.weights = []
       if self.total_weight is None:
@@ -252,6 +310,7 @@ float32 range           # range data [m]
       self.imu_data = sensor_msgs.msg.Imu()
       self.bumpers = []
       self.proximity_data = []
+      self.odometry = nav_msgs.msg.Odometry()
       self.weights = []
       self.total_weight = 0.
       self.regolith_weight = 0.
@@ -308,6 +367,26 @@ float32 range           # range data [m]
         buff.write(struct.pack('<I%ss'%length, length, _x))
         _x = val1
         buff.write(_struct_B4f.pack(_x.radiation_type, _x.field_of_view, _x.min_range, _x.max_range, _x.range))
+      _x = self
+      buff.write(_struct_3I.pack(_x.odometry.header.seq, _x.odometry.header.stamp.secs, _x.odometry.header.stamp.nsecs))
+      _x = self.odometry.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self.odometry.child_frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_struct_7d.pack(_x.odometry.pose.pose.position.x, _x.odometry.pose.pose.position.y, _x.odometry.pose.pose.position.z, _x.odometry.pose.pose.orientation.x, _x.odometry.pose.pose.orientation.y, _x.odometry.pose.pose.orientation.z, _x.odometry.pose.pose.orientation.w))
+      buff.write(_struct_36d.pack(*self.odometry.pose.covariance))
+      _x = self
+      buff.write(_struct_6d.pack(_x.odometry.twist.twist.linear.x, _x.odometry.twist.twist.linear.y, _x.odometry.twist.twist.linear.z, _x.odometry.twist.twist.angular.x, _x.odometry.twist.twist.angular.y, _x.odometry.twist.twist.angular.z))
+      buff.write(_struct_36d.pack(*self.odometry.twist.covariance))
       length = len(self.weights)
       buff.write(_struct_I.pack(length))
       pattern = '<%sf'%length
@@ -337,6 +416,8 @@ float32 range           # range data [m]
         self.bumpers = None
       if self.proximity_data is None:
         self.proximity_data = None
+      if self.odometry is None:
+        self.odometry = nav_msgs.msg.Odometry()
       end = 0
       _x = self
       start = end
@@ -411,6 +492,42 @@ float32 range           # range data [m]
         end += 17
         (_x.radiation_type, _x.field_of_view, _x.min_range, _x.max_range, _x.range,) = _struct_B4f.unpack(str[start:end])
         self.proximity_data.append(val1)
+      _x = self
+      start = end
+      end += 12
+      (_x.odometry.header.seq, _x.odometry.header.stamp.secs, _x.odometry.header.stamp.nsecs,) = _struct_3I.unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.odometry.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.odometry.header.frame_id = str[start:end]
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.odometry.child_frame_id = str[start:end].decode('utf-8')
+      else:
+        self.odometry.child_frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 56
+      (_x.odometry.pose.pose.position.x, _x.odometry.pose.pose.position.y, _x.odometry.pose.pose.position.z, _x.odometry.pose.pose.orientation.x, _x.odometry.pose.pose.orientation.y, _x.odometry.pose.pose.orientation.z, _x.odometry.pose.pose.orientation.w,) = _struct_7d.unpack(str[start:end])
+      start = end
+      end += 288
+      self.odometry.pose.covariance = _struct_36d.unpack(str[start:end])
+      _x = self
+      start = end
+      end += 48
+      (_x.odometry.twist.twist.linear.x, _x.odometry.twist.twist.linear.y, _x.odometry.twist.twist.linear.z, _x.odometry.twist.twist.angular.x, _x.odometry.twist.twist.angular.y, _x.odometry.twist.twist.angular.z,) = _struct_6d.unpack(str[start:end])
+      start = end
+      end += 288
+      self.odometry.twist.covariance = _struct_36d.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -485,6 +602,26 @@ float32 range           # range data [m]
         buff.write(struct.pack('<I%ss'%length, length, _x))
         _x = val1
         buff.write(_struct_B4f.pack(_x.radiation_type, _x.field_of_view, _x.min_range, _x.max_range, _x.range))
+      _x = self
+      buff.write(_struct_3I.pack(_x.odometry.header.seq, _x.odometry.header.stamp.secs, _x.odometry.header.stamp.nsecs))
+      _x = self.odometry.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self.odometry.child_frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_struct_7d.pack(_x.odometry.pose.pose.position.x, _x.odometry.pose.pose.position.y, _x.odometry.pose.pose.position.z, _x.odometry.pose.pose.orientation.x, _x.odometry.pose.pose.orientation.y, _x.odometry.pose.pose.orientation.z, _x.odometry.pose.pose.orientation.w))
+      buff.write(self.odometry.pose.covariance.tostring())
+      _x = self
+      buff.write(_struct_6d.pack(_x.odometry.twist.twist.linear.x, _x.odometry.twist.twist.linear.y, _x.odometry.twist.twist.linear.z, _x.odometry.twist.twist.angular.x, _x.odometry.twist.twist.angular.y, _x.odometry.twist.twist.angular.z))
+      buff.write(self.odometry.twist.covariance.tostring())
       length = len(self.weights)
       buff.write(_struct_I.pack(length))
       pattern = '<%sf'%length
@@ -515,6 +652,8 @@ float32 range           # range data [m]
         self.bumpers = None
       if self.proximity_data is None:
         self.proximity_data = None
+      if self.odometry is None:
+        self.odometry = nav_msgs.msg.Odometry()
       end = 0
       _x = self
       start = end
@@ -589,6 +728,42 @@ float32 range           # range data [m]
         end += 17
         (_x.radiation_type, _x.field_of_view, _x.min_range, _x.max_range, _x.range,) = _struct_B4f.unpack(str[start:end])
         self.proximity_data.append(val1)
+      _x = self
+      start = end
+      end += 12
+      (_x.odometry.header.seq, _x.odometry.header.stamp.secs, _x.odometry.header.stamp.nsecs,) = _struct_3I.unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.odometry.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.odometry.header.frame_id = str[start:end]
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.odometry.child_frame_id = str[start:end].decode('utf-8')
+      else:
+        self.odometry.child_frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 56
+      (_x.odometry.pose.pose.position.x, _x.odometry.pose.pose.position.y, _x.odometry.pose.pose.position.z, _x.odometry.pose.pose.orientation.x, _x.odometry.pose.pose.orientation.y, _x.odometry.pose.pose.orientation.z, _x.odometry.pose.pose.orientation.w,) = _struct_7d.unpack(str[start:end])
+      start = end
+      end += 288
+      self.odometry.pose.covariance = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=36)
+      _x = self
+      start = end
+      end += 48
+      (_x.odometry.twist.twist.linear.x, _x.odometry.twist.twist.linear.y, _x.odometry.twist.twist.linear.z, _x.odometry.twist.twist.angular.x, _x.odometry.twist.twist.angular.y, _x.odometry.twist.twist.angular.z,) = _struct_6d.unpack(str[start:end])
+      start = end
+      end += 288
+      self.odometry.twist.covariance = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=36)
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -620,10 +795,14 @@ float32 range           # range data [m]
 
 _struct_I = genpy.struct_I
 _struct_B = struct.Struct("<B")
+_struct_6d = struct.Struct("<6d")
+_struct_36d = struct.Struct("<36d")
 _struct_9d = struct.Struct("<9d")
 _struct_3f = struct.Struct("<3f")
+_struct_3I = struct.Struct("<3I")
 _struct_B4f = struct.Struct("<B4f")
 _struct_4d = struct.Struct("<4d")
+_struct_7d = struct.Struct("<7d")
 _struct_2I = struct.Struct("<2I")
 _struct_18f3I = struct.Struct("<18f3I")
 _struct_3d = struct.Struct("<3d")
