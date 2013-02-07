@@ -18,6 +18,7 @@
 using namespace std;
 
 int sock;
+bool sock_conn = false;
 struct sockaddr_in server;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
@@ -34,76 +35,100 @@ void sendMsg(const char *msg, int sock) {
     }
 }
 
+bool tryCreate() {
+	sock_conn = false;
+	if (sock >= 0) {
+		close(sock);
+	}
+	
+	return !((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0);
+}
+
+bool tryConnect() {
+	if (tryCreate()) {
+	    /* Establish connection */
+	    sock_conn = !(connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0);
+	}
+	else {
+        ROS_FATAL("Failed to create socket");
+	}
+    return sock_conn;
+}
+
+
 void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
-    int size = sizeof(double)*3;
-    char send_buffer[size];
-    
-    ////////////DATA ENCODING////////////////////
-    
-    int pointer = 0;
-    
-	union doubleToBytes doubleConverter;
-	doubleConverter.doubleValue = msg.odometry.pose.pose.position.x;
-	send_buffer[pointer++] = doubleConverter.bytes[0];
-	send_buffer[pointer++] = doubleConverter.bytes[1];
-	send_buffer[pointer++] = doubleConverter.bytes[2];
-	send_buffer[pointer++] = doubleConverter.bytes[3];
-	send_buffer[pointer++] = doubleConverter.bytes[4];
-	send_buffer[pointer++] = doubleConverter.bytes[5];
-	send_buffer[pointer++] = doubleConverter.bytes[6];
-	send_buffer[pointer++] = doubleConverter.bytes[7];
-	doubleConverter.doubleValue = msg.odometry.pose.pose.position.y;
-	send_buffer[pointer++] = doubleConverter.bytes[0];
-	send_buffer[pointer++] = doubleConverter.bytes[1];
-	send_buffer[pointer++] = doubleConverter.bytes[2];
-	send_buffer[pointer++] = doubleConverter.bytes[3];
-	send_buffer[pointer++] = doubleConverter.bytes[4];
-	send_buffer[pointer++] = doubleConverter.bytes[5];
-	send_buffer[pointer++] = doubleConverter.bytes[6];
-	send_buffer[pointer++] = doubleConverter.bytes[7];
-	doubleConverter.doubleValue = msg.odometry.pose.pose.position.z;
-	send_buffer[pointer++] = doubleConverter.bytes[0];
-	send_buffer[pointer++] = doubleConverter.bytes[1];
-	send_buffer[pointer++] = doubleConverter.bytes[2];
-	send_buffer[pointer++] = doubleConverter.bytes[3];
-	send_buffer[pointer++] = doubleConverter.bytes[4];
-	send_buffer[pointer++] = doubleConverter.bytes[5];
-	send_buffer[pointer++] = doubleConverter.bytes[6];
-	send_buffer[pointer++] = doubleConverter.bytes[7];
-    
-    /////////////////////////////////////////////
-    
-    
-    int sent_bytes = 0;
-    
-    
-	pthread_mutex_lock(&sock_mutex);
-    /* Send the word to the server */
-    if ((sent_bytes = write(sock, send_buffer, size)) != size) {
-        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+	if (sock_conn) {
+	    int size = sizeof(double)*3;
+	    char send_buffer[size];
+	    
+	    ////////////DATA ENCODING////////////////////
+	    
+	    int pointer = 0;
+	    
+		union doubleToBytes doubleConverter;
+		doubleConverter.doubleValue = msg.odometry.pose.pose.position.x;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+		doubleConverter.doubleValue = msg.odometry.pose.pose.position.y;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+		doubleConverter.doubleValue = msg.odometry.pose.pose.position.z;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+	    
+	    /////////////////////////////////////////////
+	    
+	    
+	    int sent_bytes = 0;
+	    
+	    
+		pthread_mutex_lock(&sock_mutex);
+	    /* Send the word to the server */
+	    if ((sent_bytes = write(sock, send_buffer, size)) != size) {
+	        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+			pthread_mutex_unlock(&sock_mutex);
+			tryConnect();
+	        return;
+	    }
+	    else {
+			ROS_INFO("Sending data: OK");
+		}
 		pthread_mutex_unlock(&sock_mutex);
-        return;
-    }
-    else {
-		ROS_INFO("Sending data: OK");
+	    
+	    
+	    //Currently do not wait for reply from server
+	    /*
+	    int received = 0;
+	    char recv_buffer[BUFFSIZE];
+	    bzero(recv_buffer, BUFFSIZE);
+	    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
+	        ROS_ERROR("Failed to receive additional bytes from client");
+	        return;
+	    }
+	    */
+	    
+	    /* Print server message */
+	    //ROS_INFO("Server answeded: %s", recv_buffer);
 	}
-	pthread_mutex_unlock(&sock_mutex);
-    
-    
-    //Currently do not wait for reply from server
-    /*
-    int received = 0;
-    char recv_buffer[BUFFSIZE];
-    bzero(recv_buffer, BUFFSIZE);
-    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
-        ROS_ERROR("Failed to receive additional bytes from client");
-        return;
-    }
-    */
-    
-    /* Print server message */
-    //ROS_INFO("Server answeded: %s", recv_buffer);
     
 }
 
@@ -127,23 +152,21 @@ int main(int argc, char **argv)
     char *addr;
     addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
-    
-    /* Create the TCP socket */
-    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        ROS_FATAL("Failed to create socket");
-        ros::shutdown();
-    }
-    
-    /* Establish connection */
-    if (connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
-        ros::shutdown();
-    }
-    
-    ROS_INFO("Connected to server on %s:%hu (socket %d)", addr, ntohs(server.sin_port), sock);
    	ROS_INFO("GUI Gateway ready");
    	
-	ros::spin();	
+	ros::Rate loop_rate(50);
+	while (ros::ok()) {
+		if (!sock_conn) {
+			if (!tryConnect()) {
+		        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
+			}		
+			else {
+			    ROS_INFO("Connected to server on %s:%hu (socket %d)", addr, ntohs(server.sin_port), sock);
+			}
+		}
+		ros::spinOnce();
+		loop_rate.sleep();
+	}
 	
 	close(sock);
 	
