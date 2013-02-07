@@ -35,22 +35,17 @@ void sendMsg(const char *msg, int sock) {
     }
 }
 
-bool tryCreate() {
+bool tryConnect() {
 	sock_conn = false;
 	if (sock >= 0) {
 		close(sock);
 	}
 	
-	return !((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0);
-}
-
-bool tryConnect() {
-	if (tryCreate()) {
-	    /* Establish connection */
-	    sock_conn = !(connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0);
+	if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        ROS_FATAL("Failed to create socket");
 	}
 	else {
-        ROS_FATAL("Failed to create socket");
+	    sock_conn = !(connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0);
 	}
     return sock_conn;
 }

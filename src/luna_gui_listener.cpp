@@ -16,7 +16,8 @@
 
 using namespace std;
 
-int serverSocket, clientSocket;
+int serverSocket = -1;
+int clientSocket = -1;
 
 enum CTRL_MODE_TYPE {
     ACKERMANN 		 = 0,
@@ -94,12 +95,8 @@ int main(int argc, char **argv)
 	
 	struct sockaddr_in server, client;
 	
-	/* Create the TCP socket */
-    if ((serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        ROS_FATAL("Failed to create socket");
-        ros::shutdown();
-    }
-    
+	bool connected = false;
+	
     /* Construct the server sockaddr_in structure */
     memset(&server, 0, sizeof(server));         /* Clear struct */
     server.sin_family = AF_INET;                    /* Internet/IP */
@@ -109,146 +106,157 @@ int main(int argc, char **argv)
     /* Print connection details */
     char *addr;
     addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
-    
-    
-    /* Bind the server socket */
-    if (bind(serverSocket, (struct sockaddr *) &server, sizeof(server)) < 0) {
-        ROS_ERROR("Failed to bind the server socket on %s:%hu", addr, ntohs(server.sin_port));
-        ros::shutdown();
-    }
-    
-    /* Listen on the server socket */
-    if (listen(serverSocket, MAXPENDING) < 0) {
-        ROS_ERROR("Unable to listen to socket on %s:%hu", addr, ntohs(server.sin_port));
-        ros::shutdown();
-    }
-    
-    ROS_INFO("GUI Listener ready on %s:%hu", addr, ntohs(server.sin_port));
+        
     
 	ros::Rate loop_rate(50);
+	ROS_INFO("GUI Listener ready");
   	
 	while (ros::ok()) {
-        unsigned int clientLenth = sizeof(client);
-        
-        
-        /* Wait for client connection */
-        if ((clientSocket = accept(serverSocket, (struct sockaddr *) &client, &clientLenth)) < 0) {
-            ROS_WARN("Failed to accept client connection");
-        }
-        
-		char buffer[BUFFSIZE];
-		int received = 0;
-    
-		bzero(buffer,BUFFSIZE);
-	    if ((received = read(clientSocket, buffer, BUFFSIZE)) < 0) {
-	        replyToGUI("FAILED TO READ", clientSocket);
-	        ROS_WARN("Failed to receive additional bytes from client");
-	    }
-    
-    
-		/* Print client message */
-        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
+		if (!connected) {
+			if (serverSocket >= 0) {
+				close(serverSocket);
+			}
+			/* Create the TCP socket */
+			if ((serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+				ROS_ERROR("Failed to create socket");
+			}
+			else if (bind(serverSocket, (struct sockaddr *) &server, sizeof(server)) < 0) {
+				ROS_ERROR("Failed to bind the server socket on %s:%hu", addr, ntohs(server.sin_port));
+			}
+			else if (listen(serverSocket, MAXPENDING) < 0) {
+		        ROS_ERROR("Unable to listen to socket on %s:%hu", addr, ntohs(server.sin_port));
+			}
+			else {
+				ROS_INFO("Listening on %s:%hu", addr, ntohs(server.sin_port));
+				connected = true;
+			}
+		}
+		else {			
+	        unsigned int clientLenth = sizeof(client);
+	        
+	        
+	        /* Wait for client connection */
+	        if ((clientSocket = accept(serverSocket, (struct sockaddr *) &client, &clientLenth)) < 0) {
+	            ROS_WARN("Failed to accept client connection");
+	        }
+	        
+			char buffer[BUFFSIZE];
+			int received = 0;
+	    
+			bzero(buffer,BUFFSIZE);
+		    if ((received = read(clientSocket, buffer, BUFFSIZE)) < 0) {
+		        replyToGUI("FAILED TO READ", clientSocket);
+		        ROS_WARN("Failed to receive additional bytes from client");
+		    }
+	    
+	    
+			/* Print client message */
+	        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
+				
+			//Parse autonomy flag
+			RX_CONTENT_TYPE contentType = contentTypeFromChar(buffer[0]);
 			
-		//Parse autonomy flag
-		RX_CONTENT_TYPE contentType = contentTypeFromChar(buffer[0]);
+			switch (contentType) {
+				case AUTONOMY: {
+					union BytesToUint8 boolConverter;
+					boolConverter.bytes[0] = buffer[1];
+					bool enabled = boolConverter.uint8Value;
+					
+					ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
+					
+					lunabotics::BoolValue autonomyMsg;
+					autonomyMsg.flag = enabled;
+					autonomyPublisher.publish(autonomyMsg);
+					
+					replyToGUI("OK", clientSocket);
+				}
+				break;
+				
+				case CTRL_MODE: {
+					
+					CTRL_MODE_TYPE type = controlModeFromChar(buffer[1]);
+					
+					ROS_INFO("Switching control mode to %s", (type == ACKERMANN ? "Ackermann" : type == LATERAL ? "Lateral" : "Spot"));
+					
+				    replyToGUI("OK", clientSocket);
+				}
+				break;
+				
+				case STEERING: {
+					lunabotics::Control controlMsg;
+					union BytesToFloat floatConverter;
+				
+					//Parse linear velocity value
+					floatConverter.bytes[0] = buffer[1];
+					floatConverter.bytes[1] = buffer[2];
+					floatConverter.bytes[2] = buffer[3];
+					floatConverter.bytes[3] = buffer[4];
+				    float linearSpeed = floatConverter.floatValue;
+				
+					//Parse control type dependent value
+				    floatConverter.bytes[0] = buffer[5];
+				    floatConverter.bytes[1] = buffer[6];
+				    floatConverter.bytes[2] = buffer[7];
+				    floatConverter.bytes[3] = buffer[8];
+				    float dependentValue = floatConverter.floatValue;
+				
 		
-		switch (contentType) {
-			case AUTONOMY: {
-				union BytesToUint8 boolConverter;
-				boolConverter.bytes[0] = buffer[1];
-				bool enabled = boolConverter.uint8Value;
-				
-				ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
-				
-				lunabotics::BoolValue autonomyMsg;
-				autonomyMsg.flag = enabled;
-				autonomyPublisher.publish(autonomyMsg);
-				
-				replyToGUI("OK", clientSocket);
-			}
-			break;
-			
-			case CTRL_MODE: {
-				
-				CTRL_MODE_TYPE type = controlModeFromChar(buffer[1]);
-				
-				ROS_INFO("Switching control mode to %s", (type == ACKERMANN ? "Ackermann" : type == LATERAL ? "Lateral" : "Spot"));
-				
-			    replyToGUI("OK", clientSocket);
-			}
-			break;
-			
-			case STEERING: {
-				lunabotics::Control controlMsg;
-				union BytesToFloat floatConverter;
-			
-				//Parse linear velocity value
-				floatConverter.bytes[0] = buffer[1];
-				floatConverter.bytes[1] = buffer[2];
-				floatConverter.bytes[2] = buffer[3];
-				floatConverter.bytes[3] = buffer[4];
-			    float linearSpeed = floatConverter.floatValue;
-			
-				//Parse control type dependent value
-			    floatConverter.bytes[0] = buffer[5];
-			    floatConverter.bytes[1] = buffer[6];
-			    floatConverter.bytes[2] = buffer[7];
-			    floatConverter.bytes[3] = buffer[8];
-			    float dependentValue = floatConverter.floatValue;
-			
+				    bool driveForward = buffer[9];
+				    bool driveBackward = buffer[10];
+				    bool driveLeft = buffer[11];
+				    bool driveRight = buffer[12];
+		
+					ROS_INFO("Limits: %f %f %s%s%s%s", linearSpeed, dependentValue, driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
+					
+					
 	
-			    bool driveForward = buffer[9];
-			    bool driveBackward = buffer[10];
-			    bool driveLeft = buffer[11];
-			    bool driveRight = buffer[12];
-	
-				ROS_INFO("Limits: %f %f %s%s%s%s", linearSpeed, dependentValue, driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
-				
-				
-
-				//Just to work with Stageros
-				////////////////////////////////////////////////////////////////
-				float stageLinearSpeed = 0;
-				if (driveForward && !driveBackward) {
-					stageLinearSpeed = 5.0;
+					//Just to work with Stageros
+					////////////////////////////////////////////////////////////////
+					float stageLinearSpeed = 0;
+					if (driveForward && !driveBackward) {
+						stageLinearSpeed = 5.0;
+					}
+					else if (!driveForward && driveBackward) {
+						stageLinearSpeed = -3.0;
+					}
+					
+					float stageAngularSpeed = 0;
+					if (driveLeft && !driveRight) {
+						stageAngularSpeed = 1.0;
+					}
+					else if (!driveLeft && driveRight) {
+						stageAngularSpeed = -1.0;
+					}
+					
+					controlMsg.control_type = 0;	//Motion only
+					controlMsg.motion.linear.x = stageLinearSpeed;
+					controlMsg.motion.angular.z = stageAngularSpeed;
+					//////////////////////////////////////////////////////////////////
+					
+					
+					
+					controlPublisher.publish(controlMsg);
+					
+				    replyToGUI("OK", clientSocket);
 				}
-				else if (!driveForward && driveBackward) {
-					stageLinearSpeed = -3.0;
-				}
+				break;
 				
-				float stageAngularSpeed = 0;
-				if (driveLeft && !driveRight) {
-					stageAngularSpeed = 1.0;
-				}
-				else if (!driveLeft && driveRight) {
-					stageAngularSpeed = -1.0;
-				}
+				case ROUTE:
+					replyToGUI("NOT IMPLEMENTED", clientSocket);
+				break;
 				
-				controlMsg.control_type = 0;	//Motion only
-				controlMsg.motion.linear.x = stageLinearSpeed;
-				controlMsg.motion.angular.z = stageAngularSpeed;
-				//////////////////////////////////////////////////////////////////
-				
-				
-				
-				controlPublisher.publish(controlMsg);
-				
-			    replyToGUI("OK", clientSocket);
+				default:
+					replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
+				break;
 			}
-			break;
-			
-			case ROUTE:
-				replyToGUI("NOT IMPLEMENTED", clientSocket);
-			break;
-			
-			default:
-				replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
-			break;
 		}
 		       
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
+	
+    close(serverSocket); 
+    close(clientSocket); 
 	
 	return 0;
 }
