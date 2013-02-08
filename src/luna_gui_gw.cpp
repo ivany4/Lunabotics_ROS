@@ -2,6 +2,7 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/BoolValue.h"
 #include "lunabotics/Telemetry.h"
+#include "tf/tf.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -11,7 +12,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#define BUFFSIZE (sizeof(double)*9)
+#define BUFFSIZE (sizeof(double)*6)
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
 
@@ -80,34 +81,7 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 		send_buffer[pointer++] = doubleConverter.bytes[5];
 		send_buffer[pointer++] = doubleConverter.bytes[6];
 		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.pose.pose.orientation.x;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.pose.pose.orientation.y;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.pose.pose.orientation.z;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.pose.pose.orientation.w;
+		doubleConverter.doubleValue = tf::getYaw(msg.odometry.pose.pose.orientation);
 		send_buffer[pointer++] = doubleConverter.bytes[0];
 		send_buffer[pointer++] = doubleConverter.bytes[1];
 		send_buffer[pointer++] = doubleConverter.bytes[2];
