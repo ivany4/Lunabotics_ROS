@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#define BUFFSIZE 256
+#define BUFFSIZE (sizeof(double)*9)
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
 
@@ -108,6 +108,33 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 		send_buffer[pointer++] = doubleConverter.bytes[6];
 		send_buffer[pointer++] = doubleConverter.bytes[7];
 		doubleConverter.doubleValue = msg.odometry.pose.pose.orientation.w;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.x;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.y;
+		send_buffer[pointer++] = doubleConverter.bytes[0];
+		send_buffer[pointer++] = doubleConverter.bytes[1];
+		send_buffer[pointer++] = doubleConverter.bytes[2];
+		send_buffer[pointer++] = doubleConverter.bytes[3];
+		send_buffer[pointer++] = doubleConverter.bytes[4];
+		send_buffer[pointer++] = doubleConverter.bytes[5];
+		send_buffer[pointer++] = doubleConverter.bytes[6];
+		send_buffer[pointer++] = doubleConverter.bytes[7];
+		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.z;
 		send_buffer[pointer++] = doubleConverter.bytes[0];
 		send_buffer[pointer++] = doubleConverter.bytes[1];
 		send_buffer[pointer++] = doubleConverter.bytes[2];

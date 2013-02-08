@@ -31,6 +31,7 @@ int main(int argc, char **argv)
 	ros::Subscriber stageOdoSubscriber = nodeHandle.subscribe("odom", 256, stageOdoCallback);
 			
 	ros::Rate loop_rate(50);
+	telemetryMsg.odometry.header.frame_id = "/map";
 	publishTelemetry = false;
 	
 	ROS_INFO("MECH Gateway ready"); 

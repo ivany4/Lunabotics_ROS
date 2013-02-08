@@ -21,15 +21,27 @@ int seq = 0;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 geometry_msgs::Pose currentPose;
+ros::Publisher controlPublisher;
 bool drive = false;
 vector<geometry_msgs::Pose> waypoints;
 vector<geometry_msgs::Pose>::iterator wayIterator;
+
+void stop() {
+	drive = false;
+	lunabotics::Control controlMsg;
+	controlMsg.motion.linear.x = 0;
+	controlMsg.motion.angular.z = 0;
+	controlPublisher.publish(controlMsg);
+	waypoints.clear();
+}
+	
 
 vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
 {
 	vector<a_star_node> graph;
 	if (mapClient.call(mapService)) {
-		drive = false;
+		stop();
+		
 		ROS_INFO("Got map from service (%ld nodes)", mapService.response.map.data.size());
 		ROS_INFO("------------------------------------");
 		for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
@@ -95,9 +107,11 @@ void autonomyCallback(const lunabotics::BoolValue& msg)
 		start.position.x = 0.1;
 		start.position.y = 0.1;
 		start.position.z = 0;
+		start.orientation = tf::createQuaternionMsgFromYaw(0);
 		goal.position.x = 0.4;
 		goal.position.y = 0.4;
 		goal.position.z = 0;
+		goal.orientation = tf::createQuaternionMsgFromYaw(0);
 		
 		ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
 				  start.position.x, start.position.y,
@@ -117,10 +131,7 @@ void autonomyCallback(const lunabotics::BoolValue& msg)
 				waypoint.position.x = x_m;
 				waypoint.position.y = y_m;
 				waypoint.position.z = 0;
-				waypoint.orientation.x = 0;
-				waypoint.orientation.y = 0;
-				waypoint.orientation.z = 0;
-				waypoint.orientation.w = 0;
+				waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
 				waypoints.push_back(waypoint);
 				sstr << "->(" << x_m << "," << y_m << ")";
 			}
@@ -135,8 +146,7 @@ void autonomyCallback(const lunabotics::BoolValue& msg)
 		}
 	}
 	else {
-		waypoints.clear();
-		drive = false;
+		stop();
 	}
 }
 
@@ -147,7 +157,7 @@ int main(int argc, char **argv)
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 256, autonomyCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
+	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	
 	
@@ -184,8 +194,7 @@ int main(int argc, char **argv)
 						wayIterator++;
 						if (wayIterator >= waypoints.end()) {
 							ROS_INFO("Route completed");
-							waypoints.clear();
-							drive = false;
+							stop();
 						}
 						else {
 							geometry_msgs::Pose nextWaypointPose = *wayIterator;
@@ -208,8 +217,7 @@ int main(int argc, char **argv)
 			}
 			else {
 				ROS_ERROR("Way iterator out of bounds");
-				drive = false;
-				waypoints.clear();
+				stop();
 			}
 		}
 		
