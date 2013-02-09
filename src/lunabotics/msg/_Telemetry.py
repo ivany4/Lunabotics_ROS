@@ -6,12 +6,11 @@ import struct
 
 import geometry_msgs.msg
 import std_msgs.msg
-import lunabotics.msg
 import nav_msgs.msg
 import sensor_msgs.msg
 
 class Telemetry(genpy.Message):
-  _md5sum = "d0e35cb7fd7b0bb1bd91ffa77aa78063"
+  _md5sum = "8894a34c2506eb9addf1ba0d500159ac"
   _type = "lunabotics/Telemetry"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """# Telemetry data from Mech Interface
@@ -45,7 +44,7 @@ float32 laser_tilt			# Laser tilt level
 
 sensor_msgs/Imu imu_data	# Accelerometer + Gyro data (Orientation quaternion is not used)
 
-BoolValue[] bumpers			# Triggered/Not triggered for each bumper
+std_msgs/Bool[] bumpers			# Triggered/Not triggered for each bumper
 
 sensor_msgs/Range[] proximity_data	# Ranges for each of the proximity sensors
 
@@ -122,9 +121,8 @@ float64 x
 float64 y
 float64 z
 ================================================================================
-MSG: lunabotics/BoolValue
-uint8 flag
-
+MSG: std_msgs/Bool
+bool data
 ================================================================================
 MSG: sensor_msgs/Range
 # Single range reading from an active ranger that emits energy and reports
@@ -213,7 +211,7 @@ Vector3  angular
 
 """
   __slots__ = ['wheel_roll_angle_front_left','wheel_roll_angle_front_right','wheel_roll_angle_rear_left','wheel_roll_angle_rear_right','wheel_yaw_angle_front_left','wheel_yaw_angle_front_right','wheel_yaw_angle_rear_left','wheel_yaw_angle_rear_right','motor_driving_current_front_left','motor_driving_current_front_right','motor_driving_current_rear_left','motor_driving_current_rear_right','motor_steering_current_front_left','motor_steering_current_front_right','motor_steering_current_rear_left','motor_steering_current_rear_right','front_axis_tilt','laser_tilt','imu_data','bumpers','proximity_data','odometry','weights','total_weight','regolith_weight','bucket_weight','voltages','remainings']
-  _slot_types = ['float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','sensor_msgs/Imu','lunabotics/BoolValue[]','sensor_msgs/Range[]','nav_msgs/Odometry','float32[]','float32','float32','float32','float32[]','float32[]']
+  _slot_types = ['float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','float32','sensor_msgs/Imu','std_msgs/Bool[]','sensor_msgs/Range[]','nav_msgs/Odometry','float32[]','float32','float32','float32','float32[]','float32[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -350,7 +348,7 @@ Vector3  angular
       length = len(self.bumpers)
       buff.write(_struct_I.pack(length))
       for val1 in self.bumpers:
-        buff.write(_struct_B.pack(val1.flag))
+        buff.write(_struct_B.pack(val1.data))
       length = len(self.proximity_data)
       buff.write(_struct_I.pack(length))
       for val1 in self.proximity_data:
@@ -458,10 +456,11 @@ Vector3  angular
       (length,) = _struct_I.unpack(str[start:end])
       self.bumpers = []
       for i in range(0, length):
-        val1 = lunabotics.msg.BoolValue()
+        val1 = std_msgs.msg.Bool()
         start = end
         end += 1
-        (val1.flag,) = _struct_B.unpack(str[start:end])
+        (val1.data,) = _struct_B.unpack(str[start:end])
+        val1.data = bool(val1.data)
         self.bumpers.append(val1)
       start = end
       end += 4
@@ -585,7 +584,7 @@ Vector3  angular
       length = len(self.bumpers)
       buff.write(_struct_I.pack(length))
       for val1 in self.bumpers:
-        buff.write(_struct_B.pack(val1.flag))
+        buff.write(_struct_B.pack(val1.data))
       length = len(self.proximity_data)
       buff.write(_struct_I.pack(length))
       for val1 in self.proximity_data:
@@ -694,10 +693,11 @@ Vector3  angular
       (length,) = _struct_I.unpack(str[start:end])
       self.bumpers = []
       for i in range(0, length):
-        val1 = lunabotics.msg.BoolValue()
+        val1 = std_msgs.msg.Bool()
         start = end
         end += 1
-        (val1.flag,) = _struct_B.unpack(str[start:end])
+        (val1.data,) = _struct_B.unpack(str[start:end])
+        val1.data = bool(val1.data)
         self.bumpers.append(val1)
       start = end
       end += 4

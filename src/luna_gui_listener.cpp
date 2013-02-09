@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
-#include "lunabotics/BoolValue.h"
+#include "std_msgs/Bool.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 	
 	ros::NodeHandle nodeHandle;
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
-	ros::Publisher autonomyPublisher = nodeHandle.advertise<lunabotics::BoolValue>("luna_auto", 256);
+	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 256);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -164,8 +164,8 @@ int main(int argc, char **argv)
 					
 					ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
 					
-					lunabotics::BoolValue autonomyMsg;
-					autonomyMsg.flag = enabled;
+					std_msgs::Bool autonomyMsg;
+					autonomyMsg.data = enabled;
 					autonomyPublisher.publish(autonomyMsg);
 					
 					replyToGUI("OK", clientSocket);

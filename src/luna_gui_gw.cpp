@@ -1,6 +1,5 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
-#include "lunabotics/BoolValue.h"
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
 #include "tf/tf.h"

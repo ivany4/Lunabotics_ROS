@@ -29,7 +29,7 @@ float32 laser_tilt			# Laser tilt level
 
 sensor_msgs/Imu imu_data	# Accelerometer + Gyro data (Orientation quaternion is not used)
 
-BoolValue[] bumpers			# Triggered/Not triggered for each bumper
+std_msgs/Bool[] bumpers			# Triggered/Not triggered for each bumper
 
 sensor_msgs/Range[] proximity_data	# Ranges for each of the proximity sensors
 

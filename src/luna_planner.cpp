@@ -1,9 +1,9 @@
 #include "ros/ros.h"
-#include "lunabotics/BoolValue.h"
+#include "std_msgs/Bool.h"
 #include "lunabotics/Telemetry.h"
 #include "lunabotics/Control.h"
 
-void autonomyCallback(const lunabotics::BoolValue& msg)
+void autonomyCallback(const std_msgs::Bool& msg)
 {
 	//Use msg to toggle autonomy
 }

@@ -1,6 +1,5 @@
 #include "ros/ros.h"
 #include "nav_msgs/Path.h"
-#include "lunabotics/BoolValue.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
@@ -94,10 +93,10 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 	ROS_INFO("I am at (%.1f,%.1f)", currentPose.position.x, currentPose.position.y);
 }
 
-void autonomyCallback(const lunabotics::BoolValue& msg)
+void autonomyCallback(const std_msgs::Bool& msg)
 {
 	//Use msg to toggle autonomy
-	if (msg.flag) {
+	if (msg.data) {
 			
 		waypoints.clear();
 		
