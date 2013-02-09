@@ -1,6 +1,8 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
 #include "std_msgs/Bool.h"
+#include "std_msgs/UInt8.h"
+#include "types.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -19,11 +21,6 @@ using namespace std;
 int serverSocket = -1;
 int clientSocket = -1;
 
-enum CTRL_MODE_TYPE {
-    ACKERMANN 		 = 0,
-    TURN_IN_SPOT     = 1,
-    LATERAL   		 = 2
-};
 
 enum RX_CONTENT_TYPE {
 	STEERING		 = 0,
@@ -56,26 +53,21 @@ void replyToGUI(const char *msg, int sock) {
     }
 }
 
-RX_CONTENT_TYPE contentTypeFromChar(char c)
+uint8_t decodeByte(char buffer[], int &pointer)
 {
 	union BytesToUint8 enumConverter;
-	enumConverter.bytes[0] = c;
-	uint8_t val = enumConverter.uint8Value;
-	if (val == 1) return AUTONOMY;
-	else if (val == 2) return CTRL_MODE;
-	else if (val == 3) return ROUTE;
-	return STEERING;
+	enumConverter.bytes[0] = buffer[pointer++];
+	return enumConverter.uint8Value;
 }
 
-CTRL_MODE_TYPE controlModeFromChar(char c)
+float decodeFloat(char buffer[], int &pointer)
 {
-	union BytesToUint8 enumConverter;
-	enumConverter.bytes[0] = c;
-	uint8_t val = enumConverter.uint8Value;
-	if (val == 1) return TURN_IN_SPOT;
-	else if (val == 2) return LATERAL;
-	return ACKERMANN;
-}		
+	union BytesToFloat enumConverter;
+	for (unsigned int i = 0; i < sizeof(float); i++) {
+		enumConverter.bytes[i] = buffer[pointer++];
+	}
+	return enumConverter.floatValue;
+}
 
 int main(int argc, char **argv)
 {
@@ -88,7 +80,8 @@ int main(int argc, char **argv)
 	
 	ros::NodeHandle nodeHandle;
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
-	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 256);
+	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 1);
+	ros::Publisher controlModePublisher = nodeHandle.advertise<std_msgs::UInt8>("luna_ctrl_mode", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -153,14 +146,12 @@ int main(int argc, char **argv)
 			/* Print client message */
 	        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
 				
-			//Parse autonomy flag
-			RX_CONTENT_TYPE contentType = contentTypeFromChar(buffer[0]);
+			int pointer = 0;	
+			RX_CONTENT_TYPE contentType = (RX_CONTENT_TYPE)decodeByte(buffer, pointer);
 			
 			switch (contentType) {
 				case AUTONOMY: {
-					union BytesToUint8 boolConverter;
-					boolConverter.bytes[0] = buffer[1];
-					bool enabled = boolConverter.uint8Value;
+					bool enabled = buffer[pointer++];
 					
 					ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
 					
@@ -174,37 +165,29 @@ int main(int argc, char **argv)
 				
 				case CTRL_MODE: {
 					
-					CTRL_MODE_TYPE type = controlModeFromChar(buffer[1]);
+					CTRL_MODE_TYPE type = (CTRL_MODE_TYPE)decodeByte(buffer, pointer);
 					
-					ROS_INFO("Switching control mode to %s", (type == ACKERMANN ? "Ackermann" : type == LATERAL ? "Lateral" : "Spot"));
+					ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
+					
+					std_msgs::UInt8 controlModeMsg;
+					controlModeMsg.data = type;
+					controlModePublisher.publish(controlModeMsg);
 					
 				    replyToGUI("OK", clientSocket);
+				    
+				    
 				}
 				break;
 				
 				case STEERING: {
 					lunabotics::Control controlMsg;
-					union BytesToFloat floatConverter;
-				
-					//Parse linear velocity value
-					floatConverter.bytes[0] = buffer[1];
-					floatConverter.bytes[1] = buffer[2];
-					floatConverter.bytes[2] = buffer[3];
-					floatConverter.bytes[3] = buffer[4];
-				    float linearSpeed = floatConverter.floatValue;
-				
-					//Parse control type dependent value
-				    floatConverter.bytes[0] = buffer[5];
-				    floatConverter.bytes[1] = buffer[6];
-				    floatConverter.bytes[2] = buffer[7];
-				    floatConverter.bytes[3] = buffer[8];
-				    float dependentValue = floatConverter.floatValue;
-				
-		
-				    bool driveForward = buffer[9];
-				    bool driveBackward = buffer[10];
-				    bool driveLeft = buffer[11];
-				    bool driveRight = buffer[12];
+					
+				    float linearSpeed = decodeFloat(buffer, pointer);
+				    float dependentValue = decodeFloat(buffer, pointer);
+				    bool driveForward 	= buffer[pointer++];
+				    bool driveBackward 	= buffer[pointer++];
+				    bool driveLeft 		= buffer[pointer++];
+				    bool driveRight 	= buffer[pointer++];
 		
 					ROS_INFO("Limits: %f %f %s%s%s%s", linearSpeed, dependentValue, driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
 					
@@ -232,7 +215,6 @@ int main(int argc, char **argv)
 					controlMsg.motion.linear.x = stageLinearSpeed;
 					controlMsg.motion.angular.z = stageAngularSpeed;
 					//////////////////////////////////////////////////////////////////
-					
 					
 					
 					controlPublisher.publish(controlMsg);

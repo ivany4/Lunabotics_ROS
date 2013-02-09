@@ -23,7 +23,9 @@ using namespace std;
 int sock;
 bool sock_conn = false;
 bool sendMap = false;
+bool sendTelemetry = false;
 struct sockaddr_in server;
+lunabotics::Telemetry telemetry;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
 union doubleToBytes
@@ -133,21 +135,8 @@ void transmit(char bytes[], int size)
 
 void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
-	if (sock_conn) {
-	    int size = sizeof(double)*6+1;
-	    char buffer[size];
-	    int pointer = 0;
-	  
-	    encodeByte(buffer, pointer, TELEMETRY);
-		encodeDouble(buffer, pointer, msg.odometry.pose.pose.position.x);
-		encodeDouble(buffer, pointer, msg.odometry.pose.pose.position.y);
-		encodeDouble(buffer, pointer, tf::getYaw(msg.odometry.pose.pose.orientation));
-		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.x);
-		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.y);
-		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.z);
-	    
-	    transmit(buffer, size);
-	}
+	telemetry = msg;
+	sendTelemetry = true;
 }
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
@@ -217,7 +206,7 @@ int main(int argc, char **argv)
    	*/
    	
    	
-	ros::Rate loop_rate(50);
+	ros::Rate loop_rate(1000);
 	while (ros::ok()) {
 		if (!sock_conn) {
 			if (!tryConnect()) {
@@ -228,33 +217,51 @@ int main(int argc, char **argv)
 			    sendMap = true;
 			}
 		}
-		else if (sendMap) {
-			if (mapClient.call(mapService)) {
-				uint8_t width = mapService.response.map.info.width;
-				uint8_t height = mapService.response.map.info.height;
-				double res = mapService.response.map.info.resolution;
-				int mapSize = width*height;
-			    int size = 1+sizeof(int)*2+sizeof(double)+mapSize;
+		else {
+			if (sendTelemetry) {
+			    int size = sizeof(double)*6+1;
 			    char buffer[size];
 			    int pointer = 0;
 			  
-			    encodeByte(buffer, pointer, MAP);
-			    encodeByte(buffer, pointer, width);
-			    encodeByte(buffer, pointer, height);
-			    encodeDouble(buffer, pointer, res);
-				for (unsigned int i = 0; i < mapSize; i++) {
-					encodeByte(buffer, pointer, mapService.response.map.data.at(i));
-				}
-				
-				sendMap = false;
-				ROS_INFO("Sending a map (%dx%d)", width, height);
-				transmit(buffer, size);
+			    encodeByte(buffer, pointer, TELEMETRY);
+				encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.x);
+				encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.y);
+				encodeDouble(buffer, pointer, tf::getYaw(telemetry.odometry.pose.pose.orientation));
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.x);
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.y);
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.z);
+			    
+			    sendTelemetry = false;
+			    
+			    transmit(buffer, size);
 			}
-			else {
-				ROS_WARN("Failed to call service /luna_map");
+			if (sendMap) {
+				if (mapClient.call(mapService)) {
+					uint8_t width = mapService.response.map.info.width;
+					uint8_t height = mapService.response.map.info.height;
+					double res = mapService.response.map.info.resolution;
+					int mapSize = width*height;
+				    int size = 1+sizeof(int)*2+sizeof(double)+mapSize;
+				    char buffer[size];
+				    int pointer = 0;
+				  
+				    encodeByte(buffer, pointer, MAP);
+				    encodeByte(buffer, pointer, width);
+				    encodeByte(buffer, pointer, height);
+				    encodeDouble(buffer, pointer, res);
+					for (unsigned int i = 0; i < mapSize; i++) {
+						encodeByte(buffer, pointer, mapService.response.map.data.at(i));
+					}
+					
+					sendMap = false;
+					ROS_INFO("Sending a map (%dx%d)", width, height);
+					transmit(buffer, size);
+				}
+				else {
+					ROS_WARN("Failed to call service /luna_map");
+				}
 			}
 		}
-		
 		
 		ros::spinOnce();
 		loop_rate.sleep();

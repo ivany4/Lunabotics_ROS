@@ -1,10 +1,12 @@
 #include "ros/ros.h"
 #include "nav_msgs/Path.h"
+#include "types.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
+#include "std_msgs/UInt8.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
@@ -13,11 +15,12 @@ using namespace std;
 
 
 //Locally exponentially stable when Kp > 0; Kb < 0; Ka-Kb > 0
-#define Kp 	1
-#define Ka	2
-#define Kb	-1
+#define Kp 	0.15
+#define Ka	0.7
+#define Kb	-0.05
 
 int seq = 0;
+CTRL_MODE_TYPE controlMode;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 geometry_msgs::Pose currentPose;
@@ -91,6 +94,14 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	currentPose.position = msg.odometry.pose.pose.position;
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
+}
+
+void controlModeCallback(const std_msgs::UInt8& msg)
+{
+	controlMode = (CTRL_MODE_TYPE)msg.data;
+	
+	ROS_INFO("Switching control mode to %s", controlModeToString(controlMode).c_str());
+					
 }
 
 void autonomyCallback(const std_msgs::Bool& msg)
@@ -169,13 +180,55 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	}
 }
 
+void controlSkid(geometry_msgs::Pose waypointPose) 
+{
+}
+
+void controlAckermann(geometry_msgs::Pose waypointPose)
+{
+	double dx = waypointPose.position.x-currentPose.position.x;
+	double dy = waypointPose.position.y-currentPose.position.y;
+	double theta = tf::getYaw(waypointPose.orientation) - tf::getYaw(currentPose.orientation);
+	
+	//Reparametrization
+	double rho = sqrt(pow(dx, 2)+pow(dy, 2));
+	double beta = -atan2(dy, dx);
+	double alpha = -(beta+theta);
+	
+	
+	if (fabs(rho) < 0.05 && fabs(beta) < 0.1 && fabs(alpha) < 0.1) {
+		wayIterator++;
+		if (wayIterator >= waypoints.end()) {
+			ROS_INFO("Route completed");
+			stop();
+		}
+		else {
+			geometry_msgs::Pose nextWaypointPose = *wayIterator;
+			ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
+		}
+	}
+	else {
+	
+		//Control law
+		double v = Kp*rho;
+		double w = Ka*alpha+Kb*beta;
+		ROS_INFO("dx:%f dy:%f theta:%f rho:%f alpha:%f beta:%f v:%f w:%f", dx, dy, theta, rho, alpha, beta, v, w);
+		
+		lunabotics::Control controlMsg;
+		controlMsg.motion.linear.x = v;
+		controlMsg.motion.angular.z = w;
+		controlPublisher.publish(controlMsg);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_driver");
 	ros::NodeHandle nodeHandle;
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
-	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 256, autonomyCallback);
+	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 1, autonomyCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("luna_path", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
@@ -184,7 +237,7 @@ int main(int argc, char **argv)
 	
 	ROS_INFO("Driver ready"); 
 	
-	ros::Rate loop_rate(50);
+	ros::Rate loop_rate(15);
 	while (ros::ok())
 	{
 		//Whenever needed send control message
@@ -199,40 +252,7 @@ int main(int argc, char **argv)
 					ROS_WARN("Current position undetermined");
 				}
 				else {
-						
-					double dx = waypointPose.position.x-currentPose.position.x;
-					double dy = waypointPose.position.y-currentPose.position.y;
-					double theta = tf::getYaw(waypointPose.orientation) - tf::getYaw(currentPose.orientation);
-					
-					//Reparametrization
-					double rho = sqrt(pow(dx, 2)+pow(dy, 2));
-					double beta = -atan2(dy, dx);
-					double alpha = -(beta+theta);
-					
-					
-					if (fabs(rho) < 0.05 && fabs(beta) < 0.1 && fabs(alpha) < 0.1) {
-						wayIterator++;
-						if (wayIterator >= waypoints.end()) {
-							ROS_INFO("Route completed");
-							stop();
-						}
-						else {
-							geometry_msgs::Pose nextWaypointPose = *wayIterator;
-							ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
-						}
-					}
-					else {
-					
-						//Control law
-						double v = Kp*rho;
-						double w = Ka*alpha+Kb*beta;
-						ROS_INFO("dx:%f dy:%f theta:%f rho:%f alpha:%f beta:%f v:%f w:%f", dx, dy, theta, rho, alpha, beta, v, w);
-						
-						lunabotics::Control controlMsg;
-						controlMsg.motion.linear.x = v;
-						controlMsg.motion.angular.z = w;
-						controlPublisher.publish(controlMsg);
-					}
+					controlAckermann(waypointPose);
 				}
 			}
 			else {
