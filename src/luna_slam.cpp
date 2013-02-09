@@ -29,8 +29,15 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	res.map.info.origin.orientation.z = 0;
 	res.map.info.origin.orientation.w = 0;
 	
-	for (unsigned int i = 0; i < res.map.info.width*res.map.info.height; i++) {		
-		res.map.data.push_back(randomNumber(0, 100));
+	for (unsigned int i = 0; i < res.map.info.height; i++) {
+		for (unsigned int j = 0; j < res.map.info.width; j++) {
+			int8_t occupancy = 0;
+			if (i > 2 && i < 6 && j > 4 && j < 8) {
+				occupancy = 100;
+			}
+				
+			res.map.data.push_back(occupancy);
+		}
 	}
 	
 	seq++;

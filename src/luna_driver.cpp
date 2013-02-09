@@ -4,6 +4,7 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
+#include "nav_msgs/Path.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
@@ -21,6 +22,7 @@ nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 geometry_msgs::Pose currentPose;
 ros::Publisher controlPublisher;
+ros::Publisher pathPublisher;
 bool drive = false;
 vector<geometry_msgs::Pose> waypoints;
 vector<geometry_msgs::Pose>::iterator wayIterator;
@@ -73,7 +75,6 @@ vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose g
 		if (graph.size() == 0) {
 			ROS_INFO("Path is not found");
 		}			
-		seq++;
 	}
 	else {
 		ROS_ERROR("Failed to call service luna_map");
@@ -90,7 +91,6 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	currentPose.position = msg.odometry.pose.pose.position;
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
-	ROS_INFO("I am at (%.1f,%.1f)", currentPose.position.x, currentPose.position.y);
 }
 
 void autonomyCallback(const std_msgs::Bool& msg)
@@ -107,8 +107,8 @@ void autonomyCallback(const std_msgs::Bool& msg)
 		start.position.y = 0.1;
 		start.position.z = 0;
 		start.orientation = tf::createQuaternionMsgFromYaw(0);
-		goal.position.x = 0.4;
-		goal.position.y = 0.4;
+		goal.position.x = 0.9;
+		goal.position.y = 0.9;
 		goal.position.z = 0;
 		goal.orientation = tf::createQuaternionMsgFromYaw(0);
 		
@@ -120,6 +120,15 @@ void autonomyCallback(const std_msgs::Bool& msg)
 		
 		if (path.size() > 0) {
 			stringstream sstr;
+			
+			nav_msgs::Path pathMsg;
+			ros::Time now = ros::Time::now();
+			pathMsg.header.stamp = now;
+			pathMsg.header.seq = seq;
+			pathMsg.header.frame_id = "1";
+			seq++;
+			
+			int poseSeq = 0;
 			for (vector<a_star_node>::iterator it = path.begin(); it != path.end(); it++) {
 				a_star_node node = *it;
 				
@@ -133,11 +142,22 @@ void autonomyCallback(const std_msgs::Bool& msg)
 				waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
 				waypoints.push_back(waypoint);
 				sstr << "->(" << x_m << "," << y_m << ")";
+				
+				
+				geometry_msgs::PoseStamped pose;
+				pose.header.seq = poseSeq++;
+				pose.header.stamp = now;
+				pose.header.frame_id = "1";
+				pose.pose = waypoint;
+				pathMsg.poses.push_back(pose);
 			}
 			wayIterator = waypoints.begin();
 			ROS_INFO("Returned path: %s", sstr.str().c_str());
 			geometry_msgs::Pose waypoint = waypoints.at(0);
 			ROS_INFO("Heading towards (%.1f,%.1f)", waypoint.position.x, waypoint.position.y);
+			
+			pathPublisher.publish(pathMsg);
+			
 			drive = true;
 		}
 		else {
@@ -157,6 +177,7 @@ int main(int argc, char **argv)
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 256, autonomyCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
+	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("luna_path", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	
 	

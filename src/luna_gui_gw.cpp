@@ -2,6 +2,8 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
+#include "nav_msgs/Path.h"
+#include "std_msgs/Empty.h"
 #include "tf/tf.h"
 #include <iostream>
 #include <sys/socket.h>
@@ -20,6 +22,7 @@ using namespace std;
 
 int sock;
 bool sock_conn = false;
+bool sendMap = false;
 struct sockaddr_in server;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
@@ -96,33 +99,35 @@ void encodeByte(char buffer[], int &pointer, uint8_t value)
 
 void transmit(char bytes[], int size)
 {
-    int sent_bytes = 0;
-	pthread_mutex_lock(&sock_mutex);
-    /* Send the word to the server */
-    if ((sent_bytes = write(sock, bytes, size)) != size) {
-        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+	if (sock_conn) {
+	    int sent_bytes = 0;
+		pthread_mutex_lock(&sock_mutex);
+	    /* Send the word to the server */
+	    if ((sent_bytes = write(sock, bytes, size)) != size) {
+	        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+			pthread_mutex_unlock(&sock_mutex);
+			tryConnect();
+	        return;
+	    }
+	    else {
+			ROS_INFO("Sending data: OK");
+		}
 		pthread_mutex_unlock(&sock_mutex);
-		tryConnect();
-        return;
-    }
-    else {
-		ROS_INFO("Sending data: OK");
+	    
+	    //Currently do not wait for reply from server
+	    /*
+	    int received = 0;
+	    char recv_buffer[BUFFSIZE];
+	    bzero(recv_buffer, BUFFSIZE);
+	    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
+	        ROS_ERROR("Failed to receive additional bytes from client");
+	        return;
+	    }
+	    */
+	    
+	    /* Print server message */
+	    //ROS_INFO("Server answeded: %s", recv_buffer);
 	}
-	pthread_mutex_unlock(&sock_mutex);
-    
-    //Currently do not wait for reply from server
-    /*
-    int received = 0;
-    char recv_buffer[BUFFSIZE];
-    bzero(recv_buffer, BUFFSIZE);
-    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
-        ROS_ERROR("Failed to receive additional bytes from client");
-        return;
-    }
-    */
-    
-    /* Print server message */
-    //ROS_INFO("Server answeded: %s", recv_buffer);
 }
 	
 
@@ -143,7 +148,35 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 	    
 	    transmit(buffer, size);
 	}
-    
+}
+
+void mapUpdateCallback(const std_msgs::Empty& msg)
+{    
+	sendMap = true;
+}
+
+void pathCallback(const nav_msgs::Path& msg)
+{    
+	if (sock_conn) {
+		uint8_t numOfPoses = msg.poses.size();
+	    int size = 1+1+numOfPoses*2*sizeof(double);
+	    char buffer[size];
+	    int pointer = 0;
+	    
+	    sendMap = true;
+	  
+	    encodeByte(buffer, pointer, PATH);
+	    encodeByte(buffer, pointer, numOfPoses);
+	    for (unsigned int i = 0; i < msg.poses.size(); i++) {
+			geometry_msgs::PoseStamped pose = msg.poses.at(i);
+			double x_m = pose.pose.position.x;
+			double y_m = pose.pose.position.y;
+			encodeDouble(buffer, pointer, x_m);
+			encodeDouble(buffer, pointer, y_m);
+		}
+	    
+	    transmit(buffer, size);
+	}
 }
 
 int main(int argc, char **argv)
@@ -151,9 +184,10 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_gw");
 	ros::NodeHandle nodeHandle;
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
+	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
+	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	nav_msgs::GetMap mapService;
-	bool sendMap = false;
     
     
     /* Construct the server sockaddr_in structure */
@@ -194,19 +228,20 @@ int main(int argc, char **argv)
 			    sendMap = true;
 			}
 		}
-		
-		if (sendMap) {
+		else if (sendMap) {
 			if (mapClient.call(mapService)) {
 				uint8_t width = mapService.response.map.info.width;
 				uint8_t height = mapService.response.map.info.height;
+				double res = mapService.response.map.info.resolution;
 				int mapSize = width*height;
-			    int size = 1+sizeof(int)*2+mapSize;
+			    int size = 1+sizeof(int)*2+sizeof(double)+mapSize;
 			    char buffer[size];
 			    int pointer = 0;
 			  
 			    encodeByte(buffer, pointer, MAP);
 			    encodeByte(buffer, pointer, width);
 			    encodeByte(buffer, pointer, height);
+			    encodeDouble(buffer, pointer, res);
 				for (unsigned int i = 0; i < mapSize; i++) {
 					encodeByte(buffer, pointer, mapService.response.map.data.at(i));
 				}
