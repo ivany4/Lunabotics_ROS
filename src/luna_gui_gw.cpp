@@ -2,6 +2,7 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/BoolValue.h"
 #include "lunabotics/Telemetry.h"
+#include "nav_msgs/GetMap.h"
 #include "tf/tf.h"
 #include <iostream>
 #include <sys/socket.h>
@@ -29,6 +30,24 @@ union doubleToBytes
     double	doubleValue;
 };
 
+union uint8ToBytes
+{
+	uint8_t uint8Value;
+	char bytes[1];
+};
+
+union intToBytes
+{
+	int intValue;
+	char bytes[4];
+};
+
+enum TX_CONTENT_TYPE {
+	TELEMETRY = 0,
+	MAP = 1,
+	PATH = 2
+};
+
 void sendMsg(const char *msg, int sock) {
     int replylen = sizeof(msg);
     if (write(sock, msg, replylen) != replylen) {
@@ -51,106 +70,79 @@ bool tryConnect() {
     return sock_conn;
 }
 
+void encodeDouble(char buffer[], int &pointer, double value)
+{
+	union doubleToBytes doubleConverter;
+	doubleConverter.doubleValue = value;
+	for (unsigned int i = 0; i < sizeof(double); i++) {
+		buffer[pointer++] = doubleConverter.bytes[i];
+	}
+}
+
+void encodeInt(char buffer[], int &pointer, int value)
+{
+	union intToBytes intConverter;
+	intConverter.intValue = value;
+	for (unsigned int i = 0; i < sizeof(int32_t); i++) {
+		buffer[pointer++] = intConverter.bytes[i];
+	}
+}
+
+void encodeByte(char buffer[], int &pointer, uint8_t value)
+{
+	union uint8ToBytes uint8Converter;
+	uint8Converter.uint8Value = value;
+	buffer[pointer++] = uint8Converter.bytes[0];
+}
+
+void transmit(char bytes[], int size)
+{
+    int sent_bytes = 0;
+	pthread_mutex_lock(&sock_mutex);
+    /* Send the word to the server */
+    if ((sent_bytes = write(sock, bytes, size)) != size) {
+        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
+		pthread_mutex_unlock(&sock_mutex);
+		tryConnect();
+        return;
+    }
+    else {
+		ROS_INFO("Sending data: OK");
+	}
+	pthread_mutex_unlock(&sock_mutex);
+    
+    //Currently do not wait for reply from server
+    /*
+    int received = 0;
+    char recv_buffer[BUFFSIZE];
+    bzero(recv_buffer, BUFFSIZE);
+    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
+        ROS_ERROR("Failed to receive additional bytes from client");
+        return;
+    }
+    */
+    
+    /* Print server message */
+    //ROS_INFO("Server answeded: %s", recv_buffer);
+}
+	
 
 void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	if (sock_conn) {
-	    int size = sizeof(double)*3;
-	    char send_buffer[size];
-	    
-	    ////////////DATA ENCODING////////////////////
-	    
+	    int size = sizeof(double)*6+1;
+	    char buffer[size];
 	    int pointer = 0;
+	  
+	    encodeByte(buffer, pointer, TELEMETRY);
+		encodeDouble(buffer, pointer, msg.odometry.pose.pose.position.x);
+		encodeDouble(buffer, pointer, msg.odometry.pose.pose.position.y);
+		encodeDouble(buffer, pointer, tf::getYaw(msg.odometry.pose.pose.orientation));
+		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.x);
+		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.y);
+		encodeDouble(buffer, pointer, msg.odometry.twist.twist.linear.z);
 	    
-		union doubleToBytes doubleConverter;
-		doubleConverter.doubleValue = msg.odometry.pose.pose.position.x;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.pose.pose.position.y;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = tf::getYaw(msg.odometry.pose.pose.orientation);
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.x;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.y;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-		doubleConverter.doubleValue = msg.odometry.twist.twist.linear.z;
-		send_buffer[pointer++] = doubleConverter.bytes[0];
-		send_buffer[pointer++] = doubleConverter.bytes[1];
-		send_buffer[pointer++] = doubleConverter.bytes[2];
-		send_buffer[pointer++] = doubleConverter.bytes[3];
-		send_buffer[pointer++] = doubleConverter.bytes[4];
-		send_buffer[pointer++] = doubleConverter.bytes[5];
-		send_buffer[pointer++] = doubleConverter.bytes[6];
-		send_buffer[pointer++] = doubleConverter.bytes[7];
-	    
-	    /////////////////////////////////////////////
-	    
-	    
-	    int sent_bytes = 0;
-	    
-	    
-		pthread_mutex_lock(&sock_mutex);
-	    /* Send the word to the server */
-	    if ((sent_bytes = write(sock, send_buffer, size)) != size) {
-	        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
-			pthread_mutex_unlock(&sock_mutex);
-			tryConnect();
-	        return;
-	    }
-	    else {
-			ROS_INFO("Sending data: OK");
-		}
-		pthread_mutex_unlock(&sock_mutex);
-	    
-	    
-	    //Currently do not wait for reply from server
-	    /*
-	    int received = 0;
-	    char recv_buffer[BUFFSIZE];
-	    bzero(recv_buffer, BUFFSIZE);
-	    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
-	        ROS_ERROR("Failed to receive additional bytes from client");
-	        return;
-	    }
-	    */
-	    
-	    /* Print server message */
-	    //ROS_INFO("Server answeded: %s", recv_buffer);
+	    transmit(buffer, size);
 	}
     
 }
@@ -160,7 +152,9 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_gw");
 	ros::NodeHandle nodeHandle;
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	
+	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
+	nav_msgs::GetMap mapService;
+	bool sendMap = false;
     
     
     /* Construct the server sockaddr_in structure */
@@ -177,6 +171,19 @@ int main(int argc, char **argv)
     
    	ROS_INFO("GUI Gateway ready");
    	
+   	/*
+   	ROS_INFO("TEST START");
+   	int a = 0;
+   	char *gg = new char[1];
+   	gg[0] = '2';
+   	ROS_INFO("PUTTING %c", gg[0]);
+   	encodeByte(&gg, a, 2);
+   	ROS_INFO("EXTRACTING %c", gg[0]);
+   	
+   	ROS_INFO("TEST SHIFTED POINTER TO %d", a);
+   	*/
+   	
+   	
 	ros::Rate loop_rate(50);
 	while (ros::ok()) {
 		if (!sock_conn) {
@@ -185,8 +192,36 @@ int main(int argc, char **argv)
 			}		
 			else {
 			    ROS_INFO("Connected to server on %s:%hu (socket %d)", addr, ntohs(server.sin_port), sock);
+			    sendMap = true;
 			}
 		}
+		
+		if (sendMap) {
+			if (mapClient.call(mapService)) {
+				uint8_t width = mapService.response.map.info.width;
+				uint8_t height = mapService.response.map.info.height;
+				int mapSize = width*height;
+			    int size = 1+sizeof(int)*2+mapSize;
+			    char buffer[size];
+			    int pointer = 0;
+			  
+			    encodeByte(buffer, pointer, MAP);
+			    encodeByte(buffer, pointer, width);
+			    encodeByte(buffer, pointer, height);
+				for (unsigned int i = 0; i < mapSize; i++) {
+					encodeByte(buffer, pointer, mapService.response.map.data.at(i));
+				}
+				
+				sendMap = false;
+				ROS_INFO("Sending a map (%dx%d)", width, height);
+				transmit(buffer, size);
+			}
+			else {
+				ROS_WARN("Failed to call service /luna_map");
+			}
+		}
+		
+		
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

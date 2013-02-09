@@ -5,6 +5,11 @@
 
 int seq = 0;
 
+inline int randomNumber(int min, int max)
+{
+	return min + (rand() % (int)(max - min + 1));
+}
+
 bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 {	
 	ROS_INFO("Got a map request");
@@ -24,8 +29,8 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	res.map.info.origin.orientation.z = 0;
 	res.map.info.origin.orientation.w = 0;
 	
-	for (int i = 0; i < res.map.info.width*res.map.info.height; i++) {
-		res.map.data.push_back(5);
+	for (unsigned int i = 0; i < res.map.info.width*res.map.info.height; i++) {		
+		res.map.data.push_back(randomNumber(0, 100));
 	}
 	
 	seq++;
