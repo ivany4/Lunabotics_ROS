@@ -19,7 +19,7 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	res.map.header.stamp = now;
 	res.map.info.width = 10;
 	res.map.info.height = 10;
-	res.map.info.resolution = 1/10.0;
+	res.map.info.resolution = 10/10.0;
 	res.map.info.map_load_time = now;
 	res.map.info.origin.position.x = 0;
 	res.map.info.origin.position.y = 0;

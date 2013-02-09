@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "nav_msgs/Path.h"
 #include "types.h"
+#include "utils.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
@@ -19,8 +20,21 @@ using namespace std;
 #define Ka	0.7
 #define Kb	-0.05
 
+enum SKID_STATE {
+	STOPPED	= 0,
+	DRIVING	= 1,
+	TURNING	= 2
+};
+
+inline int sign(double value) {
+	if (value > 0.01) return 1;
+	if (value < -0.01) return -1;
+	return 0;
+}
+
 int seq = 0;
 CTRL_MODE_TYPE controlMode;
+SKID_STATE skidState;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 geometry_msgs::Pose currentPose;
@@ -30,6 +44,7 @@ bool drive = false;
 vector<geometry_msgs::Pose> waypoints;
 vector<geometry_msgs::Pose>::iterator wayIterator;
 
+
 void stop() {
 	drive = false;
 	lunabotics::Control controlMsg;
@@ -38,7 +53,6 @@ void stop() {
 	controlPublisher.publish(controlMsg);
 	waypoints.clear();
 }
-	
 
 vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
 {
@@ -112,22 +126,17 @@ void autonomyCallback(const std_msgs::Bool& msg)
 		waypoints.clear();
 		
 		//Specify params
-		geometry_msgs::Pose start;
 		geometry_msgs::Pose goal;
-		start.position.x = 0.1;
-		start.position.y = 0.1;
-		start.position.z = 0;
-		start.orientation = tf::createQuaternionMsgFromYaw(0);
-		goal.position.x = 0.9;
-		goal.position.y = 0.9;
+		goal.position.x = 9;
+		goal.position.y = 9;
 		goal.position.z = 0;
 		goal.orientation = tf::createQuaternionMsgFromYaw(0);
 		
 		ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
-				  start.position.x, start.position.y,
+				  currentPose.position.x, currentPose.position.y,
 				  goal.position.x, goal.position.y);
 		float resolution;
-		vector<a_star_node> path = getPath(start, goal, resolution);
+		vector<a_star_node> path = getPath(currentPose, goal, resolution);
 		
 		if (path.size() > 0) {
 			stringstream sstr;
@@ -182,6 +191,60 @@ void autonomyCallback(const std_msgs::Bool& msg)
 
 void controlSkid(geometry_msgs::Pose waypointPose) 
 {
+	double dx = waypointPose.position.x-currentPose.position.x;
+	double dy = waypointPose.position.y-currentPose.position.y;
+	double angle = normalize_angle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+	lunabotics::Control controlMsg;
+	
+	switch (skidState) {
+		case STOPPED: {
+			ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			controlMsg.motion.linear.x = 0;
+			controlMsg.motion.angular.z = 0;
+			
+			if (fabs(angle) > 0.1) {
+				skidState = TURNING;
+			}
+			else if (fabs(dx) > 0.01 || fabs(dy) > 0.01) {
+				skidState = DRIVING;
+			}
+		}	
+		break;
+		case DRIVING: {	
+			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);		
+			if (fabs(dx) < 0.01 && fabs(dy) < 0.01) {
+				skidState = STOPPED;
+				controlMsg.motion.linear.x = 0;
+				controlMsg.motion.angular.z = 0;
+			}
+			else {
+				controlMsg.motion.linear.x = 1;
+				controlMsg.motion.angular.z = 0;
+			//	skidState = STOPPED;
+			}
+		}
+		break;
+		case TURNING: {
+			ROS_INFO("SKID: turning        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			int direction = sign(angle);
+		
+			if (direction == 0) {
+				skidState = STOPPED;
+				controlMsg.motion.linear.x = 0;
+				controlMsg.motion.angular.z = 0;
+			}
+			else {
+				ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
+				controlMsg.motion.linear.x = 0;
+				controlMsg.motion.angular.z = 1*direction;
+			//	skidState = STOPPED;
+			}	
+		}
+		break;
+		default: break;
+	}
+	
+	controlPublisher.publish(controlMsg);
 }
 
 void controlAckermann(geometry_msgs::Pose waypointPose)
@@ -237,7 +300,7 @@ int main(int argc, char **argv)
 	
 	ROS_INFO("Driver ready"); 
 	
-	ros::Rate loop_rate(15);
+	ros::Rate loop_rate(5);
 	while (ros::ok())
 	{
 		//Whenever needed send control message
@@ -252,7 +315,12 @@ int main(int argc, char **argv)
 					ROS_WARN("Current position undetermined");
 				}
 				else {
-					controlAckermann(waypointPose);
+					switch (controlMode) {
+						case ACKERMANN: controlAckermann(waypointPose); break;
+						case TURN_IN_SPOT: controlSkid(waypointPose); break;
+						case LATERAL: break;
+						default: break;
+					}
 				}
 			}
 			else {
