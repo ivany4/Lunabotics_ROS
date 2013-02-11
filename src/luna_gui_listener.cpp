@@ -1,8 +1,8 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
+#include "lunabotics/Goal.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
-#include "geometry_msgs/Point.h"
 #include "types.h"
 #include <iostream>
 #include <sys/socket.h>
@@ -21,6 +21,8 @@ using namespace std;
 
 int serverSocket = -1;
 int clientSocket = -1;
+float angleTolerance = 0.4;
+float distanceTolerance = 0.1;
 
 
 enum RX_CONTENT_TYPE {
@@ -83,7 +85,7 @@ int main(int argc, char **argv)
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 1);
 	ros::Publisher controlModePublisher = nodeHandle.advertise<std_msgs::UInt8>("luna_ctrl_mode", 1);
-	ros::Publisher goalPublisher = nodeHandle.advertise<geometry_msgs::Point>("luna_goal", 1);
+	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("luna_goal", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -184,14 +186,12 @@ int main(int argc, char **argv)
 				case STEERING: {
 					lunabotics::Control controlMsg;
 					
-				    float linearSpeed = decodeFloat(buffer, pointer);
-				    float dependentValue = decodeFloat(buffer, pointer);
 				    bool driveForward 	= buffer[pointer++];
 				    bool driveBackward 	= buffer[pointer++];
 				    bool driveLeft 		= buffer[pointer++];
 				    bool driveRight 	= buffer[pointer++];
 		
-					ROS_INFO("Limits: %f %f %s%s%s%s", linearSpeed, dependentValue, driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
+					ROS_INFO("%s%s%s%s", driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
 					
 					
 	
@@ -228,12 +228,16 @@ int main(int argc, char **argv)
 				case ROUTE: {
 					float goalX = decodeFloat(buffer, pointer);
 					float goalY = decodeFloat(buffer, pointer);
+					float toleranceAngle = decodeFloat(buffer, pointer);
+					float toleranceDistance = decodeFloat(buffer, pointer);
 					
 					ROS_INFO("Navigation to (%.1f,%.1f)", goalX, goalY);
 					
-					geometry_msgs::Point goalMsg;
-					goalMsg.x = goalX;
-					goalMsg.y = goalY;
+					lunabotics::Goal goalMsg;
+					goalMsg.point.x = goalX;
+					goalMsg.point.y = goalY;
+					goalMsg.angleAccuracy = toleranceAngle;
+					goalMsg.distanceAccuracy = toleranceDistance;
 					goalPublisher.publish(goalMsg);
 					
 					//replyToGUI("OK", clientSocket);

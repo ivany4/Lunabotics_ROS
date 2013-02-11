@@ -5,6 +5,8 @@
 #include <vector>
 using namespace std;
 
+#define USE_8_DIRECTIONS	1
+
 a_star_node::a_star_node(): x(0), y(0), parent_x(0), parent_y(0), F(0), G(0), H(0)
 {
 }
@@ -58,27 +60,61 @@ list<a_star_node> a_star_node::neighbours(int grid_width, int grid_height, vecto
 	if (this->x > 0) {
 		int new_x = this->x-1;
 		if (grid.at(new_x+this->y*grid_width) < OCC_THRESHOLD) {
-			result.push_back(a_star_node(this->x-1, this->y));
+			result.push_back(a_star_node(new_x, this->y));
 		}
 	}
 	if (this->y > 0) {
 		int new_y = this->y-1;
 		if (grid.at(this->x+new_y*grid_width) < OCC_THRESHOLD) {
-			result.push_back(a_star_node(this->x, this->y-1));
+			result.push_back(a_star_node(this->x, new_y));
 		}
 	}
 	if (this->x < grid_width-1) {
 		int new_x = this->x+1;
 		if (grid.at(new_x+this->y*grid_width) < OCC_THRESHOLD) {
-			result.push_back(a_star_node(this->x+1, this->y));
+			result.push_back(a_star_node(new_x, this->y));
 		}
 	}
 	if (this->y < grid_height-1) {
 		int new_y = this->y+1;
 		if (grid.at(this->x+new_y*grid_width) < OCC_THRESHOLD) {
-			result.push_back(a_star_node(this->x, this->y+1));
+			result.push_back(a_star_node(this->x, new_y));
 		}
 	}
+#ifdef USE_8_DIRECTIONS
+		
+	if (this->x > 0 && this->y > 0) {
+		int new_x = this->x-1;
+		int new_y = this->y-1;
+		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+			result.push_back(a_star_node(new_x, new_y));
+		}
+	}
+	if (this->x < grid_width-1 && this->y < grid_height-1) {
+		int new_x = this->x+1;
+		int new_y = this->y+1;
+		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+			result.push_back(a_star_node(new_x, new_y));
+		}
+	}
+	if (this->x > 0 && this->y < grid_height-1) {
+		int new_x = this->x-1;
+		int new_y = this->y+1;
+		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+			result.push_back(a_star_node(new_x, new_y));
+		}
+	}
+	if (this->x < grid_width-1 && this->y > 0) {
+		int new_x = this->x+1;
+		int new_y = this->y-1;
+		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+			result.push_back(a_star_node(new_x, new_y));
+		}
+	}
+		
+#endif
+
+
 	return result;
 }
 

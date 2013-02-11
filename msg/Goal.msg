@@ -1,0 +1,3 @@
+geometry_msgs/Point point
+float32 angleAccuracy
+float32 distanceAccuracy

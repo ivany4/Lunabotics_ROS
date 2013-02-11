@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 		}
 		else {
 			if (sendTelemetry) {
-			    int size = sizeof(double)*9+1;
+			    int size = sizeof(double)*9+1+1;
 			    char buffer[size];
 			    int pointer = 0;
 			  
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
-				encodeByte(buffer, pointer, (uint8_t)controlMode);
+				encodeByte(buffer, pointer, controlMode);
 			    
 			    sendTelemetry = false;
 			    

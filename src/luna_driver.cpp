@@ -5,18 +5,18 @@
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
+#include "lunabotics/Goal.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/UInt8.h"
-#include "geometry_msgs/Point.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
 #include "tf/tf.h"
 using namespace std;
 
-#define ANGLE_MARGIN	0.4
-#define DIST_MARGIN		0.2	
+float angleAccuracy = 0.4;
+float distanceAccuracy = 0.2;
 
 //Locally exponentially stable when Kp > 0; Kb < 0; Ka-Kb > 0
 #define Kp 	0.15
@@ -30,8 +30,8 @@ enum SKID_STATE {
 };
 
 inline int sign(double value) {
-	if (value > ANGLE_MARGIN) return 1;
-	if (value < -ANGLE_MARGIN) return -1;
+	if (value > angleAccuracy) return 1;
+	if (value < -angleAccuracy) return -1;
 	return 0;
 }
 
@@ -55,6 +55,20 @@ void stop() {
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
 	waypoints.clear();
+}
+
+void finish_route() {
+	ROS_INFO("Route completed");
+	stop();
+	
+	//Send empty path to clear map in GUI
+	nav_msgs::Path pathMsg;
+	ros::Time now = ros::Time::now();
+	pathMsg.header.stamp = now;
+	pathMsg.header.seq = seq;
+	pathMsg.header.frame_id = "1";
+	seq++;
+	pathPublisher.publish(pathMsg);
 }
 
 vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
@@ -94,7 +108,13 @@ vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose g
 		
 		if (graph.size() == 0) {
 			ROS_INFO("Path is not found");
-		}			
+		}
+		else {
+			if (graph.size() == 1) {
+				ROS_INFO("Robot is at the goal");
+			}
+			graph.erase(graph.begin());
+		}	
 	}
 	else {
 		ROS_ERROR("Failed to call service luna_map");
@@ -132,13 +152,16 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	}
 }
 
-void goalCallback(const geometry_msgs::Point& msg) 
+void goalCallback(const lunabotics::Goal& msg) 
 {
 	waypoints.clear();
 	
+	angleAccuracy = msg.angleAccuracy;
+	distanceAccuracy = msg.distanceAccuracy;
+	
 	//Specify params
 	geometry_msgs::Pose goal;
-	goal.position = msg;
+	goal.position = msg.point;
 	goal.orientation = tf::createQuaternionMsgFromYaw(0);
 	
 	ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
@@ -207,40 +230,37 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 			controlMsg.motion.linear.x = 0;
 			controlMsg.motion.angular.z = 0;
 			
-			if (fabs(angle) > ANGLE_MARGIN) {
-				skidState = TURNING;
-			}
-			else if (fabs(dx) > DIST_MARGIN || fabs(dy) > DIST_MARGIN) {
-				skidState = DRIVING;
-			}
-			else {
+			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				wayIterator++;
 				if (wayIterator >= waypoints.end()) {
-					ROS_INFO("Route completed");
-					stop();
+					finish_route();
 				}
 				else {
 					geometry_msgs::Pose nextWaypointPose = *wayIterator;
 					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
 			}
-				
+			else if (fabs(angle) > angleAccuracy) {
+				skidState = TURNING;
+			}
+			else if (fabs(dx) > distanceAccuracy || fabs(dy) > distanceAccuracy) {
+				skidState = DRIVING;
+			}				
 		}	
 		break;
 		case DRIVING: {	
 			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
-			if (fabs(dx) < DIST_MARGIN && fabs(dy) < DIST_MARGIN) {
+			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				skidState = STOPPED;
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 0;
 			}
-			else if (fabs(angle) > ANGLE_MARGIN) {
+			else if (fabs(angle) > angleAccuracy) {
 				skidState = TURNING;
 			}	
 			else {
 				controlMsg.motion.linear.x = 1;
 				controlMsg.motion.angular.z = 0;
-			//	skidState = STOPPED;
 			}
 		}
 		break;
@@ -257,7 +277,6 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 				ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 1*direction;
-			//	skidState = STOPPED;
 			}	
 		}
 		break;
@@ -282,8 +301,7 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 	if (fabs(rho) < 0.05 && fabs(beta) < 0.1 && fabs(alpha) < 0.1) {
 		wayIterator++;
 		if (wayIterator >= waypoints.end()) {
-			ROS_INFO("Route completed");
-			stop();
+			finish_route();
 		}
 		else {
 			geometry_msgs::Pose nextWaypointPose = *wayIterator;
