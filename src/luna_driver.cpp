@@ -15,6 +15,8 @@
 #include "tf/tf.h"
 using namespace std;
 
+#define ANGLE_MARGIN	0.4
+#define DIST_MARGIN		0.2	
 
 //Locally exponentially stable when Kp > 0; Kb < 0; Ka-Kb > 0
 #define Kp 	0.15
@@ -28,8 +30,8 @@ enum SKID_STATE {
 };
 
 inline int sign(double value) {
-	if (value > 0.01) return 1;
-	if (value < -0.01) return -1;
+	if (value > ANGLE_MARGIN) return 1;
+	if (value < -ANGLE_MARGIN) return -1;
 	return 0;
 }
 
@@ -205,21 +207,36 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 			controlMsg.motion.linear.x = 0;
 			controlMsg.motion.angular.z = 0;
 			
-			if (fabs(angle) > 0.1) {
+			if (fabs(angle) > ANGLE_MARGIN) {
 				skidState = TURNING;
 			}
-			else if (fabs(dx) > 0.01 || fabs(dy) > 0.01) {
+			else if (fabs(dx) > DIST_MARGIN || fabs(dy) > DIST_MARGIN) {
 				skidState = DRIVING;
 			}
+			else {
+				wayIterator++;
+				if (wayIterator >= waypoints.end()) {
+					ROS_INFO("Route completed");
+					stop();
+				}
+				else {
+					geometry_msgs::Pose nextWaypointPose = *wayIterator;
+					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
+				}
+			}
+				
 		}	
 		break;
 		case DRIVING: {	
-			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);		
-			if (fabs(dx) < 0.01 && fabs(dy) < 0.01) {
+			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
+			if (fabs(dx) < DIST_MARGIN && fabs(dy) < DIST_MARGIN) {
 				skidState = STOPPED;
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 0;
 			}
+			else if (fabs(angle) > ANGLE_MARGIN) {
+				skidState = TURNING;
+			}	
 			else {
 				controlMsg.motion.linear.x = 1;
 				controlMsg.motion.angular.z = 0;
@@ -304,7 +321,7 @@ int main(int argc, char **argv)
 	
 	ROS_INFO("Driver ready"); 
 	
-	ros::Rate loop_rate(5);
+	ros::Rate loop_rate(200);
 	while (ros::ok())
 	{
 		//Whenever needed send control message

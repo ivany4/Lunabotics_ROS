@@ -4,7 +4,9 @@
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
+#include "std_msgs/UInt8.h"
 #include "tf/tf.h"
+#include "types.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -26,6 +28,7 @@ bool sendMap = false;
 bool sendTelemetry = false;
 struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
+CTRL_MODE_TYPE controlMode = ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
 union doubleToBytes
@@ -137,6 +140,12 @@ void mapUpdateCallback(const std_msgs::Empty& msg)
 	sendMap = true;
 }
 
+void controlModeCallback(const std_msgs::UInt8& msg)
+{
+	controlMode = (CTRL_MODE_TYPE)msg.data;					
+}
+
+
 void pathCallback(const nav_msgs::Path& msg)
 {    
 	if (sock_conn) {
@@ -168,6 +177,7 @@ int main(int argc, char **argv)
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	nav_msgs::GetMap mapService;
     
@@ -212,7 +222,7 @@ int main(int argc, char **argv)
 		}
 		else {
 			if (sendTelemetry) {
-			    int size = sizeof(double)*6+1;
+			    int size = sizeof(double)*9+1;
 			    char buffer[size];
 			    int pointer = 0;
 			  
@@ -223,6 +233,10 @@ int main(int argc, char **argv)
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.x);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.y);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.z);
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
+				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
+				encodeByte(buffer, pointer, controlMode);
 			    
 			    sendTelemetry = false;
 			    

@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 					autonomyMsg.data = enabled;
 					autonomyPublisher.publish(autonomyMsg);
 					
-					replyToGUI("OK", clientSocket);
+					//replyToGUI("OK", clientSocket);
 				}
 				break;
 				
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 					controlModeMsg.data = type;
 					controlModePublisher.publish(controlModeMsg);
 					
-				    replyToGUI("OK", clientSocket);
+				    //replyToGUI("OK", clientSocket);
 				    
 				    
 				}
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 					
 					controlPublisher.publish(controlMsg);
 					
-				    replyToGUI("OK", clientSocket);
+				    //replyToGUI("OK", clientSocket);
 				}
 				break;
 				
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 					goalMsg.y = goalY;
 					goalPublisher.publish(goalMsg);
 					
-					replyToGUI("OK", clientSocket);
+					//replyToGUI("OK", clientSocket);
 				}
 				break;
 				
