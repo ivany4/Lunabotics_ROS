@@ -52,13 +52,6 @@ enum TX_CONTENT_TYPE {
 	PATH = 2
 };
 
-void sendMsg(const char *msg, int sock) {
-    int replylen = sizeof(msg);
-    if (write(sock, msg, replylen) != replylen) {
-        ROS_WARN("Failed to send bytes to client");
-    }
-}
-
 bool tryConnect() {
 	sock_conn = false;
 	if (sock >= 0) {
