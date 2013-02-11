@@ -2,6 +2,7 @@
 #include "lunabotics/Control.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
+#include "geometry_msgs/Point.h"
 #include "types.h"
 #include <iostream>
 #include <sys/socket.h>
@@ -82,6 +83,7 @@ int main(int argc, char **argv)
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 1);
 	ros::Publisher controlModePublisher = nodeHandle.advertise<std_msgs::UInt8>("luna_ctrl_mode", 1);
+	ros::Publisher goalPublisher = nodeHandle.advertise<geometry_msgs::Point>("luna_goal", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -223,8 +225,19 @@ int main(int argc, char **argv)
 				}
 				break;
 				
-				case ROUTE:
-					replyToGUI("NOT IMPLEMENTED", clientSocket);
+				case ROUTE: {
+					float goalX = decodeFloat(buffer, pointer);
+					float goalY = decodeFloat(buffer, pointer);
+					
+					ROS_INFO("Navigation to (%.1f,%.1f)", goalX, goalY);
+					
+					geometry_msgs::Point goalMsg;
+					goalMsg.x = goalX;
+					goalMsg.y = goalY;
+					goalPublisher.publish(goalMsg);
+					
+					replyToGUI("OK", clientSocket);
+				}
 				break;
 				
 				default:

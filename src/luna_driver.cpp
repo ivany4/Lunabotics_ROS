@@ -8,6 +8,7 @@
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/UInt8.h"
+#include "geometry_msgs/Point.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
@@ -123,69 +124,71 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	//Use msg to toggle autonomy
 	if (msg.data) {
 			
-		waypoints.clear();
-		
-		//Specify params
-		geometry_msgs::Pose goal;
-		goal.position.x = 9;
-		goal.position.y = 9;
-		goal.position.z = 0;
-		goal.orientation = tf::createQuaternionMsgFromYaw(0);
-		
-		ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
-				  currentPose.position.x, currentPose.position.y,
-				  goal.position.x, goal.position.y);
-		float resolution;
-		vector<a_star_node> path = getPath(currentPose, goal, resolution);
-		
-		if (path.size() > 0) {
-			stringstream sstr;
-			
-			nav_msgs::Path pathMsg;
-			ros::Time now = ros::Time::now();
-			pathMsg.header.stamp = now;
-			pathMsg.header.seq = seq;
-			pathMsg.header.frame_id = "1";
-			seq++;
-			
-			int poseSeq = 0;
-			for (vector<a_star_node>::iterator it = path.begin(); it != path.end(); it++) {
-				a_star_node node = *it;
-				
-				float x_m = node.x*resolution;
-				float y_m = node.y*resolution;
-				
-				geometry_msgs::Pose waypoint;
-				waypoint.position.x = x_m;
-				waypoint.position.y = y_m;
-				waypoint.position.z = 0;
-				waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
-				waypoints.push_back(waypoint);
-				sstr << "->(" << x_m << "," << y_m << ")";
-				
-				
-				geometry_msgs::PoseStamped pose;
-				pose.header.seq = poseSeq++;
-				pose.header.stamp = now;
-				pose.header.frame_id = "1";
-				pose.pose = waypoint;
-				pathMsg.poses.push_back(pose);
-			}
-			wayIterator = waypoints.begin();
-			ROS_INFO("Returned path: %s", sstr.str().c_str());
-			geometry_msgs::Pose waypoint = waypoints.at(0);
-			ROS_INFO("Heading towards (%.1f,%.1f)", waypoint.position.x, waypoint.position.y);
-			
-			pathPublisher.publish(pathMsg);
-			
-			drive = true;
-		}
-		else {
-			ROS_INFO("Path is empty");
-		}
 	}
 	else {
 		stop();
+	}
+}
+
+void goalCallback(const geometry_msgs::Point& msg) 
+{
+	waypoints.clear();
+	
+	//Specify params
+	geometry_msgs::Pose goal;
+	goal.position = msg;
+	goal.orientation = tf::createQuaternionMsgFromYaw(0);
+	
+	ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
+			  currentPose.position.x, currentPose.position.y,
+			  goal.position.x, goal.position.y);
+	float resolution;
+	vector<a_star_node> path = getPath(currentPose, goal, resolution);
+	
+	if (path.size() > 0) {
+		stringstream sstr;
+		
+		nav_msgs::Path pathMsg;
+		ros::Time now = ros::Time::now();
+		pathMsg.header.stamp = now;
+		pathMsg.header.seq = seq;
+		pathMsg.header.frame_id = "1";
+		seq++;
+		
+		int poseSeq = 0;
+		for (vector<a_star_node>::iterator it = path.begin(); it != path.end(); it++) {
+			a_star_node node = *it;
+			
+			float x_m = node.x*resolution;
+			float y_m = node.y*resolution;
+			
+			geometry_msgs::Pose waypoint;
+			waypoint.position.x = x_m;
+			waypoint.position.y = y_m;
+			waypoint.position.z = 0;
+			waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
+			waypoints.push_back(waypoint);
+			sstr << "->(" << x_m << "," << y_m << ")";
+			
+			
+			geometry_msgs::PoseStamped pose;
+			pose.header.seq = poseSeq++;
+			pose.header.stamp = now;
+			pose.header.frame_id = "1";
+			pose.pose = waypoint;
+			pathMsg.poses.push_back(pose);
+		}
+		wayIterator = waypoints.begin();
+		ROS_INFO("Returned path: %s", sstr.str().c_str());
+		geometry_msgs::Pose waypoint = waypoints.at(0);
+		ROS_INFO("Heading towards (%.1f,%.1f)", waypoint.position.x, waypoint.position.y);
+		
+		pathPublisher.publish(pathMsg);
+		
+		drive = true;
+	}
+	else {
+		ROS_INFO("Path is empty");
 	}
 }
 
@@ -291,6 +294,7 @@ int main(int argc, char **argv)
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 1, autonomyCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
+	ros::Subscriber gaolSubscriber = nodeHandle.subscribe("luna_goal", 256, goalCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("luna_path", 256);
