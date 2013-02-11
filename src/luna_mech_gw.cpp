@@ -29,6 +29,10 @@ int main(int argc, char **argv)
 	//Stageros communication protocols
 	ros::Publisher stagePublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", 256);	
 	ros::Subscriber stageOdoSubscriber = nodeHandle.subscribe("odom", 256, stageOdoCallback);
+	
+	//Pioneer communication protocols
+	ros::Publisher pioneerPublisher = nodeHandle.advertise<geometry_msgs::Twist>("RosAria/cmd_vel", 256);	
+	ros::Subscriber pioneerOdoSubscriber = nodeHandle.subscribe("RosAria/pose", 256, stageOdoCallback);
 			
 	ros::Rate loop_rate(50);
 	telemetryMsg.odometry.header.frame_id = "/map";

@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
-				encodeByte(buffer, pointer, controlMode);
+				encodeByte(buffer, pointer, (uint8_t)controlMode);
 			    
 			    sendTelemetry = false;
 			    
