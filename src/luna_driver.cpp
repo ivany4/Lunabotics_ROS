@@ -105,6 +105,8 @@ vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose g
 								mapService.response.map.info.width, 
 								mapService.response.map.info.height,
 								start_x, start_y, goal_x, goal_y);
+								
+		graph = pathPlan.removeIntermediateWaypoints(graph);
 		
 		if (graph.size() == 0) {
 			ROS_INFO("Path is not found");

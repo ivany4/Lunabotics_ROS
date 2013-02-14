@@ -109,6 +109,29 @@ double a_star_graph::distance(a_star_node node1, a_star_node node2) {
     return this->width*this->height;
 }
 
+vector<a_star_node> a_star_graph::removeIntermediateWaypoints(std::vector<a_star_node> originalGraph)
+{
+	vector<a_star_node> newGraph;
+	vector<a_star_node>::iterator it = originalGraph.begin();
+	if (originalGraph.size() > 0) {
+		newGraph.push_back(*it);
+	}
+	for (int i = 1; i < originalGraph.size()-1; i++) {
+		a_star_node previousNode = originalGraph.at(i-1);
+		a_star_node nextNode = originalGraph.at(i+1);
+		a_star_node node = originalGraph.at(i);
+		ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
+		if (!((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y)) {
+			newGraph.push_back(node);
+		}
+	}
+	if (originalGraph.size() > 1) {
+		it = originalGraph.end()-1;
+		newGraph.push_back(*it);
+	}
+	return newGraph;
+}
+
 a_star_graph::a_star_graph(): width(0), height(0)
 {
 }

@@ -15,4 +15,5 @@ public:
 								int width, int height, 
 								int start_x, int start_y, 
 								int goal_x, int goal_y);
+	std::vector<a_star_node> removeIntermediateWaypoints(std::vector<a_star_node> originalGraph);
 };
