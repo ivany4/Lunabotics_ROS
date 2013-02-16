@@ -116,7 +116,7 @@ vector<a_star_node> a_star_graph::removeIntermediateWaypoints(std::vector<a_star
 	if (originalGraph.size() > 0) {
 		newGraph.push_back(*it);
 	}
-	for (int i = 1; i < originalGraph.size()-1; i++) {
+	for (unsigned int i = 1; i < originalGraph.size()-1; i++) {
 		a_star_node previousNode = originalGraph.at(i-1);
 		a_star_node nextNode = originalGraph.at(i+1);
 		a_star_node node = originalGraph.at(i);
@@ -132,6 +132,116 @@ vector<a_star_node> a_star_graph::removeIntermediateWaypoints(std::vector<a_star
 	return newGraph;
 }
 
+vector<a_star_node> a_star_graph::removeIntermediateWaypoints(vector<a_star_node> originalGraph, vector<int8_t> map, int width)
+{
+	if (originalGraph.size() > 1) {
+		ROS_INFO("%d nodes (without current position %d)", originalGraph.size(), originalGraph.size()-1);
+		vector<a_star_node> graph = removeIntermediateWaypoints(originalGraph);
+		ROS_INFO("After removing straight path nodes %d", graph.size());
+		int currentWaypointIdx = 0;
+		int finalWaypointIdx = graph.size()-1;
+		a_star_node currentWaypoint = graph.at(currentWaypointIdx);
+		a_star_node finalWaypoint = graph.at(finalWaypointIdx);
+		a_star_node furthestWaypoint = finalWaypoint;
+		ROS_INFO("Current waypoint %d, final %d", currentWaypointIdx, finalWaypointIdx);
+		int furthesWaypointIdx = finalWaypointIdx;
+		vector<a_star_node> newGraph;
+	    stringstream sstr;
+		while (currentWaypoint != furthestWaypoint) {
+			sstr.str(string());
+			sstr << currentWaypoint;
+			sstr << "->" << furthestWaypoint;
+			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint, map, width);
+			if (crossesObstacles) {
+				ROS_INFO("%s crosses obstacles", sstr.str().c_str());
+				if (--furthesWaypointIdx == currentWaypointIdx+1) {
+					sstr.str(string());
+					sstr << currentWaypoint;
+					ROS_INFO("Saving %s", sstr.str().c_str());
+					newGraph.push_back(currentWaypoint);
+					currentWaypoint = graph.at(++currentWaypointIdx);
+					furthestWaypoint = finalWaypoint;
+					furthesWaypointIdx = finalWaypointIdx;
+					sstr.str(string());
+					sstr << currentWaypoint;
+					ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
+				}
+				else {
+					furthestWaypoint = graph.at(furthesWaypointIdx);
+				}
+			}
+			else {
+				ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
+				newGraph.push_back(currentWaypoint);
+				currentWaypoint = furthestWaypoint;
+				currentWaypointIdx = furthesWaypointIdx;
+				furthestWaypoint = finalWaypoint;
+				furthesWaypointIdx = finalWaypointIdx;
+				sstr.str(string());
+				sstr << currentWaypoint;
+				ROS_INFO("Jumping to %s", sstr.str().c_str());
+			}
+		}
+		newGraph.push_back(finalWaypoint);
+		return newGraph;
+	}
+	return originalGraph;
+}
+
 a_star_graph::a_star_graph(): width(0), height(0)
 {
+}
+
+bool a_star_graph::isObstacleBetweenNodes(a_star_node node1, a_star_node node2, vector<int8_t> map, int width)
+{
+	if (node1 == node2) return false;
+	
+	stringstream sstr;
+	sstr << node1 << " and " << node2;
+	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
+	
+	int denom = node2.x-node1.x;
+	double k = denom != 0 ? (node2.y-node1.y)/denom : 0;
+	double b = node1.y-k*node1.x;
+	
+	ROS_INFO("Line K=%.2f B=%.2f", k, b);
+	
+	int start, finish;
+	if (fabs(k) > 1) {
+		if (node2.y > node1.y) {
+			start = node1.y+1;
+			finish = node2.y;
+		}
+		else {
+			start = node2.y+1;
+			finish = node1.y;
+		}
+		for (int i = start; i < finish; i++) {
+			int x = round((i-b)/k);
+			int8_t occupancy = map.at(width*i+x);
+			ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+			if (occupancy > OCC_THRESHOLD) {
+				return true;
+			}
+		}
+	}
+	else {
+		if (node2.x > node1.x) {
+			start = node1.x+1;
+			finish = node2.x;
+		}
+		else {
+			start = node2.x+1;
+			finish = node1.x;
+		}
+		for (int i = start; i < finish; i++) {
+			int y = k*i+b;
+			int8_t occupancy = map.at(width*y+i);
+			ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
+			if (occupancy > OCC_THRESHOLD) {
+				return true;
+			}
+		}
+	}
+	return false;	
 }

@@ -106,16 +106,18 @@ vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose g
 								mapService.response.map.info.height,
 								start_x, start_y, goal_x, goal_y);
 								
-		graph = pathPlan.removeIntermediateWaypoints(graph);
 		
 		if (graph.size() == 0) {
 			ROS_INFO("Path is not found");
 		}
 		else {
+			graph = pathPlan.removeIntermediateWaypoints(graph, mapService.response.map.data, 
+								mapService.response.map.info.width);
 			if (graph.size() == 1) {
 				ROS_INFO("Robot is at the goal");
 			}
 			graph.erase(graph.begin());
+			
 		}	
 	}
 	else {

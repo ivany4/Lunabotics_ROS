@@ -4,6 +4,7 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
 #include "types.h"
+#include "coding.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -32,15 +33,6 @@ enum RX_CONTENT_TYPE {
 	ROUTE			 = 3
 };
 
-union BytesToFloat {
-    char    bytes[4];
-    float   floatValue;
-};
-
-union BytesToUint8 {
-    char bytes[1];
-    uint8_t uint8Value;
-};
 
 void quit(int sig) { 
     close(serverSocket); 
@@ -54,22 +46,6 @@ void replyToGUI(const char *msg, int sock) {
     if (write(sock, msg, replylen) != replylen) {
         ROS_WARN("Failed to send bytes to client");
     }
-}
-
-uint8_t decodeByte(char buffer[], int &pointer)
-{
-	union BytesToUint8 enumConverter;
-	enumConverter.bytes[0] = buffer[pointer++];
-	return enumConverter.uint8Value;
-}
-
-float decodeFloat(char buffer[], int &pointer)
-{
-	union BytesToFloat enumConverter;
-	for (unsigned int i = 0; i < sizeof(float); i++) {
-		enumConverter.bytes[i] = buffer[pointer++];
-	}
-	return enumConverter.floatValue;
 }
 
 int main(int argc, char **argv)

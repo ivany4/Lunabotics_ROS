@@ -1,12 +1,14 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
+#include "lunabotics/Vision.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/UInt8.h"
 #include "tf/tf.h"
 #include "types.h"
+#include "coding.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -16,7 +18,6 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#define BUFFSIZE (sizeof(double)*6)
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
 
@@ -26,33 +27,21 @@ int sock;
 bool sock_conn = false;
 bool sendMap = false;
 bool sendTelemetry = false;
+bool sendVision = false;
+bool sendPath = false;
 struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
+lunabotics::Vision vision;
+nav_msgs::Path path;
 CTRL_MODE_TYPE controlMode = ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
-union doubleToBytes
-{
-    char    bytes[8];
-    double	doubleValue;
-};
-
-union uint8ToBytes
-{
-	uint8_t uint8Value;
-	char bytes[1];
-};
-
-union intToBytes
-{
-	int intValue;
-	char bytes[4];
-};
 
 enum TX_CONTENT_TYPE {
 	TELEMETRY = 0,
 	MAP = 1,
-	PATH = 2
+	PATH = 2,
+	LASER = 3
 };
 
 bool tryConnect() {
@@ -68,31 +57,6 @@ bool tryConnect() {
 	    sock_conn = !(connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0);
 	}
     return sock_conn;
-}
-
-void encodeDouble(char buffer[], int &pointer, double value)
-{
-	union doubleToBytes doubleConverter;
-	doubleConverter.doubleValue = value;
-	for (unsigned int i = 0; i < sizeof(double); i++) {
-		buffer[pointer++] = doubleConverter.bytes[i];
-	}
-}
-
-void encodeInt(char buffer[], int &pointer, int value)
-{
-	union intToBytes intConverter;
-	intConverter.intValue = value;
-	for (unsigned int i = 0; i < sizeof(int32_t); i++) {
-		buffer[pointer++] = intConverter.bytes[i];
-	}
-}
-
-void encodeByte(char buffer[], int &pointer, uint8_t value)
-{
-	union uint8ToBytes uint8Converter;
-	uint8Converter.uint8Value = value;
-	buffer[pointer++] = uint8Converter.bytes[0];
 }
 
 void transmit(char bytes[], int size)
@@ -148,26 +112,15 @@ void controlModeCallback(const std_msgs::UInt8& msg)
 
 void pathCallback(const nav_msgs::Path& msg)
 {    
-	if (sock_conn) {
-		uint8_t numOfPoses = msg.poses.size();
-	    int size = 1+1+numOfPoses*2*sizeof(double);
-	    char buffer[size];
-	    int pointer = 0;
-	    
-	    sendMap = true;
-	  
-	    encodeByte(buffer, pointer, PATH);
-	    encodeByte(buffer, pointer, numOfPoses);
-	    for (unsigned int i = 0; i < msg.poses.size(); i++) {
-			geometry_msgs::PoseStamped pose = msg.poses.at(i);
-			double x_m = pose.pose.position.x;
-			double y_m = pose.pose.position.y;
-			encodeDouble(buffer, pointer, x_m);
-			encodeDouble(buffer, pointer, y_m);
-		}
-	    
-	    transmit(buffer, size);
-	}
+	path = msg;
+	sendPath = true;
+}
+
+void visionCallback(const lunabotics::Vision& msg)
+{
+	sendTelemetry = false;
+	vision = msg;
+	sendVision = true;
 }
 
 int main(int argc, char **argv)
@@ -178,6 +131,7 @@ int main(int argc, char **argv)
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("luna_vision", 1, visionCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	nav_msgs::GetMap mapService;
     
@@ -209,7 +163,7 @@ int main(int argc, char **argv)
    	*/
    	
    	
-	ros::Rate loop_rate(1000);
+	ros::Rate loop_rate(20);
 	while (ros::ok()) {
 		if (!sock_conn) {
 			if (!tryConnect()) {
@@ -247,7 +201,7 @@ int main(int argc, char **argv)
 					uint8_t width = mapService.response.map.info.width;
 					uint8_t height = mapService.response.map.info.height;
 					double res = mapService.response.map.info.resolution;
-					int mapSize = width*height;
+					unsigned int mapSize = width*height;
 				    int size = 1+sizeof(int)*2+sizeof(double)+mapSize;
 				    char buffer[size];
 				    int pointer = 0;
@@ -267,6 +221,53 @@ int main(int argc, char **argv)
 				else {
 					ROS_WARN("Failed to call service /luna_map");
 				}
+			}
+			if (sendPath) {
+				uint8_t numOfPoses = path.poses.size();
+			    int size = 1+1+numOfPoses*2*sizeof(double);
+			    char buffer[size];
+			    int pointer = 0;
+			    
+			  
+			    encodeByte(buffer, pointer, PATH);
+			    encodeByte(buffer, pointer, numOfPoses);
+			    for (unsigned int i = 0; i < path.poses.size(); i++) {
+					geometry_msgs::PoseStamped pose = path.poses.at(i);
+					double x_m = pose.pose.position.x;
+					double y_m = pose.pose.position.y;
+					encodeDouble(buffer, pointer, x_m);
+					encodeDouble(buffer, pointer, y_m);
+				}
+			    
+			    sendPath = false;
+			    
+			    transmit(buffer, size);
+			    
+			    sendMap = true;
+			}
+			if (sendVision) {
+				unsigned int numOfRanges = vision.lidar_data.ranges.size();
+			    int size = 1+sizeof(float)*3+sizeof(int)+numOfRanges*sizeof(float);
+			    char buffer[size];
+			    
+			    ROS_WARN("VISION size %d", size);
+			    
+			    int pointer = 0;
+			    
+			    encodeByte(buffer, pointer, LASER);
+			    encodeFloat(buffer, pointer, vision.lidar_data.angle_min);
+			    encodeFloat(buffer, pointer, vision.lidar_data.angle_max);
+			    encodeFloat(buffer, pointer, vision.lidar_data.angle_increment);
+			    encodeInt(buffer, pointer, numOfRanges);
+			    for (unsigned int i = 0; i < vision.lidar_data.ranges.size(); i++) {
+					encodeFloat(buffer, pointer, vision.lidar_data.ranges.at(i));
+				}
+			    
+			    sendVision = false;
+			    
+			    transmit(buffer, size);
+			    
+			    sendTelemetry = true;
 			}
 		}
 		
