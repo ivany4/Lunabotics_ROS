@@ -1,6 +1,6 @@
 Put following code to the ~/.bashrc file
 elias() {
-  cd ~/ROS/pkgs/lunabotics
+	roscd lunabotics
 	./lunabotics $1 $2 $3 $4 $5 $6 $7 $8
 }
 
