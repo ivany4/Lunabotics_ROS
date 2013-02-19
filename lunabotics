@@ -61,7 +61,7 @@ do
 		echo "-A ADDR					Specify IP address for incoming connections"
 		echo "-p PORT					Specify GUI TCP port"
 		echo "-P ADDR					Specify TCP port for incoming connections"
-		echo "-r PROFILE				Specify profile to be used (VMWare/Pionner/Elias)"
+		echo "-r PROFILE				Specify profile to be used (VMWare/Pioneer/Elias)"
 		exit 1;;
 	esac
 done
