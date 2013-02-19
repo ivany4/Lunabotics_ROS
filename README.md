@@ -8,5 +8,4 @@ Run . ~/.bashrc
 
 Now you can use commands for launching and building like "elias -n -p 1234"
 
-Note:
-If lunabotics package path is different change it in the following function and in lunabotics/lunabotics file
+Use profiles for different hardware. E.g, elias -r Pioneer will use the script for Pionner robot, whereas VMWare is the default profile and is intented to support generic Ubuntu 12.04 ros configuration
