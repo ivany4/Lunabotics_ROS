@@ -144,10 +144,14 @@ point_arr getSmoothPath(point_arr path)
 			ctrlPts.push_back(secondPts.at(i));
 			ctrlPts.push_back(path.at(i+1));
 			
+			cout << "Ctrl pts: " 
+			<< ctrlPts.at(0) << "; " << ctrlPts.at(1) << "; " 
+			<< ctrlPts.at(2) << "; " << ctrlPts.at(3) << endl; 
+			
 			for (float u = 0; u < 1.0; u += 0.1) {
 				geometry_msgs::Point point = planning::bezier_point(u, ctrlPts);
 				bezierPts.push_back(point);
-				ROS_INFO("u %f - %.2f,%.2f", u, point.x, point.y);
+				ROS_INFO("u %f - %f,%f", u, point.x, point.y);
 			}
 		}
 		return bezierPts;
@@ -219,7 +223,7 @@ void goalCallback(const lunabotics::Goal& msg)
 		
 		if (controlMode == ACKERMANN) {
 			ROS_WARN("STARTING SMOOTH PATH for %d knots", (int)knots.size());
-			point_arr pts = getSmoothPath(knots);
+			pts = getSmoothPath(knots);
 			
 			ROS_WARN("SMOOTH PATH PASSED");
 		}
