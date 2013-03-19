@@ -32,7 +32,7 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	for (unsigned int i = 0; i < res.map.info.height; i++) {
 		for (unsigned int j = 0; j < res.map.info.width; j++) {
 			int8_t occupancy = ((i+j)*4)%75;
-			if (i > 2 && i < 6 && j > 4 && j < 8) {
+			if ((i > 2 && i < 6 && j > 4 && j < 8) || (i > 5 && i < 9 && j > 8 && j < 12)) {
 				occupancy = 74+i+j;
 			}
 				

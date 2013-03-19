@@ -4,165 +4,144 @@
 #include <math.h>
 #include <list>
 #include <sstream>
-using namespace std;
+using namespace planning;
 
-vector<a_star_node> a_star_graph::find_path(vector<int8_t> map, int width, int height, int start_x, int start_y, int goal_x, int goal_y)
+//---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
+path::path(): width(0), height(0), initialized(false), map(), nodes(), corner_nodes()
+{
+}
+
+path::path(map_grid map, int width, int height, int start_x, int start_y, int goal_x, int goal_y): width(width), height(height), initialized(true), map(map), nodes(), corner_nodes()
 {
 	ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start_x, start_y, goal_x, goal_y);	
-	vector<a_star_node> graph;
-    if (map.at(goal_x+goal_y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); return graph; }
-    if (map.at(start_x+start_y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); return graph; }
-    
-    
-	list<a_star_node> open_set;
-	list<a_star_node> closed_set;
-	list<a_star_node> came_from;
+	node_arr graph;
 	
-    this->width = width;
-    this->height = height;
+    if (map.at(goal_x+goal_y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
+    if (map.at(start_x+start_y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
     
-    a_star_node goal_node = a_star_node(goal_x, goal_y);  
-	
-      
-    a_star_node start_node = a_star_node(start_x, start_y);
-    start_node.H = this->distance(start_node, goal_node);	//Distance
-    start_node.G = 0;										//Cost
-    start_node.F = start_node.H+start_node.G;				//Admissible heuristics
-    start_node.parent_x = start_x;
-    start_node.parent_y = start_y;
-    open_set.push_back(start_node);
-    
-    stringstream sstr;
-    
-    while (!open_set.empty()) {
-        open_set.sort();
-		a_star_node current = open_set.front();
-		sstr.str(string());
-		sstr << current;
-		ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
-
-        if (current == goal_node) {
-			ROS_INFO("Found goal %s", sstr.str().c_str());
-			graph = this->reconstruct_path(came_from, current);
-			reverse(graph.begin(), graph.end());
-			break;
-		}
+    if (this->initialized) {
+		node_list open_set;
+		node_list closed_set;
+		node_list came_from;
 		
-        open_set.remove(current);
-        closed_set.push_back(current);
-        
-        list<a_star_node> neighbours = current.neighbours(this->width, this->height, map);
-        
-        for (list<a_star_node>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-			a_star_node neighbour = *it;
-			if (this->in_set(closed_set, neighbour)) {
-				continue;
+	    this->width = width;
+	    this->height = height;
+	    
+	    node goal_node = node(goal_x, goal_y);  
+		
+	      
+	    node start_node = node(start_x, start_y);
+	    start_node.H = this->distance(start_node, goal_node);	//Distance
+	    start_node.G = 0;										//Cost
+	    start_node.F = start_node.H+start_node.G;				//Admissible heuristics
+	    start_node.parent_x = start_x;
+	    start_node.parent_y = start_y;
+	    open_set.push_back(start_node);
+	    
+	    std::stringstream sstr;
+	    
+	    while (!open_set.empty()) {
+	        open_set.sort();
+			node current = open_set.front();
+			sstr.str(std::string());
+			sstr << current;
+			ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
+	
+	        if (current == goal_node) {
+				ROS_INFO("Found goal %s", sstr.str().c_str());
+				graph = this->reconstruct_path(came_from, current);
+				reverse(graph.begin(), graph.end());
+				break;
 			}
 			
-			double tentative_G = current.G + this->distance(current, neighbour);
-			
-			if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G) {
-				came_from.push_back(current);
-				neighbour.parent_x = current.x;
-				neighbour.parent_y = current.y;
-				neighbour.G = tentative_G;
-				neighbour.H = this->distance(neighbour, goal_node);
-				neighbour.F = neighbour.G + neighbour.H;
-				if (!this->in_set(open_set, neighbour)) {
-					open_set.push_back(neighbour);
+	        open_set.remove(current);
+	        closed_set.push_back(current);
+	        
+	        node_list neighbours = current.neighbours(this->width, this->height, map);
+	        
+	        for (node_list::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+				node neighbour = *it;
+				if (this->in_set(closed_set, neighbour)) {
+					continue;
+				}
+				
+				double tentative_G = current.G + this->distance(current, neighbour);
+				
+				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G) {
+					came_from.push_back(current);
+					neighbour.parent_x = current.x;
+					neighbour.parent_y = current.y;
+					neighbour.G = tentative_G;
+					neighbour.H = this->distance(neighbour, goal_node);
+					neighbour.F = neighbour.G + neighbour.H;
+					if (!this->in_set(open_set, neighbour)) {
+						open_set.push_back(neighbour);
+					}
 				}
 			}
-		}
-    }
-
-    return graph;
-}
-
-vector<a_star_node> a_star_graph::reconstruct_path(list<a_star_node> came_from, a_star_node current)
-{	
-	vector<a_star_node> path;
-	a_star_node parent = current.parent(came_from);
-	if (parent != current) {
-		path = this->reconstruct_path(came_from, parent);
-		path.insert(path.begin(), current);
-	}
-	else {
-		path.push_back(current);
-	}
-	return path;
-}
+	    }
 	
-bool a_star_graph::in_set(list<a_star_node> set, a_star_node node) {
-	list<a_star_node>::iterator it = find(set.begin(), set.end(), node);
-	return it != set.end();
-}
-	
-double a_star_graph::distance(a_star_node node1, a_star_node node2) {
-    if (node1.x >= 0 && node1.x < this->width && 
-       node2.x >= 0 && node2.x < this->width && 
-       node1.y >=0 && node1.y < this->height && 
-       node2.y >= 0 && node2.y < this->height) {
-		int dx = node1.x-node2.x;
-		int dy = node1.y-node2.y;
-		return sqrt(pow(dx, 2) + pow(dy, 2));
-    }
-    return this->width*this->height;
+		this->nodes = graph;
+	}
 }
 
-vector<a_star_node> a_star_graph::removeIntermediateWaypoints(std::vector<a_star_node> originalGraph)
+//-------------------- GETTER / SETTER --------------------------//
+
+point_arr path::cornerPoints(float resolution)
 {
-	vector<a_star_node> newGraph;
-	vector<a_star_node>::iterator it = originalGraph.begin();
-	if (originalGraph.size() > 0) {
-		newGraph.push_back(*it);
-	}
-	for (unsigned int i = 1; i < originalGraph.size()-1; i++) {
-		a_star_node previousNode = originalGraph.at(i-1);
-		a_star_node nextNode = originalGraph.at(i+1);
-		a_star_node node = originalGraph.at(i);
-		ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
-		if (!((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y)) {
-			newGraph.push_back(node);
-		}
-	}
-	if (originalGraph.size() > 1) {
-		it = originalGraph.end()-1;
-		newGraph.push_back(*it);
-	}
-	return newGraph;
+	return this->pointRepresentation(this->cornerNodes(), resolution);
 }
 
-vector<a_star_node> a_star_graph::removeIntermediateWaypoints(vector<a_star_node> originalGraph, vector<int8_t> map, int width)
+point_arr path::allPoints(float resolution)
 {
-	if (originalGraph.size() > 1) {
-		ROS_INFO("%d nodes (without current position %d)", originalGraph.size(), originalGraph.size()-1);
-		vector<a_star_node> graph = removeIntermediateWaypoints(originalGraph);
-		ROS_INFO("After removing straight path nodes %d", graph.size());
+	return this->pointRepresentation(this->allNodes(), resolution);
+}
+
+bool path::is_initialized()
+{
+	return this->initialized;
+}
+
+
+node_arr path::allNodes()
+{
+	return this->nodes;
+}
+
+node_arr path::cornerNodes()
+{
+	if (this->corner_nodes.size() > 0) {
+		return this->corner_nodes;
+	}
+	else if (this->nodes.size() > 1) {
+		ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
+		node_arr graph = this->removeStraightPathWaypoints(this->nodes);
+		ROS_INFO("After removing straight path nodes %d", (int)graph.size());
 		int currentWaypointIdx = 0;
 		int finalWaypointIdx = graph.size()-1;
-		a_star_node currentWaypoint = graph.at(currentWaypointIdx);
-		a_star_node finalWaypoint = graph.at(finalWaypointIdx);
-		a_star_node furthestWaypoint = finalWaypoint;
+		node currentWaypoint = graph.at(currentWaypointIdx);
+		node finalWaypoint = graph.at(finalWaypointIdx);
+		node furthestWaypoint = finalWaypoint;
 		ROS_INFO("Current waypoint %d, final %d", currentWaypointIdx, finalWaypointIdx);
 		int furthesWaypointIdx = finalWaypointIdx;
-		vector<a_star_node> newGraph;
-	    stringstream sstr;
+		node_arr newGraph;
+	    std::stringstream sstr;
 		while (currentWaypoint != furthestWaypoint) {
-			sstr.str(string());
+			sstr.str(std::string());
 			sstr << currentWaypoint;
 			sstr << "->" << furthestWaypoint;
 			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint, map, width);
 			if (crossesObstacles) {
 				ROS_INFO("%s crosses obstacles", sstr.str().c_str());
 				if (--furthesWaypointIdx == currentWaypointIdx+1) {
-					sstr.str(string());
+					sstr.str(std::string());
 					sstr << currentWaypoint;
 					ROS_INFO("Saving %s", sstr.str().c_str());
 					newGraph.push_back(currentWaypoint);
 					currentWaypoint = graph.at(++currentWaypointIdx);
 					furthestWaypoint = finalWaypoint;
 					furthesWaypointIdx = finalWaypointIdx;
-					sstr.str(string());
+					sstr.str(std::string());
 					sstr << currentWaypoint;
 					ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
 				}
@@ -177,26 +156,25 @@ vector<a_star_node> a_star_graph::removeIntermediateWaypoints(vector<a_star_node
 				currentWaypointIdx = furthesWaypointIdx;
 				furthestWaypoint = finalWaypoint;
 				furthesWaypointIdx = finalWaypointIdx;
-				sstr.str(string());
+				sstr.str(std::string());
 				sstr << currentWaypoint;
 				ROS_INFO("Jumping to %s", sstr.str().c_str());
 			}
 		}
 		newGraph.push_back(finalWaypoint);
+		this->corner_nodes = newGraph;
 		return newGraph;
 	}
-	return originalGraph;
+	return this->corner_nodes;
 }
 
-a_star_graph::a_star_graph(): width(0), height(0)
-{
-}
+//-------------------- PRIVATE METHODS --------------------------//
 
-bool a_star_graph::isObstacleBetweenNodes(a_star_node node1, a_star_node node2, vector<int8_t> map, int width)
+bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int width)
 {
 	if (node1 == node2) return false;
 	
-	stringstream sstr;
+	std::stringstream sstr;
 	sstr << node1 << " and " << node2;
 	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
@@ -244,4 +222,73 @@ bool a_star_graph::isObstacleBetweenNodes(a_star_node node1, a_star_node node2, 
 		}
 	}
 	return false;	
+}
+
+point_arr path::pointRepresentation(node_arr graph, float resolution)
+{
+	point_arr points;
+	for (unsigned int i = 0; i < graph.size(); i++) {
+		node node = graph.at(i);
+		geometry_msgs::Point point;
+		point.x = node.x*resolution;
+		point.y = node.y*resolution;
+		points.push_back(point);
+	}
+	return points;
+}
+
+
+bool path::in_set(node_list set, node node) {
+	node_list::iterator it = find(set.begin(), set.end(), node);
+	return it != set.end();
+}
+	
+double path::distance(node node1, node node2) {
+    if (node1.x >= 0 && node1.x < this->width && 
+       node2.x >= 0 && node2.x < this->width && 
+       node1.y >=0 && node1.y < this->height && 
+       node2.y >= 0 && node2.y < this->height) {
+		int dx = node1.x-node2.x;
+		int dy = node1.y-node2.y;
+		return sqrt(pow(dx, 2) + pow(dy, 2));
+    }
+    return this->width*this->height;
+}
+
+node_arr path::removeStraightPathWaypoints(node_arr originalGraph)
+{
+	node_arr newGraph;
+	node_arr::iterator it = originalGraph.begin();
+	if (originalGraph.size() > 0) {
+		newGraph.push_back(*it);
+	}
+	for (unsigned int i = 1; i < originalGraph.size()-1; i++) {
+		node previousNode = originalGraph.at(i-1);
+		node nextNode = originalGraph.at(i+1);
+		node node = originalGraph.at(i);
+		ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
+		if (!((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y)) {
+			newGraph.push_back(node);
+		}
+	}
+	if (originalGraph.size() > 1) {
+		it = originalGraph.end()-1;
+		newGraph.push_back(*it);
+	}
+	return newGraph;
+}
+
+
+node_arr path::reconstruct_path(node_list came_from, node current)
+{	
+	node_arr path;
+	node parent = current.parent(came_from);
+	if (parent != current) {
+		path = this->reconstruct_path(came_from, parent);
+		path.insert(path.begin(), current);
+	}
+	else {
+		path.push_back(current);
+	}
+	return path;
 }

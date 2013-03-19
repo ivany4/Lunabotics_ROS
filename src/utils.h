@@ -1,3 +1,5 @@
+//#include "common_msgs/Point.h"
+
 double normalize_angle(double angle)
 {
 	double res = fmod(angle, M_PI*2);
@@ -9,3 +11,5 @@ double normalize_angle(double angle)
 	}
 	return res;
 }
+
+

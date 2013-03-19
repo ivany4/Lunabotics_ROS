@@ -1,23 +1,35 @@
+#ifndef _PLANNING_GRAPH_H_
+#define _PLANNING_GRAPH_H_
+
 #include "a_star_node.h"
 
-class a_star_graph
+namespace planning
 {
-private:
-	int width;
-	int height;
-	bool in_set(std::list<a_star_node> set, a_star_node node);
-	double distance(a_star_node node1, a_star_node node2);
-	std::vector<a_star_node> reconstruct_path(std::list<a_star_node> came_from, a_star_node current);
-	bool isObstacleBetweenNodes(a_star_node node1, a_star_node node2, std::vector<int8_t> map, int width);
-public:
-	a_star_graph();
-	std::vector<a_star_node> find_path(std::vector<int8_t> map, 
-								int width, int height, 
-								int start_x, int start_y, 
-								int goal_x, int goal_y);
-	std::vector<a_star_node> removeIntermediateWaypoints(std::vector<a_star_node> originalGraph);
-	std::vector<a_star_node> removeIntermediateWaypoints(std::vector<a_star_node> originalGraph, 
-															std::vector<int8_t> map,
-															int width);
-	
-};
+	class path
+	{
+	private:
+		int width;
+		int height;
+		bool initialized;
+		map_grid map;
+		node_arr nodes;
+		node_arr corner_nodes;
+		
+		bool in_set(node_list set, node node);
+		double distance(node node1, node node2);
+		node_arr reconstruct_path(node_list came_from, node current);
+		bool isObstacleBetweenNodes(node node1, node node2, map_grid map, int width);
+		point_arr pointRepresentation(node_arr graph, float resolution);	
+		node_arr removeStraightPathWaypoints(node_arr originalGraph);
+	public:
+		path();
+		path(map_grid map, int width, int height, int start_x, int start_y, int goal_x, int goal_y);
+		node_arr cornerNodes();
+		node_arr allNodes();
+		point_arr cornerPoints(float resolution);
+		point_arr allPoints(float resolution);
+		bool is_initialized();
+	};
+}
+
+#endif

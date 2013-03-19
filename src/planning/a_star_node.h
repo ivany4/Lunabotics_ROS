@@ -1,29 +1,44 @@
+#ifndef _PLANNING_NODE_H_
+#define _PLANNING_NODE_H_
+
+#include "../types.h"
+
 #define OCC_THRESHOLD	80
 
-using namespace std;
-
-
-class a_star_node
+namespace planning
 {
-   friend ostream &operator<<(ostream &, const a_star_node &);
+	
+	class node;
+	
+	typedef std::vector<planning::node> node_arr;
+	typedef std::list<planning::node> node_list;
+	
+		
+	class node
+	{
+	
+	   public:
+	      int x;
+	      int y;
+	      int parent_x;
+	      int parent_y;
+	      double F;
+	      double G;
+	      double H;
+	
+	      node();
+	      node(const node &);
+	      node(int nx, int ny);
+	      ~node(){};
+	      node &operator=(const node &rhs);
+	      int operator==(const node &rhs) const;
+	      int operator!=(const node &rhs) const;
+	      int operator<(const node &rhs) const;
+		friend std::ostream &operator<<(std::ostream &, const node &);
+	      node_list neighbours(int grid_width, int grid_height, map_grid grid);
+	      node parent(node_list parents);
+	};
 
-   public:
-      int x;
-      int y;
-      int parent_x;
-      int parent_y;
-      double F;
-      double G;
-      double H;
+}
 
-      a_star_node();
-      a_star_node(const a_star_node &);
-      a_star_node(int nx, int ny);
-      ~a_star_node(){};
-      a_star_node &operator=(const a_star_node &rhs);
-      int operator==(const a_star_node &rhs) const;
-      int operator!=(const a_star_node &rhs) const;
-      int operator<(const a_star_node &rhs) const;
-      std::list<a_star_node> neighbours(int grid_width, int grid_height, std::vector<int8_t> grid);
-      a_star_node parent(std::list<a_star_node> parents);
-};
+#endif //_PLANNING_NODE_H_

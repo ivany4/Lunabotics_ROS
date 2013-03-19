@@ -1,6 +1,5 @@
 #include "ros/ros.h"
 #include "nav_msgs/Path.h"
-#include "types.h"
 #include "utils.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
@@ -12,7 +11,10 @@
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
+#include "planning/bezier_smooth.h"
 #include "tf/tf.h"
+#include "types.h"
+
 using namespace std;
 
 float angleAccuracy = 0.4;
@@ -71,9 +73,8 @@ void finish_route() {
 	pathPublisher.publish(pathMsg);
 }
 
-vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
+planning::path *getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
 {
-	vector<a_star_node> graph;
 	if (mapClient.call(mapService)) {
 		stop();
 		
@@ -100,30 +101,58 @@ vector<a_star_node> getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose g
 		int goal_x = round(goalPose.position.x/resolution);
 		int goal_y = round(goalPose.position.y/resolution);
 		
-		a_star_graph pathPlan;
-		graph = pathPlan.find_path(mapService.response.map.data, 
+		planning::path *graph = new planning::path(mapService.response.map.data, 
 								mapService.response.map.info.width, 
 								mapService.response.map.info.height,
 								start_x, start_y, goal_x, goal_y);
 								
 		
-		if (graph.size() == 0) {
+		if (graph->allNodes().size() == 0) {
 			ROS_INFO("Path is not found");
+			planning::path *empty = new planning::path();
+			return empty;
 		}
 		else {
-			graph = pathPlan.removeIntermediateWaypoints(graph, mapService.response.map.data, 
-								mapService.response.map.info.width);
-			if (graph.size() == 1) {
+			if (graph->cornerNodes().size() == 1) {
 				ROS_INFO("Robot is at the goal");
 			}
-			graph.erase(graph.begin());
-			
+			return graph;
 		}	
 	}
 	else {
 		ROS_ERROR("Failed to call service luna_map");
 	}
-	return graph;
+	planning::path *empty = new planning::path();
+	return empty;
+}
+
+point_arr getSmoothPath(point_arr path) 
+{
+	unsigned int n = path.size();
+	if (n >= 2) {
+		point_arr firstPts;
+		point_arr secondPts;
+		GetCurveControlPoints(path, firstPts, secondPts);
+		
+		point_arr bezierPts;
+		
+		for (unsigned int i = 0; i < n-1; i++) {
+			ROS_INFO("=============== Segment %d ==============", i);
+			point_arr ctrlPts;
+			ctrlPts.push_back(path.at(i));
+			ctrlPts.push_back(firstPts.at(i));
+			ctrlPts.push_back(secondPts.at(i));
+			ctrlPts.push_back(path.at(i+1));
+			
+			for (float u = 0; u < 1.0; u += 0.1) {
+				geometry_msgs::Point point = bezier_point(u, ctrlPts);
+				bezierPts.push_back(point);
+				ROS_INFO("u %f - %.2f,%.2f", u, point.x, point.y);
+			}
+		}
+		return bezierPts;
+	}
+	return path;
 }
 
 void emergencyCallback(const lunabotics::Emergency& msg)
@@ -172,9 +201,9 @@ void goalCallback(const lunabotics::Goal& msg)
 			  currentPose.position.x, currentPose.position.y,
 			  goal.position.x, goal.position.y);
 	float resolution;
-	vector<a_star_node> path = getPath(currentPose, goal, resolution);
+	planning::path *path = getPath(currentPose, goal, resolution);
 	
-	if (path.size() > 0) {
+	if (path->is_initialized()) {
 		stringstream sstr;
 		
 		nav_msgs::Path pathMsg;
@@ -184,17 +213,34 @@ void goalCallback(const lunabotics::Goal& msg)
 		pathMsg.header.frame_id = "1";
 		seq++;
 		
-		int poseSeq = 0;
-		for (vector<a_star_node>::iterator it = path.begin(); it != path.end(); it++) {
-			a_star_node node = *it;
+		
+		point_arr knots = path->cornerPoints(resolution);
+		point_arr pts;
+		
+		if (controlMode == ACKERMANN) {
+			ROS_WARN("STARTING SMOOTH PATH for %d knots", (int)knots.size());
+			point_arr pts = getSmoothPath(knots);
 			
-			float x_m = node.x*resolution;
-			float y_m = node.y*resolution;
+			ROS_WARN("SMOOTH PATH PASSED");
+		}
+		else {
+			pts = knots;
+		}
+		
+		int poseSeq = 0;
+		for (point_arr::iterator it = pts.begin(); it != pts.end(); it++) {
+			geometry_msgs::Point pt = *it;
+			
+			//float x_m = node.x*resolution;
+			//float y_m = node.y*resolution;
+			float x_m = pt.x;
+			float y_m = pt.y;
 			
 			geometry_msgs::Pose waypoint;
-			waypoint.position.x = x_m;
-			waypoint.position.y = y_m;
-			waypoint.position.z = 0;
+			waypoint.position = pt;
+			//waypoint.position.x = x_m;
+			//waypoint.position.y = y_m;
+			//waypoint.position.z = 0;
 			waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
 			waypoints.push_back(waypoint);
 			sstr << "->(" << x_m << "," << y_m << ")";
@@ -219,6 +265,8 @@ void goalCallback(const lunabotics::Goal& msg)
 	else {
 		ROS_INFO("Path is empty");
 	}
+	
+	delete path;
 }
 
 void controlSkid(geometry_msgs::Pose waypointPose) 
@@ -292,6 +340,11 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 
 void controlAckermann(geometry_msgs::Pose waypointPose)
 {
+	//////////////////////////////////////////// TEST CASE//////////////////////////////
+	controlSkid(waypointPose);
+	return;
+	
+	
 	double dx = waypointPose.position.x-currentPose.position.x;
 	double dy = waypointPose.position.y-currentPose.position.y;
 	double theta = tf::getYaw(waypointPose.orientation) - tf::getYaw(currentPose.orientation);
