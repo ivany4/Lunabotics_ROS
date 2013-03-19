@@ -1,5 +1,7 @@
-#include "geometry_msgs/Point.h"
+#include "../types.h"
 
-void GetCurveControlPoints(std::vector<geometry_msgs::Point> knots, std::vector<geometry_msgs::Point> &firstControlPoints, std::vector<geometry_msgs::Point> &secondControlPoints);
-std::vector<double> GetFirstControlPoints(std::vector<double> rhs);
-geometry_msgs::Point bezier_point(int u, std::vector<geometry_msgs::Point> ctrl_points);
+namespace planning {
+	void GetCurveControlPoints(point_arr knots, point_arr &firstControlPoints, point_arr &secondControlPoints);
+	std::vector<double> GetFirstControlPoints(std::vector<double> rhs);
+	geometry_msgs::Point bezier_point(int u, point_arr ctrl_points);
+}

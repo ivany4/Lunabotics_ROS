@@ -2,7 +2,7 @@
 #include "ros/ros.h"
 using namespace std;
 
-	void GetCurveControlPoints(vector<geometry_msgs::Point> knots, vector<geometry_msgs::Point> &firstControlPoints, vector<geometry_msgs::Point> &secondControlPoints)
+	void planning::GetCurveControlPoints(point_arr knots, point_arr &firstControlPoints, point_arr &secondControlPoints)
 	{
 		unsigned int n = knots.size();
 		if (n < 2) {
@@ -41,7 +41,7 @@ using namespace std;
 			
 			
 			// Get first control points X-values
-			vector<double> x = GetFirstControlPoints(rhs);
+			vector<double> x = planning::GetFirstControlPoints(rhs);
 			
 			rhs.clear();
 			
@@ -53,7 +53,7 @@ using namespace std;
 			rhs.push_back((8*knots.at(n-2).y + knots.at(n-1).y)/2.0);
 			
 			// Get first control points Y-values
-			vector<double> y = GetFirstControlPoints(rhs);
+			vector<double> y = planning::GetFirstControlPoints(rhs);
 	
 			// Fill output arrays.
 			firstControlPoints.clear();
@@ -79,7 +79,7 @@ using namespace std;
 		}
 	}
 
-	vector<double> GetFirstControlPoints(vector<double> rhs)
+	vector<double> planning::GetFirstControlPoints(vector<double> rhs)
 	{
 		unsigned int n = rhs.size();
 		vector<double> x;// Solution vector.
@@ -100,7 +100,7 @@ using namespace std;
 	}
 
 
-geometry_msgs::Point bezier_point(int u, vector<geometry_msgs::Point> ctrl_points) 
+geometry_msgs::Point planning::bezier_point(int u, point_arr ctrl_points) 
 {
 	geometry_msgs::Point point;
 	point.x = pow(u,3)*(ctrl_points.at(3).x+3*(ctrl_points.at(1).x-ctrl_points.at(2).x)-ctrl_points.at(0).x)+3*pow(u,2)*(ctrl_points.at(0).x-2*ctrl_points.at(1).x+ctrl_points.at(2).x)+3*u*(ctrl_points.at(1).x-ctrl_points.at(0).x)+ctrl_points.at(0).x;

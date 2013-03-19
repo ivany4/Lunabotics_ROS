@@ -132,7 +132,7 @@ point_arr getSmoothPath(point_arr path)
 	if (n >= 2) {
 		point_arr firstPts;
 		point_arr secondPts;
-		GetCurveControlPoints(path, firstPts, secondPts);
+		planning::GetCurveControlPoints(path, firstPts, secondPts);
 		
 		point_arr bezierPts;
 		
@@ -145,7 +145,7 @@ point_arr getSmoothPath(point_arr path)
 			ctrlPts.push_back(path.at(i+1));
 			
 			for (float u = 0; u < 1.0; u += 0.1) {
-				geometry_msgs::Point point = bezier_point(u, ctrlPts);
+				geometry_msgs::Point point = planning::bezier_point(u, ctrlPts);
 				bezierPts.push_back(point);
 				ROS_INFO("u %f - %.2f,%.2f", u, point.x, point.y);
 			}
@@ -253,7 +253,8 @@ void goalCallback(const lunabotics::Goal& msg)
 			pose.pose = waypoint;
 			pathMsg.poses.push_back(pose);
 		}
-		wayIterator = waypoints.begin();
+		
+		wayIterator = waypoints.begin()+1;		
 		ROS_INFO("Returned path: %s", sstr.str().c_str());
 		geometry_msgs::Pose waypoint = waypoints.at(0);
 		ROS_INFO("Heading towards (%.1f,%.1f)", waypoint.position.x, waypoint.position.y);
@@ -301,7 +302,7 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 		}	
 		break;
 		case DRIVING: {	
-			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
+		//	ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				skidState = STOPPED;
 				controlMsg.motion.linear.x = 0;

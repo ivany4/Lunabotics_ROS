@@ -179,7 +179,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int widt
 	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
 	int denom = node2.x-node1.x;
-	double k = denom != 0 ? (node2.y-node1.y)/denom : 0;
+	double k = denom != 0 ? (node2.y-node1.y)/((float)denom) : 0;
 	double b = node1.y-k*node1.x;
 	
 	ROS_INFO("Line K=%.2f B=%.2f", k, b);
@@ -213,7 +213,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int widt
 			finish = node1.x;
 		}
 		for (int i = start; i < finish; i++) {
-			int y = k*i+b;
+			int y = round(k*i+b);
 			int8_t occupancy = map.at(width*y+i);
 			ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
