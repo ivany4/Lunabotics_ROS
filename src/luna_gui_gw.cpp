@@ -2,10 +2,11 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/Telemetry.h"
 #include "lunabotics/Vision.h"
+#include "lunabotics/ControlParams.h"
+#include "lunabotics/ControlMode.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
-#include "std_msgs/UInt8.h"
 #include "tf/tf.h"
 #include "types.h"
 #include "coding.h"
@@ -31,6 +32,7 @@ bool sendVision = false;
 bool sendPath = false;
 struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
+lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
 nav_msgs::Path path;
 CTRL_MODE_TYPE controlMode = ACKERMANN;
@@ -104,11 +106,15 @@ void mapUpdateCallback(const std_msgs::Empty& msg)
 	sendMap = true;
 }
 
-void controlModeCallback(const std_msgs::UInt8& msg)
+void controlModeCallback(const lunabotics::ControlMode& msg)
 {
-	controlMode = (CTRL_MODE_TYPE)msg.data;					
+	controlMode = (CTRL_MODE_TYPE)msg.mode;					
 }
 
+void controlParamsCallback(const lunabotics::ControlParams& msg)
+{
+	controlParams = msg;					
+}
 
 void pathCallback(const nav_msgs::Path& msg)
 {    
@@ -131,6 +137,7 @@ int main(int argc, char **argv)
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
+	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("luna_ctrl_params", 1, controlParamsCallback);
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("luna_vision", 1, visionCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	nav_msgs::GetMap mapService;
@@ -176,7 +183,13 @@ int main(int argc, char **argv)
 		}
 		else {
 			if (sendTelemetry) {
-			    int size = sizeof(double)*9+1+1;
+			    int size = sizeof(double)*9+1+1+1;
+			    if (controlParams.driving) {
+					size += sizeof(int32_t);
+					if (controlMode == ACKERMANN) {
+						size += sizeof(double)*3;
+					}
+				}
 			    char buffer[size];
 			    int pointer = 0;
 			  
@@ -191,6 +204,16 @@ int main(int argc, char **argv)
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
 				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
 				encodeByte(buffer, pointer, controlMode);
+				encodeByte(buffer, pointer, controlParams.driving);
+				if (controlParams.driving) {
+					ROS_WARN("Encoding %d", controlParams.next_waypoint_idx);
+					encodeInt(buffer, pointer, controlParams.next_waypoint_idx);
+					if (controlMode == ACKERMANN) {
+						encodeDouble(buffer, pointer, controlParams.y_err);
+						encodeDouble(buffer, pointer, controlParams.trajectory_point.x);
+						encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
+					}
+				}
 			    
 			    sendTelemetry = false;
 			    

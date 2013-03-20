@@ -2,9 +2,11 @@
 #define _TYPES_H_
 
 #include "geometry_msgs/Point.h"
+#include "geometry_msgs/Pose.h"
 
 typedef std::vector<int8_t> map_grid;
 typedef std::vector<geometry_msgs::Point> point_arr;
+typedef std::vector<geometry_msgs::Pose> pose_arr;
 
 
 enum CTRL_MODE_TYPE {

@@ -3,17 +3,20 @@
 #include "utils.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
+#include "lunabotics/ControlParams.h"
+#include "lunabotics/ControlMode.h"
 #include "lunabotics/Telemetry.h"
 #include "lunabotics/Goal.h"
+#include "lunabotics/PID.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
-#include "std_msgs/UInt8.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
 #include "planning/bezier_smooth.h"
 #include "tf/tf.h"
 #include "types.h"
+#include <numeric>
 
 using namespace std;
 
@@ -44,11 +47,16 @@ nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 geometry_msgs::Pose currentPose;
 ros::Publisher controlPublisher;
+ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
+lunabotics::PID pid;
 bool drive = false;
-vector<geometry_msgs::Pose> waypoints;
-vector<geometry_msgs::Pose>::iterator wayIterator;
-
+pose_arr waypoints;
+pose_arr::iterator wayIterator;
+double y_err_prev = 0;
+float linear_speed_limit = 1;
+ros::Time y_err_time_prev;
+vector<double> y_err_int;
 
 void stop() {
 	drive = false;
@@ -56,7 +64,12 @@ void stop() {
 	controlMsg.motion.linear.x = 0;
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
+	lunabotics::ControlParams controlParamsMsg;
+	controlParamsMsg.driving = drive;
+	controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+	controlParamsPublisher.publish(controlParamsMsg);
 	waypoints.clear();
+	y_err_int.clear();
 }
 
 void finish_route() {
@@ -170,9 +183,12 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
 }
 
-void controlModeCallback(const std_msgs::UInt8& msg)
+void controlModeCallback(const lunabotics::ControlMode& msg)
 {
-	controlMode = (CTRL_MODE_TYPE)msg.data;
+	controlMode = (CTRL_MODE_TYPE)msg.mode;
+	if (controlMode == ACKERMANN) {
+		linear_speed_limit = msg.linear_speed_limit;
+	}
 	
 	ROS_INFO("Switching control mode to %s", controlModeToString(controlMode).c_str());
 					
@@ -189,9 +205,16 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	}
 }
 
+
+void pidCallback(const lunabotics::PID& msg) 
+{
+	pid = msg;
+}
+
 void goalCallback(const lunabotics::Goal& msg) 
 {
 	waypoints.clear();
+	y_err_int.clear();
 	
 	angleAccuracy = msg.angleAccuracy;
 	distanceAccuracy = msg.distanceAccuracy;
@@ -266,6 +289,10 @@ void goalCallback(const lunabotics::Goal& msg)
 		pathPublisher.publish(pathMsg);
 		
 		drive = true;
+		lunabotics::ControlParams controlParamsMsg;
+		controlParamsMsg.driving = drive;
+		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsPublisher.publish(controlParamsMsg);
 	}
 	else {
 		ROS_INFO("Path is empty");
@@ -279,6 +306,8 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 	double dx = waypointPose.position.x-currentPose.position.x;
 	double dy = waypointPose.position.y-currentPose.position.y;
 	double angle = normalize_angle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+	
+	
 	lunabotics::Control controlMsg;
 	
 	switch (skidState) {
@@ -293,6 +322,10 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 					finish_route();
 				}
 				else {
+					lunabotics::ControlParams controlParamsMsg;
+					controlParamsMsg.driving = drive;
+					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;	
+					controlParamsPublisher.publish(controlParamsMsg);
 					geometry_msgs::Pose nextWaypointPose = *wayIterator;
 					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
@@ -345,9 +378,97 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 
 void controlAckermann(geometry_msgs::Pose waypointPose)
 {
-	//////////////////////////////////////////// TEST CASE//////////////////////////////
-	controlSkid(waypointPose);
+	//////////////////////////////// ARC-TURN WITH DIFFERENTIAL DRIVE TEST /////////////////////
+	
+	if (wayIterator >= waypoints.end()) {
+		finish_route();
+	}
+	
+	if (waypoints.size() >= 2) {
+		pose_arr::iterator closestWaypoint1 = waypoints.begin();
+		pose_arr::iterator closestWaypoint2 = waypoints.begin()+1;
+		double dist2 = point_distance(currentPose.position, (*closestWaypoint1).position);
+		double tmp = point_distance(currentPose.position, (*closestWaypoint2).position);
+		double dist1 = min(dist2, tmp);
+		dist2 = max(dist2, tmp);
+		for (pose_arr::iterator it = waypoints.begin()+2; it < waypoints.end(); it++) {
+			double dist = point_distance(currentPose.position, (*it).position);
+			if (dist < dist1) {
+				dist2 = dist1, closestWaypoint2 = closestWaypoint1;
+				dist1 = dist, closestWaypoint1 = it;
+			}
+			else if (dist < dist2) {
+				dist2 = dist, closestWaypoint2 = it;
+			}
+		}
+		if (closestWaypoint1 == wayIterator) {
+			wayIterator++;
+		}
+		double length = point_distance((*closestWaypoint1).position, (*closestWaypoint2).position);
+		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
+		double y_err = distance_to_line(dist1, angle);		
+		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);
+		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
+		double goalAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
+		double angle_diff = goalAngle - closestTrajectoryPointAngle;
+		if (angle_diff > 0) {
+			y_err *= -1;
+		}
+		
+		
+		ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", currentPose.position.x,currentPose.position.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
+		
+		lunabotics::ControlParams controlParamsMsg;
+		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
+		controlParamsMsg.y_err = y_err;
+		controlParamsMsg.driving = drive;
+		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsPublisher.publish(controlParamsMsg);
+		
+		//Control law
+				
+		ros::Time now = ros::Time::now();
+		ros::Duration dt = now - y_err_time_prev;
+		y_err_time_prev = now;
+		if (dt.toSec() != 0 && !isnan(y_err)) {
+			double d_y_err = y_err - y_err_prev / dt.toSec();
+			
+			if (y_err_int.size() == 10) {
+				y_err_int.erase(y_err_int.begin());
+			}
+			y_err_int.push_back(y_err);
+			double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
+			
+			double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
+			
+			ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
+			
+			float v = linear_speed_limit;
+			if (isnan(dw)) {
+				dw = 0;
+				v = 0;
+			}
+			
+			lunabotics::Control controlMsg;
+			controlMsg.motion.linear.x = v;
+			controlMsg.motion.angular.z = dw;
+			controlPublisher.publish(controlMsg);
+		}
+		y_err_prev = y_err;
+	}
+	else {
+		//No need for curvature, just straight driving
+		controlSkid(waypointPose);
+	}
+	
 	return;
+	
+	///////////////////////////////////////////////////////////////////
+	
+	
+	
+	
+	
 	
 	
 	double dx = waypointPose.position.x-currentPose.position.x;
@@ -388,13 +509,22 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_driver");
 	ros::NodeHandle nodeHandle;
+	
+	y_err_time_prev = ros::Time::now();
+	
+	pid.p = 2;
+	pid.i = 0.1;
+	pid.d = 1;
+	
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 1, autonomyCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::Subscriber gaolSubscriber = nodeHandle.subscribe("luna_goal", 256, goalCallback);
+	ros::Subscriber goalSubscriber = nodeHandle.subscribe("luna_goal", 256, goalCallback);
+	ros::Subscriber pidSubscriber = nodeHandle.subscribe("luna_pid", sizeof(float)*3, pidCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
 	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("luna_path", 256);
+	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("luna_ctrl_params", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
 	
 	

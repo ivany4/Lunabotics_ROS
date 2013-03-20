@@ -1,8 +1,11 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
+#include "lunabotics/ControlMode.h"
 #include "lunabotics/Goal.h"
+#include "lunabotics/PID.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
+#include "std_msgs/Empty.h"
 #include "types.h"
 #include "coding.h"
 #include <iostream>
@@ -30,7 +33,9 @@ enum RX_CONTENT_TYPE {
 	STEERING		 = 0,
 	AUTONOMY		 = 1,
 	CTRL_MODE		 = 2,
-	ROUTE			 = 3
+	ROUTE			 = 3,
+	MAP_REQUEST		 = 4,
+	PID				 = 5
 };
 
 
@@ -59,9 +64,11 @@ int main(int argc, char **argv)
 	
 	ros::NodeHandle nodeHandle;
 	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
+	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("luna_pid", sizeof(float)*3);
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 1);
-	ros::Publisher controlModePublisher = nodeHandle.advertise<std_msgs::UInt8>("luna_ctrl_mode", 1);
+	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("luna_ctrl_mode", 1);
 	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("luna_goal", 1);
+	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("luna_map_update", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -149,9 +156,14 @@ int main(int argc, char **argv)
 					
 					ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
 					
-					std_msgs::UInt8 controlModeMsg;
-					controlModeMsg.data = type;
+					lunabotics::ControlMode controlModeMsg;
+					controlModeMsg.mode = type;
+					if (type == ACKERMANN) {
+						controlModeMsg.linear_speed_limit = decodeFloat(buffer, pointer);
+					}
 					controlModePublisher.publish(controlModeMsg);
+					
+					
 					
 				    //replyToGUI("OK", clientSocket);
 				    
@@ -217,6 +229,22 @@ int main(int argc, char **argv)
 					goalPublisher.publish(goalMsg);
 					
 					//replyToGUI("OK", clientSocket);
+				}
+				break;
+				
+				case MAP_REQUEST: {
+					ROS_INFO("Receiving map request");
+					std_msgs::Empty emptyMsg;
+					mapRequestPublisher.publish(emptyMsg);
+				}
+				break;
+				
+				case PID: {
+					lunabotics::PID pidMsg;
+					pidMsg.p = decodeFloat(buffer, pointer);
+					pidMsg.i = decodeFloat(buffer, pointer);
+					pidMsg.d = decodeFloat(buffer, pointer);
+					pidPublisher.publish(pidMsg);
 				}
 				break;
 				

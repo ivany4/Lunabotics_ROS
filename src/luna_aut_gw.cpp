@@ -17,14 +17,14 @@ void stageLaserCallback(const sensor_msgs::LaserScan& msg)
 	visionMsg.lidar_data.ranges = reducedRanges;
 	visionMsg.lidar_data.angle_increment *= 10.0;
 	publishVision = true;
-	ROS_INFO("Getting %d ranges. Reducing to %d", msg.ranges.size(), reducedRanges.size());
+	ROS_INFO("Getting %d ranges. Reducing to %d", (int)msg.ranges.size(), (int)reducedRanges.size());
 }
 
 void pioneerLaserCallback(const sensor_msgs::LaserScan& msg)
 {
 	visionMsg.lidar_data = msg;
 	publishVision = true;
-	ROS_INFO("Getting %d ranges", msg.ranges.size());
+	ROS_INFO("Getting %d ranges", (int)msg.ranges.size());
 }
 
 int main(int argc, char **argv)
