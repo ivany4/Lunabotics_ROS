@@ -172,6 +172,7 @@ int main(int argc, char **argv)
    	
 	ros::Rate loop_rate(20);
 	while (ros::ok()) {
+				
 		if (!sock_conn) {
 			if (!tryConnect()) {
 		        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
@@ -214,6 +215,8 @@ int main(int argc, char **argv)
 						encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
 					}
 				}
+				
+				
 			    
 			    sendTelemetry = false;
 			    

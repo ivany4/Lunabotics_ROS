@@ -387,10 +387,17 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 	if (waypoints.size() >= 2) {
 		pose_arr::iterator closestWaypoint1 = waypoints.begin();
 		pose_arr::iterator closestWaypoint2 = waypoints.begin()+1;
-		double dist2 = point_distance(currentPose.position, (*closestWaypoint1).position);
-		double tmp = point_distance(currentPose.position, (*closestWaypoint2).position);
-		double dist1 = min(dist2, tmp);
-		dist2 = max(dist2, tmp);
+		double dist1 = point_distance(currentPose.position, (*closestWaypoint1).position);
+		double dist2 = point_distance(currentPose.position, (*closestWaypoint2).position);
+		if (dist2 < dist1) {
+			//Swap values to keep waypoint1 always the closest one
+			double tmp_dist = dist1;
+			dist1 = dist2;
+			dist2 = tmp_dist;
+			pose_arr::iterator tmp_waypoint = closestWaypoint1;
+			closestWaypoint1 = closestWaypoint2;
+			closestWaypoint2 = tmp_waypoint;
+		}
 		for (pose_arr::iterator it = waypoints.begin()+2; it < waypoints.end(); it++) {
 			double dist = point_distance(currentPose.position, (*it).position);
 			if (dist < dist1) {
@@ -409,11 +416,6 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 		double y_err = distance_to_line(dist1, angle);		
 		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);
 		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
-		double goalAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
-		double angle_diff = goalAngle - closestTrajectoryPointAngle;
-		if (angle_diff > 0) {
-			y_err *= -1;
-		}
 		
 		
 		ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", currentPose.position.x,currentPose.position.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
@@ -425,36 +427,55 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
 		controlParamsPublisher.publish(controlParamsMsg);
 		
-		//Control law
-				
-		ros::Time now = ros::Time::now();
-		ros::Duration dt = now - y_err_time_prev;
-		y_err_time_prev = now;
-		if (dt.toSec() != 0 && !isnan(y_err)) {
-			double d_y_err = y_err - y_err_prev / dt.toSec();
-			
-			if (y_err_int.size() == 10) {
-				y_err_int.erase(y_err_int.begin());
-			}
-			y_err_int.push_back(y_err);
-			double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
-			
-			double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
-			
-			ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
-			
-			float v = linear_speed_limit;
-			if (isnan(dw)) {
-				dw = 0;
-				v = 0;
-			}
-			
-			lunabotics::Control controlMsg;
-			controlMsg.motion.linear.x = v;
-			controlMsg.motion.angular.z = dw;
-			controlPublisher.publish(controlMsg);
+		if (fabs(angle) > M_PI_2) {
+			//Trajectory is not on the side. First need to reach starting point
+			controlSkid(*closestWaypoint1);
 		}
-		y_err_prev = y_err;
+		else {
+		
+		
+		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
+		double angle_diff = closestTrajectoryPointAngle - tf::getYaw(currentPose.orientation);
+		angle_diff = normalize_angle(angle_diff);
+		
+		 //goalAngle - closestTrajectoryPointAngle;
+		if (angle_diff > 0) {
+			y_err *= -1;
+		}
+		
+		
+		
+			//Control law
+					
+			ros::Time now = ros::Time::now();
+			ros::Duration dt = now - y_err_time_prev;
+			y_err_time_prev = now;
+			if (dt.toSec() != 0 && !isnan(y_err)) {
+				double d_y_err = y_err - y_err_prev / dt.toSec();
+				
+				if (y_err_int.size() == 10) {
+					y_err_int.erase(y_err_int.begin());
+				}
+				y_err_int.push_back(y_err);
+				double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
+				
+				double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
+				
+				ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
+				
+				float v = linear_speed_limit;
+				if (isnan(dw)) {
+					dw = 0;
+					v = 0;
+				}
+				
+				lunabotics::Control controlMsg;
+				controlMsg.motion.linear.x = v;
+				controlMsg.motion.angular.z = dw;
+				controlPublisher.publish(controlMsg);
+			}
+			y_err_prev = y_err;
+		}
 	}
 	else {
 		//No need for curvature, just straight driving
@@ -534,6 +555,82 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(200);
 	while (ros::ok())
 	{
+		
+		/*
+		
+	/////////////////////////////////////////////////////////////
+	if (!drive) {
+		nav_msgs::Path pathMsg;
+		geometry_msgs::PoseStamped waypoint1;
+		waypoint1.pose.position.x = 3;
+		waypoint1.pose.position.y = 3;
+		waypoint1.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+		geometry_msgs::PoseStamped waypoint2;
+		waypoint2.pose.position.x = 5;
+		waypoint2.pose.position.y = 5;
+		waypoint2.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+		pathMsg.poses.push_back(waypoint1);
+		pathMsg.poses.push_back(waypoint2);
+		pathPublisher.publish(pathMsg);
+		
+		
+		
+		geometry_msgs::Pose closestWaypoint1;
+		closestWaypoint1.position.x = 3;
+		closestWaypoint1.position.y = 3;
+		geometry_msgs::Pose closestWaypoint2;
+		closestWaypoint2.position.x = 5;
+		closestWaypoint2.position.y = 5;
+		double dist1 = point_distance(currentPose.position, closestWaypoint1.position);
+		double dist2 = point_distance(currentPose.position, closestWaypoint2.position);
+		if (dist2 < dist1) {
+			//Swap values to keep waypoint1 always the closest one
+			double tmp_dist = dist1;
+			dist1 = dist2;
+			dist2 = tmp_dist;
+			geometry_msgs::Pose tmp_waypoint = closestWaypoint1;
+			closestWaypoint1 = closestWaypoint2;
+			closestWaypoint2 = tmp_waypoint;
+		}
+		double length = point_distance(closestWaypoint1.position, closestWaypoint2.position);
+		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
+		double y_err = distance_to_line(dist1, angle);		
+		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, closestWaypoint1.position, closestWaypoint2.position);
+		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
+		//double goalAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
+		double angle_diff = closestTrajectoryPointAngle - tf::getYaw(currentPose.orientation);
+		angle_diff = normalize_angle(angle_diff);
+		
+		 //goalAngle - closestTrajectoryPointAngle;
+		if (angle_diff < 0) {
+			y_err *= -1;
+		}
+		
+		ROS_INFO("angle to closest %f, heading %f, diff %f", closestTrajectoryPointAngle, tf::getYaw(currentPose.orientation), angle_diff); 
+		
+		//ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", currentPose.position.x,currentPose.position.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,closestWaypoint1.position.x,closestWaypoint1.position.y,closestWaypoint2.position.x,closestWaypoint2.position.y, y_err);
+		
+		lunabotics::ControlParams controlParamsMsg;
+		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
+		controlParamsMsg.y_err = y_err;
+		controlParamsMsg.driving = true;
+		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsPublisher.publish(controlParamsMsg);
+		
+		
+		
+		ros::spinOnce();
+		loop_rate.sleep();
+		
+		
+		continue;
+	}
+		
+		
+	/////////////////////////////////////////////////////////////
+		*/
+		
+		
 		//Whenever needed send control message
 		if (drive) {
 			if (wayIterator < waypoints.end()) {
