@@ -50,6 +50,7 @@ ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
 lunabotics::PID pid;
+geometry_msgs::Twist velocities;
 bool drive = false;
 pose_arr waypoints;
 pose_arr::iterator wayIterator;
@@ -181,6 +182,7 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	currentPose.position = msg.odometry.pose.pose.position;
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
+	velocities = msg.odometry.twist.twist;
 }
 
 void controlModeCallback(const lunabotics::ControlMode& msg)
@@ -387,8 +389,23 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 	if (waypoints.size() >= 2) {
 		pose_arr::iterator closestWaypoint1 = waypoints.begin();
 		pose_arr::iterator closestWaypoint2 = waypoints.begin()+1;
-		double dist1 = point_distance(currentPose.position, (*closestWaypoint1).position);
-		double dist2 = point_distance(currentPose.position, (*closestWaypoint2).position);
+		
+		//Get tip of the linear velocity vector. Shortest distance from this tip to the trajectory is used as PID error.
+		
+		double theta = tf::getYaw(currentPose.orientation);
+		double x = currentPose.position.x + velocities.linear.x * cos(theta);
+		double y = currentPose.position.y + velocities.linear.x * sin(theta);
+		
+		geometry_msgs::Point testPoint;
+		testPoint.x = x;
+		testPoint.y = y;
+		
+		//geometry_msgs::Point testPoint = currentPose.position;
+		
+		
+		
+		double dist1 = point_distance(testPoint, (*closestWaypoint1).position);
+		double dist2 = point_distance(testPoint, (*closestWaypoint2).position);
 		if (dist2 < dist1) {
 			//Swap values to keep waypoint1 always the closest one
 			double tmp_dist = dist1;
@@ -399,7 +416,7 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 			closestWaypoint2 = tmp_waypoint;
 		}
 		for (pose_arr::iterator it = waypoints.begin()+2; it < waypoints.end(); it++) {
-			double dist = point_distance(currentPose.position, (*it).position);
+			double dist = point_distance(testPoint, (*it).position);
 			if (dist < dist1) {
 				dist2 = dist1, closestWaypoint2 = closestWaypoint1;
 				dist1 = dist, closestWaypoint1 = it;
@@ -417,10 +434,11 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);;
 		
 		
-		ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", currentPose.position.x,currentPose.position.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
+		ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", testPoint.x,testPoint.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
 		
 		lunabotics::ControlParams controlParamsMsg;
 		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
+		controlParamsMsg.velocity_point = testPoint;
 		controlParamsMsg.y_err = y_err;
 		controlParamsMsg.driving = drive;
 		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
@@ -438,9 +456,9 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 			return;
 		}
 		
-		//double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
-		double closestTrajectoryPointAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
-		double angle_diff = closestTrajectoryPointAngle - tf::getYaw(currentPose.orientation);
+		//double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-testPoint.y, closestTrajectoryPoint.x-testPoint.x);
+		double closestTrajectoryPointAngle = atan2((*wayIterator).position.y-testPoint.y, (*wayIterator).position.x-testPoint.x);
+		double angle_diff = closestTrajectoryPointAngle - theta;
 		angle_diff = normalize_angle(angle_diff);
 		
 		 //goalAngle - closestTrajectoryPointAngle;
@@ -478,6 +496,7 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 					#pragma message("This top w is for stage only");
 					double top_w = 1.57;
 					v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
+					v = std::max((float)0.01, v);
 				}
 				
 				lunabotics::Control controlMsg;
@@ -544,9 +563,9 @@ int main(int argc, char **argv)
 	
 	y_err_time_prev = ros::Time::now();
 	
-	pid.p = 2;
+	pid.p = 0.05;//2;
 	pid.i = 0.1;
-	pid.d = 1;
+	pid.d = 0.18;//1;
 	
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 1, autonomyCallback);

@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 			    if (controlParams.driving) {
 					size += sizeof(int32_t);
 					if (controlMode == ACKERMANN) {
-						size += sizeof(double)*3;
+						size += sizeof(double)*5;
 					}
 				}
 			    char buffer[size];
@@ -213,6 +213,8 @@ int main(int argc, char **argv)
 						encodeDouble(buffer, pointer, controlParams.y_err);
 						encodeDouble(buffer, pointer, controlParams.trajectory_point.x);
 						encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
+						encodeDouble(buffer, pointer, controlParams.velocity_point.x);
+						encodeDouble(buffer, pointer, controlParams.velocity_point.y);
 					}
 				}
 				
