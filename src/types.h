@@ -5,9 +5,10 @@
 #include "geometry_msgs/Pose.h"
 
 typedef std::vector<int8_t> map_grid;
-typedef std::vector<geometry_msgs::Point> point_arr;
-typedef std::vector<geometry_msgs::Pose> pose_arr;
-
+typedef	geometry_msgs::Point point_t;
+typedef geometry_msgs::Pose pose_t;
+typedef std::vector<point_t> point_arr;
+typedef std::vector<pose_t> pose_arr;
 
 enum CTRL_MODE_TYPE {
     ACKERMANN 		 = 0,

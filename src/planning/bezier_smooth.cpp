@@ -3,6 +3,11 @@
 #include "float.h"
 using namespace std;
 
+enum ROTATION_DIRECTION {
+	CW = 1,
+	CCW = -1
+};
+
 double alpha_p(double beta, double K_alpha, double K_beta)
 {
 	return K_alpha/pow(1-sqrt(K_beta/beta), 2);
@@ -13,7 +18,7 @@ double beta_p(double alpha, double K_alpha, double K_beta)
 	return K_beta/pow(1-sqrt(K_alpha/alpha), 2);
 }
 
-bool point_is_within_triangle(geometry_msgs::Point p, double alpha_bar, double beta_bar, double theta)
+bool point_is_within_triangle(point_t p, double alpha_bar, double beta_bar, double theta)
 {
 	bool condition_1 = p.y > 0 && p.y < beta_bar*sin(theta);
 	bool condition_2 = p.y*cos(theta) + p.x*sin(theta) > 0;
@@ -21,18 +26,20 @@ bool point_is_within_triangle(geometry_msgs::Point p, double alpha_bar, double b
 	return condition_1 && condition_2 && condition_3;
 }
 
-geometry_msgs::Point rotate_point(geometry_msgs::Point point, double angle)
+point_t rotate_point(point_t point, double angle, ROTATION_DIRECTION dir)
 {
-	point.x = point.x*cos(angle)+point.y*sin(angle);
-	point.y = -point.x*sin(angle)+point.y*cos(angle);
-	return point;
+	point_t result;
+	result.x = point.x*cos(angle)+point.y*sin(angle)*dir;
+	result.y = -point.x*sin(angle)*dir+point.y*cos(angle);
+	return result;
 }
 
-std::vector<geometry_msgs::Point> planning::quadratic_bezier(geometry_msgs::Point q0, geometry_msgs::Point q1, geometry_msgs::Point q2, float step)
+point_arr planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int segments)
 {
-	std::vector<geometry_msgs::Point> points;
-	for (float lambda = 0; lambda <= 1; lambda += step) {
-		geometry_msgs::Point point;
+	point_arr points;
+	for (int i = 0; i <= segments; i++) {
+		float lambda = i/(float)segments;
+		point_t point;
 		double a = pow(1-lambda, 2);
 		double b = 2*lambda*(1-lambda);
 		double c = pow(lambda, 2);
@@ -43,17 +50,17 @@ std::vector<geometry_msgs::Point> planning::quadratic_bezier(geometry_msgs::Poin
 	return points;
 }
 
-std::vector<geometry_msgs::Point> planning::trajectory_bezier(geometry_msgs::Point q0, geometry_msgs::Point q1, geometry_msgs::Point q2,  geometry_msgs::Point p)
-{
+point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p)
+{		
 	//Constant values
 	const float ALPHA_STEP = 0.1;
-	const float BEZIER_STEP = 0.01;
+	const float BEZIER_SEGMENTS = 20;
 	
 	
 	//Preserve transformation parameters to reconstruct global coordinates for the curve
 	double tx = -q1.x;
 	double ty = -q1.y;
-	geometry_msgs::Point w1 = q1;
+	point_t w1 = q1;
 	
 	//Translate to make the origin at q1
 	q0.x += tx;
@@ -64,6 +71,7 @@ std::vector<geometry_msgs::Point> planning::trajectory_bezier(geometry_msgs::Poi
 	p.y += ty;
 	q1.x = 0;
 	q1.y = 0;
+	ROS_INFO("after translation q0=%f,%f, q2=%f,%f, p=%f,%f", q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
 	//Rotate to align q1q0 with x-axis
 	double theta1 = atan2(q2.y, q2.x);
@@ -80,9 +88,11 @@ std::vector<geometry_msgs::Point> planning::trajectory_bezier(geometry_msgs::Poi
 		rotate_by = -(M_PI+theta2);
 	}
 	
-	q0 = rotate_point(q0, rotate_by);
-	q2 = rotate_point(q2, rotate_by);
-	p = rotate_point(p, rotate_by);
+	q0 = rotate_point(q0, rotate_by, CW);
+	q2 = rotate_point(q2, rotate_by, CW);
+	p = rotate_point(p, rotate_by, CW);
+	
+	ROS_INFO("rotate_by=%f, q0=%f,%f, q2=%f,%f, p=%f,%f", rotate_by, q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
 	//Tetragonal concave polygonal data
 	double alpha_bar = q0.x;
@@ -131,8 +141,8 @@ std::vector<geometry_msgs::Point> planning::trajectory_bezier(geometry_msgs::Poi
 	q1 = w1;
 	
 	//Rotate
-	q0 = rotate_point(q0, -rotate_by);
-	q2 = rotate_point(q2, -rotate_by);
+	q0 = rotate_point(q0, rotate_by, CCW);
+	q2 = rotate_point(q2, rotate_by, CCW);
 	
 	//Translate
 	q0.x -= tx;
@@ -140,7 +150,7 @@ std::vector<geometry_msgs::Point> planning::trajectory_bezier(geometry_msgs::Poi
 	q2.x -= tx;
 	q2.y -= ty;
 	
-	return planning::quadratic_bezier(q0, q1, q2, BEZIER_STEP);
+	return planning::quadratic_bezier(q0, q1, q2, BEZIER_SEGMENTS);
 }
 
 

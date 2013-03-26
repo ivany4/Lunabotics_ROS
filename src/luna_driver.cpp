@@ -17,6 +17,7 @@
 #include "tf/tf.h"
 #include "types.h"
 #include <numeric>
+#include <fstream>
 
 using namespace std;
 
@@ -45,7 +46,7 @@ CTRL_MODE_TYPE controlMode;
 SKID_STATE skidState;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
-geometry_msgs::Pose currentPose;
+pose_t currentPose;
 ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
@@ -87,7 +88,7 @@ void finish_route() {
 	pathPublisher.publish(pathMsg);
 }
 
-planning::path *getPath(geometry_msgs::Pose startPose, geometry_msgs::Pose goalPose, float &res)
+planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 {
 	if (mapClient.call(mapService)) {
 		stop();
@@ -163,7 +164,7 @@ point_arr getSmoothPath(point_arr path)
 			<< ctrlPts.at(2) << "; " << ctrlPts.at(3) << endl; 
 			
 			for (float u = 0; u < 1.0; u += 0.1) {
-				geometry_msgs::Point point = planning::bezier_point(u, ctrlPts);
+				point_t point = planning::bezier_point(u, ctrlPts);
 				bezierPts.push_back(point);
 				ROS_INFO("u %f - %f,%f", u, point.x, point.y);
 			}
@@ -207,6 +208,13 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	}
 }
 
+point_t midPoint(point_t p1, point_t p2)
+{
+	point_t p;
+	p.x = (p1.x+p2.x)/2;
+	p.y = (p1.y+p2.y)/2;
+	return p;
+}
 
 void pidCallback(const lunabotics::PID& msg) 
 {
@@ -222,7 +230,7 @@ void goalCallback(const lunabotics::Goal& msg)
 	distanceAccuracy = msg.distanceAccuracy;
 	
 	//Specify params
-	geometry_msgs::Pose goal;
+	pose_t goal;
 	goal.position = msg.point;
 	goal.orientation = tf::createQuaternionMsgFromYaw(0);
 	
@@ -243,29 +251,75 @@ void goalCallback(const lunabotics::Goal& msg)
 		seq++;
 		
 		
-		point_arr knots = path->cornerPoints(resolution);
+		point_arr corner_points = path->cornerPoints(resolution);
 		point_arr pts;
 		
 		if (controlMode == ACKERMANN) {
+			
+			if (corner_points.size() > 2) {
+				point_arr closest_obstacles = path->closestObstaclePoints(resolution);
+			
+				//Get bezier quadratic curves for each point-turn
+				for (unsigned int i = 1; i < corner_points.size()-1; i++) {
+					point_t q0, q2;
+					point_t prev = corner_points.at(i-1);
+					point_t curr = corner_points.at(i);
+					point_t next = corner_points.at(i+1);
+					point_t p = closest_obstacles.at(i-1);
+					if (i == 1) {
+						q0 = prev;
+					}
+					else {
+						q0 = midPoint(prev, curr);
+					}
+					if (i == corner_points.size()-2) {
+						q2 = next;
+					}
+					else {
+						q2 = midPoint(next, curr);
+					}
+					point_arr curve = planning::trajectory_bezier(q0, curr, q2, p);
+					
+					ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+					
+					//Append curve points
+					pts.insert(pts.end(), curve.begin(), curve.end());
+				}
+				
+				
+				ofstream myfile;
+				myfile.open ("data.txt");
+  
+				for (point_arr::iterator iit = pts.begin(); iit < pts.end(); iit++) {
+					myfile << (*iit).x << " " << (*iit).y << std::endl;
+				}
+				myfile.close();
+			
+			}
+			else {
+				pts = corner_points;
+			}
+			/*
 			ROS_WARN("STARTING SMOOTH PATH for %d knots", (int)knots.size());
 			pts = getSmoothPath(knots);
 			
 			ROS_WARN("SMOOTH PATH PASSED");
+			*/
 		}
 		else {
-			pts = knots;
+			pts = corner_points;
 		}
 		
 		int poseSeq = 0;
 		for (point_arr::iterator it = pts.begin(); it != pts.end(); it++) {
-			geometry_msgs::Point pt = *it;
+			point_t pt = *it;
 			
 			//float x_m = node.x*resolution;
 			//float y_m = node.y*resolution;
 			float x_m = pt.x;
 			float y_m = pt.y;
 			
-			geometry_msgs::Pose waypoint;
+			pose_t waypoint;
 			waypoint.position = pt;
 			//waypoint.position.x = x_m;
 			//waypoint.position.y = y_m;
@@ -285,7 +339,7 @@ void goalCallback(const lunabotics::Goal& msg)
 		
 		wayIterator = controlMode == ACKERMANN ? waypoints.begin() : waypoints.begin()+1;		
 		ROS_INFO("Returned path: %s", sstr.str().c_str());
-		geometry_msgs::Pose waypoint = waypoints.at(0);
+		pose_t waypoint = waypoints.at(0);
 		ROS_INFO("Heading towards (%.1f,%.1f)", (*wayIterator).position.x, (*wayIterator).position.y);
 		
 		pathPublisher.publish(pathMsg);
@@ -303,7 +357,7 @@ void goalCallback(const lunabotics::Goal& msg)
 	delete path;
 }
 
-void controlSkid(geometry_msgs::Pose waypointPose) 
+void controlSkid(pose_t waypointPose) 
 {
 	double dx = waypointPose.position.x-currentPose.position.x;
 	double dy = waypointPose.position.y-currentPose.position.y;
@@ -328,7 +382,7 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 					controlParamsMsg.driving = drive;
 					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;	
 					controlParamsPublisher.publish(controlParamsMsg);
-					geometry_msgs::Pose nextWaypointPose = *wayIterator;
+					pose_t nextWaypointPose = *wayIterator;
 					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
 			}
@@ -378,7 +432,7 @@ void controlSkid(geometry_msgs::Pose waypointPose)
 	controlPublisher.publish(controlMsg);
 }
 
-void controlAckermann(geometry_msgs::Pose waypointPose)
+void controlAckermann(pose_t waypointPose)
 {
 	//////////////////////////////// ARC-TURN WITH DIFFERENTIAL DRIVE TEST /////////////////////
 	
@@ -396,11 +450,11 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 		double x = currentPose.position.x + velocities.linear.x * cos(theta);
 		double y = currentPose.position.y + velocities.linear.x * sin(theta);
 		
-		geometry_msgs::Point testPoint;
+		point_t testPoint;
 		testPoint.x = x;
 		testPoint.y = y;
 		
-		//geometry_msgs::Point testPoint = currentPose.position;
+		//point_t testPoint = currentPose.position;
 		
 		
 		
@@ -431,10 +485,10 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 		double length = point_distance((*closestWaypoint1).position, (*closestWaypoint2).position);
 		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
 		double y_err = distance_to_line(dist1, angle);		
-		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);;
+		point_t closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);;
 		
 		
-		ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", testPoint.x,testPoint.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
+		//ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", testPoint.x,testPoint.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
 		
 		lunabotics::ControlParams controlParamsMsg;
 		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
@@ -484,7 +538,7 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 				
 				double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
 				
-				ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
+				//ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
 				
 				float v = linear_speed_limit;
 				if (isnan(dw)) {
@@ -538,7 +592,7 @@ void controlAckermann(geometry_msgs::Pose waypointPose)
 			finish_route();
 		}
 		else {
-			geometry_msgs::Pose nextWaypointPose = *wayIterator;
+			pose_t nextWaypointPose = *wayIterator;
 			ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 		}
 	}
@@ -604,10 +658,10 @@ int main(int argc, char **argv)
 		
 		
 		
-		geometry_msgs::Pose closestWaypoint1;ACKERMANN
+		pose_t closestWaypoint1;
 		closestWaypoint1.position.x = 3;
 		closestWaypoint1.position.y = 3;
-		geometry_msgs::Pose closestWaypoint2;
+		pose_t closestWaypoint2;
 		closestWaypoint2.position.x = 5;
 		closestWaypoint2.position.y = 5;
 		double dist1 = point_distance(currentPose.position, closestWaypoint1.position);
@@ -617,14 +671,14 @@ int main(int argc, char **argv)
 			double tmp_dist = dist1;
 			dist1 = dist2;
 			dist2 = tmp_dist;
-			geometry_msgs::Pose tmp_waypoint = closestWaypoint1;
+			pose_t tmp_waypoint = closestWaypoint1;
 			closestWaypoint1 = closestWaypoint2;
 			closestWaypoint2 = tmp_waypoint;
 		}
 		double length = point_distance(closestWaypoint1.position, closestWaypoint2.position);
 		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
 		double y_err = distance_to_line(dist1, angle);		
-		geometry_msgs::Point closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, closestWaypoint1.position, closestWaypoint2.position);
+		point_t closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, closestWaypoint1.position, closestWaypoint2.position);
 		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
 		//double goalAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
 		double angle_diff = closestTrajectoryPointAngle - tf::getYaw(currentPose.orientation);
@@ -663,7 +717,7 @@ int main(int argc, char **argv)
 		//Whenever needed send control message
 		if (drive) {
 			if (wayIterator < waypoints.end()) {
-				geometry_msgs::Pose waypointPose = *wayIterator;
+				pose_t waypointPose = *wayIterator;
 			
 				if (isnan(waypointPose.position.x) || isnan(waypointPose.position.y)) {
 					ROS_WARN("Waypoint position undetermined");

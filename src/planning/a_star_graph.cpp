@@ -4,6 +4,7 @@
 #include <math.h>
 #include <list>
 #include <sstream>
+#include "float.h"
 using namespace planning;
 
 //---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
@@ -97,11 +98,72 @@ point_arr path::allPoints(float resolution)
 	return this->pointRepresentation(this->allNodes(), resolution);
 }
 
+point_arr path::closestObstaclePoints(float resolution)
+{
+	return this->pointRepresentation(this->closestObstacleNodes(), resolution);
+}
+
 bool path::is_initialized()
 {
 	return this->initialized;
 }
 
+node_arr path::closestObstacleNodes()
+{
+	if (this->obstacle_nodes.size() > 0) {
+		return this->corner_nodes;
+	}
+	else if (this->nodes.size() > 2) {
+		node_arr waypoints = this->cornerNodes();
+		node_arr obstacles;
+		for (unsigned int i = 1; i < waypoints.size()-1; i++) {
+			node prev_waypoint = waypoints.at(i-1);
+			node curr_waypoint = waypoints.at(i);
+			node next_waypoint = waypoints.at(i+1);
+			
+			int x = curr_waypoint.x;
+			int y = curr_waypoint.y;
+			node_arr test_points;
+			if (x > 0 && this->mapAt(x-1, y) > OCC_THRESHOLD) {
+				test_points.push_back(node(x-1, y));
+			}
+			if (x < this->width-1 && this->mapAt(x+1, y) > OCC_THRESHOLD) {
+				test_points.push_back(node(x+1, y));
+			}
+			if (y > 0 && this->mapAt(x, y-1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x, y-1));
+			}
+			if (y < this->height-1 && this->mapAt(x, y+1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x, y+1));
+			}
+			if (x > 0 && y > 0 && this->mapAt(x-1, y-1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x-1, y-1));
+			}
+			if (x < this->width-1 && y < this->height-1 && this->mapAt(x+1, y+1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x+1, y+1));
+			}
+			if (x > 0 && y < this->height-1 && this->mapAt(x-1, y+1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x-1, y+1));
+			}
+			if (x < this->width-1 && y > 0 && this->mapAt(x+1, y-1) > OCC_THRESHOLD) {
+				test_points.push_back(node(x+1, y-1));
+			}
+			
+			double min_dist = DBL_MAX;
+			node closest_node = test_points.at(0);
+			for (node_arr::iterator it = test_points.begin(); it < test_points.end(); it++) {
+				node test_point = *it;
+				double dist = distance(prev_waypoint, test_point)+distance(curr_waypoint, test_point)+distance(next_waypoint, test_point);
+				if (dist < min_dist) {
+					min_dist = dist;
+					closest_node = test_point;
+				}
+			}
+			this->obstacle_nodes.push_back(closest_node);
+		}
+	}
+	return this->obstacle_nodes;
+}
 
 node_arr path::allNodes()
 {
@@ -130,7 +192,7 @@ node_arr path::cornerNodes()
 			sstr.str(std::string());
 			sstr << currentWaypoint;
 			sstr << "->" << furthestWaypoint;
-			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint, map, width);
+			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint);
 			if (crossesObstacles) {
 				ROS_INFO("%s crosses obstacles", sstr.str().c_str());
 				if (--furthesWaypointIdx == currentWaypointIdx+1) {
@@ -170,7 +232,7 @@ node_arr path::cornerNodes()
 
 //-------------------- PRIVATE METHODS --------------------------//
 
-bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int width)
+bool path::isObstacleBetweenNodes(node node1, node node2)
 {
 	if (node1 == node2) return false;
 	
@@ -196,7 +258,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int widt
 		}
 		for (int i = start; i < finish; i++) {
 			int x = round((i-b)/k);
-			int8_t occupancy = map.at(width*i+x);
+			int8_t occupancy = this->mapAt(x, i);
 			ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
@@ -214,7 +276,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2, map_grid map, int widt
 		}
 		for (int i = start; i < finish; i++) {
 			int y = round(k*i+b);
-			int8_t occupancy = map.at(width*y+i);
+			int8_t occupancy = this->mapAt(i, y);
 			ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
@@ -229,7 +291,7 @@ point_arr path::pointRepresentation(node_arr graph, float resolution)
 	point_arr points;
 	for (unsigned int i = 0; i < graph.size(); i++) {
 		node node = graph.at(i);
-		geometry_msgs::Point point;
+		point_t point;
 		point.x = node.x*resolution;
 		point.y = node.y*resolution;
 		points.push_back(point);
@@ -291,4 +353,11 @@ node_arr path::reconstruct_path(node_list came_from, node current)
 		path.push_back(current);
 	}
 	return path;
+}
+
+//-------------------- OTHER METHODS --------------------------//
+
+int8_t path::mapAt(int x, int y)
+{
+	return this->map.at(width*y+x);
 }
