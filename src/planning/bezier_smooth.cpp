@@ -50,11 +50,10 @@ point_arr planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int seg
 	return points;
 }
 
-point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p)
+point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p, int segments)
 {		
 	//Constant values
 	const float ALPHA_STEP = 0.1;
-	const float BEZIER_SEGMENTS = 20;
 	
 	
 	//Preserve transformation parameters to reconstruct global coordinates for the curve
@@ -73,6 +72,9 @@ point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_
 	q1.y = 0;
 	ROS_INFO("after translation q0=%f,%f, q2=%f,%f, p=%f,%f", q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
+	
+	bool flipped = false; //Tells if control points were swapped and bezier curve shoul be flipped
+	
 	//Rotate to align q1q0 with x-axis
 	double theta1 = atan2(q2.y, q2.x);
 	double theta2 = atan2(q0.y, -q0.x);
@@ -80,9 +82,10 @@ point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_
 	double rotate_by = theta1;
 	if (residual_angle >= 0 && residual_angle <= M_PI) {
 		//Swap points
-		geometry_msgs::Point c = q2;
+		point_t c = q2;
 		q2 = q0;
 		q0 = c;
+		flipped = true;
 	}
 	else {
 		rotate_by = -(M_PI+theta2);
@@ -150,5 +153,11 @@ point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_
 	q2.x -= tx;
 	q2.y -= ty;
 	
-	return planning::quadratic_bezier(q0, q1, q2, BEZIER_SEGMENTS);
+	if (flipped) {
+		point_t c = q0;
+		q0 = q2;
+		q2 = c;
+	}
+	
+	return planning::quadratic_bezier(q0, q1, q2, segments);
 }

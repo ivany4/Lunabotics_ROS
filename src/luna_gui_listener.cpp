@@ -160,6 +160,7 @@ int main(int argc, char **argv)
 					controlModeMsg.mode = type;
 					if (type == ACKERMANN) {
 						controlModeMsg.linear_speed_limit = decodeFloat(buffer, pointer);
+						controlModeMsg.smth_else = decodeFloat(buffer, pointer);
 					}
 					controlModePublisher.publish(controlModeMsg);
 					

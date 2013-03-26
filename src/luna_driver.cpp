@@ -41,6 +41,7 @@ inline int sign(double value) {
 }
 
 int seq = 0;
+int bezierSegments = 20;
 CTRL_MODE_TYPE controlMode;
 SKID_STATE skidState;
 nav_msgs::GetMap mapService;
@@ -157,6 +158,7 @@ void controlModeCallback(const lunabotics::ControlMode& msg)
 	controlMode = (CTRL_MODE_TYPE)msg.mode;
 	if (controlMode == ACKERMANN) {
 		linear_speed_limit = msg.linear_speed_limit;
+		bezierSegments = (int)msg.smth_else;
 	}
 	
 	ROS_INFO("Switching control mode to %s", controlModeToString(controlMode).c_str());
@@ -244,7 +246,7 @@ void goalCallback(const lunabotics::Goal& msg)
 					else {
 						q2 = midPoint(next, curr);
 					}
-					point_arr curve = planning::trajectory_bezier(q0, curr, q2, p);
+					point_arr curve = planning::trajectory_bezier(q0, curr, q2, p, bezierSegments);
 					
 					ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
 					
