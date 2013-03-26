@@ -177,7 +177,7 @@ node_arr path::cornerNodes()
 	}
 	else if (this->nodes.size() > 1) {
 		ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
-		node_arr graph = this->removeStraightPathWaypoints(this->nodes);
+		node_arr graph = this->removeStraightPathWaypoints(this->nodes);		
 		ROS_INFO("After removing straight path nodes %d", (int)graph.size());
 		int currentWaypointIdx = 0;
 		int finalWaypointIdx = graph.size()-1;
@@ -241,45 +241,59 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
 	int denom = node2.x-node1.x;
-	double k = denom != 0 ? (node2.y-node1.y)/((float)denom) : 0;
-	double b = node1.y-k*node1.x;
-	
-	ROS_INFO("Line K=%.2f B=%.2f", k, b);
-	
-	int start, finish;
-	if (fabs(k) > 1) {
-		if (node2.y > node1.y) {
-			start = node1.y+1;
-			finish = node2.y;
-		}
-		else {
-			start = node2.y+1;
-			finish = node1.y;
-		}
-		for (int i = start; i < finish; i++) {
-			int x = round((i-b)/k);
-			int8_t occupancy = this->mapAt(x, i);
-			ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+	if (denom == 0) {
+		//Line is vertical
+		int begin = std::min(node1.y, node2.y);
+		int end = std::max(node1.y, node2.y);
+		for (int y = begin+1; y < end-1; y++) {
+			int8_t occupancy = this->mapAt(node1.x, y);
+			ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
 			}
 		}
 	}
 	else {
-		if (node2.x > node1.x) {
-			start = node1.x+1;
-			finish = node2.x;
+		double k = (node2.y-node1.y)/((float)denom);
+		double b = node1.y-k*node1.x;
+		
+		ROS_INFO("Line K=%.2f B=%.2f", k, b);
+		
+		int start, finish;
+		if (fabs(k) > 1) {
+			if (node2.y > node1.y) {
+				start = node1.y+1;
+				finish = node2.y;
+			}
+			else {
+				start = node2.y+1;
+				finish = node1.y;
+			}
+			for (int i = start; i < finish; i++) {
+				int x = round((i-b)/k);
+				int8_t occupancy = this->mapAt(x, i);
+				ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+				if (occupancy > OCC_THRESHOLD) {
+					return true;
+				}
+			}
 		}
 		else {
-			start = node2.x+1;
-			finish = node1.x;
-		}
-		for (int i = start; i < finish; i++) {
-			int y = round(k*i+b);
-			int8_t occupancy = this->mapAt(i, y);
-			ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
-			if (occupancy > OCC_THRESHOLD) {
-				return true;
+			if (node2.x > node1.x) {
+				start = node1.x+1;
+				finish = node2.x;
+			}
+			else {
+				start = node2.x+1;
+				finish = node1.x;
+			}
+			for (int i = start; i < finish; i++) {
+				int y = round(k*i+b);
+				int8_t occupancy = this->mapAt(i, y);
+				ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
+				if (occupancy > OCC_THRESHOLD) {
+					return true;
+				}
 			}
 		}
 	}
