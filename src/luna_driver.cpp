@@ -17,7 +17,6 @@
 #include "tf/tf.h"
 #include "types.h"
 #include <numeric>
-#include <fstream>
 
 using namespace std;
 
@@ -141,39 +140,6 @@ planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 	return empty;
 }
 
-point_arr getSmoothPath(point_arr path) 
-{
-	unsigned int n = path.size();
-	if (n >= 2) {
-		point_arr firstPts;
-		point_arr secondPts;
-		planning::GetCurveControlPoints(path, firstPts, secondPts);
-		
-		point_arr bezierPts;
-		
-		for (unsigned int i = 0; i < n-1; i++) {
-			ROS_INFO("=============== Segment %d ==============", i);
-			point_arr ctrlPts;
-			ctrlPts.push_back(path.at(i));
-			ctrlPts.push_back(firstPts.at(i));
-			ctrlPts.push_back(secondPts.at(i));
-			ctrlPts.push_back(path.at(i+1));
-			
-			cout << "Ctrl pts: " 
-			<< ctrlPts.at(0) << "; " << ctrlPts.at(1) << "; " 
-			<< ctrlPts.at(2) << "; " << ctrlPts.at(3) << endl; 
-			
-			for (float u = 0; u < 1.0; u += 0.1) {
-				point_t point = planning::bezier_point(u, ctrlPts);
-				bezierPts.push_back(point);
-				ROS_INFO("u %f - %f,%f", u, point.x, point.y);
-			}
-		}
-		return bezierPts;
-	}
-	return path;
-}
-
 void emergencyCallback(const lunabotics::Emergency& msg)
 {
 	//Use msg to stop driving if applicable
@@ -284,27 +250,11 @@ void goalCallback(const lunabotics::Goal& msg)
 					
 					//Append curve points
 					pts.insert(pts.end(), curve.begin(), curve.end());
-				}
-				
-				
-				ofstream myfile;
-				myfile.open ("data.txt");
-  
-				for (point_arr::iterator iit = pts.begin(); iit < pts.end(); iit++) {
-					myfile << (*iit).x << " " << (*iit).y << std::endl;
-				}
-				myfile.close();
-			
+				}			
 			}
 			else {
 				pts = corner_points;
 			}
-			/*
-			ROS_WARN("STARTING SMOOTH PATH for %d knots", (int)knots.size());
-			pts = getSmoothPath(knots);
-			
-			ROS_WARN("SMOOTH PATH PASSED");
-			*/
 		}
 		else {
 			pts = corner_points;

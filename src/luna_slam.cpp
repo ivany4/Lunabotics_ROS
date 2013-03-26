@@ -2,6 +2,11 @@
 #include "lunabotics/Vision.h"
 #include "lunabotics/Telemetry.h"
 #include "nav_msgs/GetMap.h"
+#include "nav_msgs/OccupancyGrid.h"
+#include <fstream>
+
+#define MAP_FROM_FILE	1
+
 
 int seq = 0;
 
@@ -10,35 +15,66 @@ inline int randomNumber(int min, int max)
 	return min + (rand() % (int)(max - min + 1));
 }
 
+nav_msgs::OccupancyGrid getMapFromFile()
+{
+	std::ifstream infile("world.txt");
+	std::string line;
+	nav_msgs::OccupancyGrid map;
+	if (std::getline(infile, line)) {
+		std::istringstream iss(line);
+		if (iss >> map.info.width >> map.info.height >> map.info.resolution) {
+			ROS_INFO("Reading map from file: width %d, height %d, resolution %f", map.info.width, map.info.height, map.info.resolution);
+			unsigned int lines = 0;
+			while (std::getline(infile, line)) {
+				std::istringstream iss(line);
+				for (unsigned int i = 0; i < map.info.width; i++) {
+					int occupancy;
+					if (iss >> occupancy) {
+						map.data.push_back(occupancy);
+					}
+					else {
+						ROS_ERROR("Failed to parse file. Unexpected end of the line");
+						break;
+					}
+				}
+				lines++;
+			}
+			if (lines != map.info.height) {
+				ROS_ERROR("Failed to parse file. Declared height doesn't match number of lines");
+			}
+		}
+		else {
+			ROS_ERROR("Failed to read map metadata");
+		}
+	}
+	map.info.map_load_time = ros::Time::now();
+	return map;
+}
+
 bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 {	
 	ROS_INFO("Got a map request");
-	ros::Time now = ros::Time::now();
+	
+#if MAP_FROM_FILE
+	res.map = getMapFromFile();
+#else
+	//read from Anuraj
+	
+	//for (unsigned int i = 0; i < res.map.info.height; i++) {
+		//for (unsigned int j = 0; j < res.map.info.width; j++) {
+			//int8_t occupancy = ((i+j)*4)%75;
+			//if ((i > 2 && i < 6 && j > 4 && j < 8) || (i > 5 && i < 9 && j > 8 && j < 12)) {
+				//occupancy = 74+i+j;
+			//}
+				
+			//res.map.data.push_back(occupancy);
+		//}
+	//}
+#endif
+		
 	res.map.header.seq = seq;
 	res.map.header.frame_id = 1;
-	res.map.header.stamp = now;
-	res.map.info.width = 24;
-	res.map.info.height = 21;
-	res.map.info.resolution = 8/24.0;
-	res.map.info.map_load_time = now;
-	res.map.info.origin.position.x = 0;
-	res.map.info.origin.position.y = 0;
-	res.map.info.origin.position.z = 0;
-	res.map.info.origin.orientation.x = 0;
-	res.map.info.origin.orientation.y = 0;
-	res.map.info.origin.orientation.z = 0;
-	res.map.info.origin.orientation.w = 0;
-	
-	for (unsigned int i = 0; i < res.map.info.height; i++) {
-		for (unsigned int j = 0; j < res.map.info.width; j++) {
-			int8_t occupancy = ((i+j)*4)%75;
-			if ((i > 2 && i < 6 && j > 4 && j < 8) || (i > 5 && i < 9 && j > 8 && j < 12)) {
-				occupancy = 74+i+j;
-			}
-				
-			res.map.data.push_back(occupancy);
-		}
-	}
+	res.map.header.stamp = ros::Time::now();
 	
 	seq++;
 	return true;
