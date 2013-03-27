@@ -233,7 +233,11 @@ void goalCallback(const lunabotics::Goal& msg)
 					point_t prev = corner_points.at(i-1);
 					point_t curr = corner_points.at(i);
 					point_t next = corner_points.at(i+1);
-					point_t p = closest_obstacles.at(i-1);
+					point_t obstacle = closest_obstacles.at(i-1);
+					//Since obstacle is the center of occupied cell, we want p to be at its edge
+					point_t p = midPoint(obstacle, curr);
+					
+					
 					if (i == 1) {
 						q0 = prev;
 					}

@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <bitset>
 
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
@@ -40,10 +41,10 @@ pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
     
 
 enum TX_CONTENT_TYPE {
-	TELEMETRY = 0,
-	MAP = 1,
-	PATH = 2,
-	LASER = 3
+	TELEMETRY 	= 0,
+	MAP 		= 1,
+	PATH 		= 2,
+	LASER 		= 3
 };
 
 bool tryConnect() {
@@ -74,7 +75,7 @@ void transmit(char bytes[], int size)
 	        return;
 	    }
 	    else {
-			ROS_INFO("Sending data: OK");
+		//	ROS_INFO("Sending data: OK");
 		}
 		pthread_mutex_unlock(&sock_mutex);
 	    
@@ -183,58 +184,83 @@ int main(int argc, char **argv)
 			}
 		}
 		else {
+			bitset<8> type;
+			int size = 1;
+			nav_msgs::OccupancyGrid map;
 			if (sendTelemetry) {
-			    int size = sizeof(double)*9+1+1+1;
+				type.set(TELEMETRY);
+				size += sizeof(double)*9+1+1;
 			    if (controlParams.driving) {
 					size += sizeof(int32_t);
 					if (controlMode == ACKERMANN) {
 						size += sizeof(double)*5;
 					}
 				}
-			    char buffer[size];
-			    int pointer = 0;
-			  
-			    encodeByte(buffer, pointer, TELEMETRY);
-				encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.x);
-				encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.y);
-				encodeDouble(buffer, pointer, tf::getYaw(telemetry.odometry.pose.pose.orientation));
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.x);
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.y);
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.z);
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
-				encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
-				encodeByte(buffer, pointer, controlMode);
-				encodeByte(buffer, pointer, controlParams.driving);
-				if (controlParams.driving) {
-					ROS_WARN("Encoding %d", controlParams.next_waypoint_idx);
-					encodeInt(buffer, pointer, controlParams.next_waypoint_idx);
-					if (controlMode == ACKERMANN) {
-						encodeDouble(buffer, pointer, controlParams.y_err);
-						encodeDouble(buffer, pointer, controlParams.trajectory_point.x);
-						encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
-						encodeDouble(buffer, pointer, controlParams.velocity_point.x);
-						encodeDouble(buffer, pointer, controlParams.velocity_point.y);
-					}
-				}
-				
-				
-			    
-			    sendTelemetry = false;
-			    
-			    transmit(buffer, size);
 			}
 			if (sendMap) {
 				if (mapClient.call(mapService)) {
-					uint8_t width = mapService.response.map.info.width;
-					uint8_t height = mapService.response.map.info.height;
-					double res = mapService.response.map.info.resolution;
+					type.set(MAP);
+					map = mapService.response.map;
+					uint8_t width = map.info.width;
+					uint8_t height = map.info.height;
 					unsigned int mapSize = width*height;
-				    int size = 1+sizeof(int)*2+sizeof(double)+mapSize;
-				    char buffer[size];
-				    int pointer = 0;
-				  
-				    encodeByte(buffer, pointer, MAP);
+				    size += 2+sizeof(double)+mapSize;
+				}
+				else {
+					ROS_WARN("Failed to call service /luna_map");
+				}
+			}
+			if (sendPath) {
+				type.set(PATH);
+				uint8_t numOfPoses = path.poses.size();
+			    size += 1+numOfPoses*2*sizeof(double);
+			}
+			if (sendVision) {
+				type.set(LASER);
+				unsigned int numOfRanges = vision.lidar_data.ranges.size();
+			    size += sizeof(float)*3+sizeof(int)+numOfRanges*sizeof(float);
+			}
+			
+			if (type.any()) {
+			
+			    uint8_t typeValue = (uint8_t)type.to_ulong();
+				
+			    char buffer[size];
+			    int pointer = 0;
+			    			    
+				encodeByte(buffer, pointer, typeValue);
+				
+				
+				if (sendTelemetry) {
+					encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.x);
+					encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.y);
+					encodeDouble(buffer, pointer, tf::getYaw(telemetry.odometry.pose.pose.orientation));
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.x);
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.y);
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.z);
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
+					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
+					encodeByte(buffer, pointer, controlMode);
+					encodeByte(buffer, pointer, controlParams.driving);
+					if (controlParams.driving) {
+						encodeInt(buffer, pointer, controlParams.next_waypoint_idx);
+						if (controlMode == ACKERMANN) {
+							encodeDouble(buffer, pointer, controlParams.y_err);
+							encodeDouble(buffer, pointer, controlParams.trajectory_point.x);
+							encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
+							encodeDouble(buffer, pointer, controlParams.velocity_point.x);
+							encodeDouble(buffer, pointer, controlParams.velocity_point.y);
+						}
+					}
+					
+				    sendTelemetry = false;
+				}
+				if (sendMap) {
+					uint8_t width = map.info.width;
+					uint8_t height = map.info.height;
+					double res = map.info.resolution;
+					unsigned int mapSize = width*height;
 				    encodeByte(buffer, pointer, width);
 				    encodeByte(buffer, pointer, height);
 				    encodeDouble(buffer, pointer, res);
@@ -244,58 +270,33 @@ int main(int argc, char **argv)
 					
 					sendMap = false;
 					ROS_INFO("Sending a map (%dx%d)", width, height);
-					transmit(buffer, size);
 				}
-				else {
-					ROS_WARN("Failed to call service /luna_map");
+				if (sendPath) {
+					uint8_t numOfPoses = path.poses.size();
+				    encodeByte(buffer, pointer, numOfPoses);
+				    for (unsigned int i = 0; i < path.poses.size(); i++) {
+						geometry_msgs::PoseStamped pose = path.poses.at(i);
+						double x_m = pose.pose.position.x;
+						double y_m = pose.pose.position.y;
+						encodeDouble(buffer, pointer, x_m);
+						encodeDouble(buffer, pointer, y_m);
+					}
+				    
+				    sendPath = false;
 				}
-			}
-			if (sendPath) {
-				uint8_t numOfPoses = path.poses.size();
-			    int size = 1+1+numOfPoses*2*sizeof(double);
-			    char buffer[size];
-			    int pointer = 0;
-			    
-			  
-			    encodeByte(buffer, pointer, PATH);
-			    encodeByte(buffer, pointer, numOfPoses);
-			    for (unsigned int i = 0; i < path.poses.size(); i++) {
-					geometry_msgs::PoseStamped pose = path.poses.at(i);
-					double x_m = pose.pose.position.x;
-					double y_m = pose.pose.position.y;
-					encodeDouble(buffer, pointer, x_m);
-					encodeDouble(buffer, pointer, y_m);
+				if (sendVision) {
+					unsigned int numOfRanges = vision.lidar_data.ranges.size();
+				    encodeFloat(buffer, pointer, vision.lidar_data.angle_min);
+				    encodeFloat(buffer, pointer, vision.lidar_data.angle_max);
+				    encodeFloat(buffer, pointer, vision.lidar_data.angle_increment);
+				    encodeInt(buffer, pointer, numOfRanges);
+				    for (unsigned int i = 0; i < vision.lidar_data.ranges.size(); i++) {
+						encodeFloat(buffer, pointer, vision.lidar_data.ranges.at(i));
+					}
+				    
+				    sendVision = false;
 				}
-			    
-			    sendPath = false;
-			    
 			    transmit(buffer, size);
-			    
-			    sendMap = true;
-			}
-			if (sendVision) {
-				unsigned int numOfRanges = vision.lidar_data.ranges.size();
-			    int size = 1+sizeof(float)*3+sizeof(int)+numOfRanges*sizeof(float);
-			    char buffer[size];
-			    
-			    ROS_WARN("VISION size %d", size);
-			    
-			    int pointer = 0;
-			    
-			    encodeByte(buffer, pointer, LASER);
-			    encodeFloat(buffer, pointer, vision.lidar_data.angle_min);
-			    encodeFloat(buffer, pointer, vision.lidar_data.angle_max);
-			    encodeFloat(buffer, pointer, vision.lidar_data.angle_increment);
-			    encodeInt(buffer, pointer, numOfRanges);
-			    for (unsigned int i = 0; i < vision.lidar_data.ranges.size(); i++) {
-					encodeFloat(buffer, pointer, vision.lidar_data.ranges.at(i));
-				}
-			    
-			    sendVision = false;
-			    
-			    transmit(buffer, size);
-			    
-			    sendTelemetry = true;
 			}
 		}
 		
