@@ -105,16 +105,15 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 	sendTelemetry = true;
 	
 	//if (!controlParams.driving) {
-		point_t traj_p, vel_p;
 		pose_t currentPose = msg.odometry.pose.pose;
 		pidGeometry.setCurrentPose(currentPose);
 		pidGeometry.setLinearVelocity(msg.odometry.twist.twist.linear.x);
 		controlParams.driving = true;
 		controlParams.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
 		controlParams.velocity_point = pidGeometry.getReferencePoint();
-		controlParams.y_err = pidGeometry.getReferenceDistance(traj_p, vel_p);
-		controlParams.t_trajectory_point = traj_p;
-		controlParams.t_velocity_point = vel_p;
+		controlParams.y_err = pidGeometry.getReferenceDistance();
+		controlParams.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
+		controlParams.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
 		controlParams.next_waypoint_idx = 0;
 	//}
 }

@@ -412,15 +412,14 @@ void controlAckermann(pose_t waypointPose)
 			return;
 		}
 		
-		point_t traj_p, vel_p;
-		double y_err = pidGeometry.getReferenceDistance(traj_p, vel_p);
+		double y_err = pidGeometry.getReferenceDistance();
 		lunabotics::ControlParams controlParamsMsg;
 		controlParamsMsg.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
 		controlParamsMsg.velocity_point = pidGeometry.getReferencePoint();
 		controlParamsMsg.y_err = y_err;
 		controlParamsMsg.driving = drive;
-		controlParamsMsg.t_trajectory_point = traj_p;
-		controlParamsMsg.t_velocity_point = vel_p;
+		controlParamsMsg.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
+		controlParamsMsg.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
 		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
 		controlParamsPublisher.publish(controlParamsMsg);
 		

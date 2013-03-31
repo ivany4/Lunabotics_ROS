@@ -3,11 +3,11 @@
 
 //---------------- Contructors / Destructor ---------------------//
 
-motion::PIDGeometry::PIDGeometry(): _currentPose(), _referencePoint(), _referencePointIsValid(true), _trajectory(), _closestTrajectoryPointIsValid(true), _closestTrajectoryPoint(), _linearVelocity(0), _velocityOffset(0.05), _velocityMultiplier(0.25)
+motion::PIDGeometry::PIDGeometry(): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(false), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(0.05), _velocityMultiplier(0.25)
 {
 }
 
-motion::PIDGeometry::PIDGeometry(float velocityOffset, float velocityMultiplier): _currentPose(), _referencePoint(), _referencePointIsValid(true), _trajectory(), _closestTrajectoryPointIsValid(true), _closestTrajectoryPoint(), _linearVelocity(0), _velocityOffset(velocityOffset), _velocityMultiplier(velocityMultiplier)
+motion::PIDGeometry::PIDGeometry(float velocityOffset, float velocityMultiplier): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(true), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(velocityOffset), _velocityMultiplier(velocityMultiplier)
 {
 }
 
@@ -15,7 +15,8 @@ motion::PIDGeometry::~PIDGeometry()
 {
 }
 
-//---------------- Public methods -------------------------------//
+
+//---------------- Getters / Setters ----------------------------//
 
 point_t motion::PIDGeometry::getReferencePoint()
 {
@@ -26,6 +27,30 @@ point_t motion::PIDGeometry::getReferencePoint()
 		_referencePoint.y = _currentPose.position.y + velocityVector*sin(theta);
 	}
 	return _referencePoint;
+}
+
+point_t motion::PIDGeometry::getReferencePointInLocalFrame()
+{
+	if (!_localFrameIsValid) {
+		this->updateLocalFrame();
+	}
+	return _referencePointInLocalFrame;
+}
+
+point_t motion::PIDGeometry::getClosestTrajectoryPointInLocalFrame()
+{
+	if (!_localFrameIsValid) {
+		this->updateLocalFrame();
+	}
+	return _closestTrajectoryPointInLocalFrame;
+}
+
+double motion::PIDGeometry::getReferenceDistance()
+{
+	if (!_localFrameIsValid) {
+		this->updateLocalFrame();
+	}
+	return _referenceDistance;
 }
 
 point_t motion::PIDGeometry::getClosestTrajectoryPoint()
@@ -78,64 +103,33 @@ point_t motion::PIDGeometry::getClosestTrajectoryPoint()
 	return _closestTrajectoryPoint;
 }
 
-double motion::PIDGeometry::getReferenceDistance(point_t &transformedTrajectoryPoint, point_t &transformedReferencePoint)
-{
-	//Transform points to robot-centered coordinate frame
-	//Depending on where (left or right) closest trajectory point is
-	//make reference distance positive or negative
-	
-	//Transformation
-	point_t trajectoryPoint = this->getClosestTrajectoryPoint();
-	trajectoryPoint.x -= _currentPose.position.x;
-	trajectoryPoint.y -= _currentPose.position.y;
-	trajectoryPoint = rotate_point(trajectoryPoint, tf::getYaw(_currentPose.orientation), CW);
-	
-	transformedReferencePoint = this->getReferencePoint();
-	transformedReferencePoint.x -= _currentPose.position.x;
-	transformedReferencePoint.y -= _currentPose.position.y;
-	transformedReferencePoint = rotate_point(transformedReferencePoint, tf::getYaw(_currentPose.orientation), CW);
-	
-	int multiplier = trajectoryPoint.y >= 0 ? -1 : 1;
-	transformedTrajectoryPoint = trajectoryPoint;
-	
-	return motion::point_distance(this->getClosestTrajectoryPoint(), this->getReferencePoint()) * multiplier;
-}
-
-
-//---------------- Getters / Setters ----------------------------//
-
 void motion::PIDGeometry::setCurrentPose(pose_t currentPose)
 {
-	_referencePointIsValid = false;
-	_closestTrajectoryPointIsValid = false;
+	this->invalidateCache();
 	_currentPose = currentPose;
 }
 
 void motion::PIDGeometry::setLinearVelocity(double velocity)
 {
-	_referencePointIsValid = false;
-	_closestTrajectoryPointIsValid = false;
+	this->invalidateCache();
 	_linearVelocity = velocity;
 }
 
 void motion::PIDGeometry::setTrajectory(point_arr trajectory)
 {
-	_referencePointIsValid = false;
-	_closestTrajectoryPointIsValid = false;
+	this->invalidateCache();
 	_trajectory = trajectory;
 }
 
 void motion::PIDGeometry::setVelocityMultiplier(float velocityMultiplier)
 {
-	_referencePointIsValid = false;
-	_closestTrajectoryPointIsValid = false;
+	this->invalidateCache();
 	_velocityMultiplier = velocityMultiplier;
 }
 
 void motion::PIDGeometry::setVelocityOffset(float velocityOffset)
 {
-	_referencePointIsValid = false;
-	_closestTrajectoryPointIsValid = false;
+	this->invalidateCache();
 	_velocityOffset = velocityOffset;
 }
 
@@ -155,6 +149,37 @@ double motion::PIDGeometry::getReferenceAngle(double edge1, double edge2, double
 {
 	//Cosine rule
 	return acos((pow(edge2,2)+pow(edge1,2)-pow(edge3,2))/(2*edge2*edge1));
+}
+
+void motion::PIDGeometry::invalidateCache()
+{
+	_referencePointIsValid = false;
+	_closestTrajectoryPointIsValid = false;
+	_localFrameIsValid = false;
+}
+
+void motion::PIDGeometry::updateLocalFrame()
+{
+	//Transform points to robot-centered coordinate frame
+	//Depending on where (left or right) closest trajectory point is
+	//make reference distance positive or negative
+	
+	//Transformation
+	_closestTrajectoryPointInLocalFrame = this->getClosestTrajectoryPoint();
+	_closestTrajectoryPointInLocalFrame.x -= _currentPose.position.x;
+	_closestTrajectoryPointInLocalFrame.y -= _currentPose.position.y;
+	_closestTrajectoryPointInLocalFrame = rotate_point(_closestTrajectoryPointInLocalFrame, tf::getYaw(_currentPose.orientation), CW);
+	
+	_referencePointInLocalFrame = this->getReferencePoint();
+	_referencePointInLocalFrame.x -= _currentPose.position.x;
+	_referencePointInLocalFrame.y -= _currentPose.position.y;
+	_referencePointInLocalFrame = rotate_point(_referencePointInLocalFrame, tf::getYaw(_currentPose.orientation), CW);
+	
+	int multiplier = _closestTrajectoryPointInLocalFrame.y >= 0 ? -1 : 1;
+	
+	_referenceDistance = motion::point_distance(_closestTrajectoryPointInLocalFrame, _referencePointInLocalFrame) * multiplier;
+	
+	_localFrameIsValid = true;
 }
 
 //---------------- Non Class methods ----------------------------//
