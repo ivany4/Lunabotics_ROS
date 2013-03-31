@@ -229,12 +229,16 @@ void goalCallback(const lunabotics::Goal& msg)
 		point_arr pts;
 		
 		if (controlMode == ACKERMANN) {
-			
-			if (corner_points.size() > 2) {
+			unsigned int size = corner_points.size();
+			if (size > 2) {
 				point_arr closest_obstacles = path->closestObstaclePoints(resolution);
+				
+				point_t startPoint = corner_points.at(0);
+				point_t endPoint = corner_points.at(size-1);
+				pts.push_back(startPoint);
 			
 				//Get bezier quadratic curves for each point-turn
-				for (unsigned int i = 1; i < corner_points.size()-1; i++) {
+				for (unsigned int i = 1; i < size-1; i++) {
 					point_t q0, q2;
 					point_t prev = corner_points.at(i-1);
 					point_t curr = corner_points.at(i);
@@ -262,7 +266,8 @@ void goalCallback(const lunabotics::Goal& msg)
 					
 					//Append curve points
 					pts.insert(pts.end(), curve.begin(), curve.end());
-				}			
+				}	
+				pts.push_back(endPoint);		
 			}
 			else {
 				pts = corner_points;
