@@ -10,6 +10,13 @@ typedef geometry_msgs::Pose pose_t;
 typedef std::vector<point_t> point_arr;
 typedef std::vector<pose_t> pose_arr;
 
+struct point_indexed {
+	point_t point;
+	int index;
+};
+
+typedef std::vector<point_indexed> point_indexed_arr;
+
 enum CTRL_MODE_TYPE {
     ACKERMANN 		 = 0,
     TURN_IN_SPOT     = 1,
@@ -22,6 +29,5 @@ enum ROTATION_DIRECTION {
 };
 
 std::string controlModeToString(CTRL_MODE_TYPE type);
-point_t rotate_point(point_t point, double angle, ROTATION_DIRECTION dir);
 
 #endif //_TYPES_H_

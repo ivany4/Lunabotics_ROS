@@ -98,7 +98,7 @@ point_arr path::allPoints(float resolution)
 	return this->pointRepresentation(this->allNodes(), resolution);
 }
 
-point_arr path::closestObstaclePoints(float resolution)
+point_indexed_arr path::closestObstaclePoints(float resolution)
 {
 	return this->pointRepresentation(this->closestObstacleNodes(), resolution);
 }
@@ -108,10 +108,10 @@ bool path::is_initialized()
 	return this->initialized;
 }
 
-node_arr path::closestObstacleNodes()
+node_indexed_arr path::closestObstacleNodes()
 {
 	if (this->obstacle_nodes.size() > 0) {
-		return this->corner_nodes;
+		return this->obstacle_nodes;
 	}
 	else if (this->nodes.size() > 2) {
 		node_arr waypoints = this->cornerNodes();
@@ -150,16 +150,22 @@ node_arr path::closestObstacleNodes()
 			}
 			
 			double min_dist = DBL_MAX;
-			node closest_node = test_points.at(0);
-			for (node_arr::iterator it = test_points.begin(); it < test_points.end(); it++) {
-				node test_point = *it;
-				double dist = distance(prev_waypoint, test_point)+distance(curr_waypoint, test_point)+distance(next_waypoint, test_point);
-				if (dist < min_dist) {
-					min_dist = dist;
-					closest_node = test_point;
+			node closest_node;
+			if (test_points.size() > 0) {
+				closest_node = test_points.at(0);
+				for (node_arr::iterator it = test_points.begin(); it < test_points.end(); it++) {
+					node test_point = *it;
+					double dist = distance(prev_waypoint, test_point)+distance(curr_waypoint, test_point)+distance(next_waypoint, test_point);
+					if (dist < min_dist) {
+						min_dist = dist;
+						closest_node = test_point;
+					}
 				}
+				node_indexed t;
+				t.node = closest_node;
+				t.index = i;
+				this->obstacle_nodes.push_back(t);
 			}
-			this->obstacle_nodes.push_back(closest_node);
 		}
 	}
 	return this->obstacle_nodes;
@@ -313,6 +319,20 @@ point_arr path::pointRepresentation(node_arr graph, float resolution)
 	return points;
 }
 
+point_indexed_arr path::pointRepresentation(node_indexed_arr graph, float resolution)
+{
+	point_indexed_arr points;
+	for (unsigned int i = 0; i < graph.size(); i++) {
+		node_indexed node = graph.at(i);
+		point_indexed point;
+		point.point.x = node.node.x*resolution;
+		point.point.y = node.node.y*resolution;
+		point.index = node.index;
+		points.push_back(point);
+	}
+	return points;
+}
+
 
 bool path::in_set(node_list set, node node) {
 	node_list::iterator it = find(set.begin(), set.end(), node);
@@ -373,5 +393,10 @@ node_arr path::reconstruct_path(node_list came_from, node current)
 
 int8_t path::mapAt(int x, int y)
 {
+	unsigned int idx = width*y+x;
+	if (idx >= this->map.size()) {
+		ROS_ERROR("Trying to get cell beyond the map boundaries");
+		return 0;
+	}
 	return this->map.at(width*y+x);
 }

@@ -20,7 +20,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <bitset>
-#include "motion/pid.h"
+#include "geometry/geometry.h"
 
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
@@ -37,7 +37,7 @@ struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
-motion::PIDGeometry pidGeometry;
+geometry::PID pidGeometry;
 nav_msgs::Path path;
 CTRL_MODE_TYPE controlMode = ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;

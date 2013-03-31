@@ -1,7 +1,7 @@
 #include "bezier_smooth.h"
 #include "ros/ros.h"
 #include "float.h"
-#include "../utils.h"
+#include "../geometry/basic.h"
 
 using namespace std;
 
@@ -81,9 +81,9 @@ point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_
 		rotate_by = -(M_PI+theta2);
 	}
 	
-	q0 = rotate_point(q0, rotate_by, CW);
-	q2 = rotate_point(q2, rotate_by, CW);
-	p = rotate_point(p, rotate_by, CW);
+	q0 = geometry::rotatePoint(q0, rotate_by, CW);
+	q2 = geometry::rotatePoint(q2, rotate_by, CW);
+	p = geometry::rotatePoint(p, rotate_by, CW);
 	
 	ROS_INFO("rotate_by=%f, q0=%f,%f, q2=%f,%f, p=%f,%f", rotate_by, q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
@@ -134,8 +134,8 @@ point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_
 	q1 = w1;
 	
 	//Rotate
-	q0 = rotate_point(q0, rotate_by, CCW);
-	q2 = rotate_point(q2, rotate_by, CCW);
+	q0 = geometry::rotatePoint(q0, rotate_by, CCW);
+	q2 = geometry::rotatePoint(q2, rotate_by, CCW);
 	
 	//Translate
 	q0.x -= tx;

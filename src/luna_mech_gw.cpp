@@ -3,7 +3,6 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
 #include "nav_msgs/Odometry.h"
-#include "utils.h"
 
 geometry_msgs::Twist twistMsg;
 lunabotics::Telemetry telemetryMsg;

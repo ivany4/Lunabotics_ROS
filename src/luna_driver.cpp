@@ -1,6 +1,5 @@
 #include "ros/ros.h"
 #include "nav_msgs/Path.h"
-#include "utils.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
@@ -16,7 +15,7 @@
 #include "planning/bezier_smooth.h"
 #include "tf/tf.h"
 #include "types.h"
-#include "motion/pid.h"
+#include "geometry/geometry.h"
 #include <numeric>
 
 using namespace std;
@@ -52,7 +51,7 @@ ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
 lunabotics::PID pid;
-motion::PIDGeometry pidGeometry;
+geometry::PID pidGeometry;
 geometry_msgs::Twist velocities;
 bool drive = false;
 pose_arr waypoints;
@@ -101,7 +100,7 @@ planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 		    stringstream sstr;
 			for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
 				int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
-				sstr << static_cast<int>(probability) << " ";
+				sstr << setw(3) << static_cast<int>(probability) << " ";
 			}
 			ROS_INFO("%s", sstr.str().c_str());
 		}
@@ -180,14 +179,6 @@ void autonomyCallback(const std_msgs::Bool& msg)
 	}
 }
 
-point_t midPoint(point_t p1, point_t p2)
-{
-	point_t p;
-	p.x = (p1.x+p2.x)/2;
-	p.y = (p1.y+p2.y)/2;
-	return p;
-}
-
 void pidCallback(const lunabotics::PID& msg) 
 {
 	pid = msg;
@@ -231,10 +222,11 @@ void goalCallback(const lunabotics::Goal& msg)
 		if (controlMode == ACKERMANN) {
 			unsigned int size = corner_points.size();
 			if (size > 2) {
-				point_arr closest_obstacles = path->closestObstaclePoints(resolution);
-				
 				point_t startPoint = corner_points.at(0);
 				point_t endPoint = corner_points.at(size-1);
+				point_indexed_arr closest_obstacles = path->closestObstaclePoints(resolution);
+				unsigned int obst_size = closest_obstacles.size();
+				
 				pts.push_back(startPoint);
 			
 				//Get bezier quadratic curves for each point-turn
@@ -243,31 +235,52 @@ void goalCallback(const lunabotics::Goal& msg)
 					point_t prev = corner_points.at(i-1);
 					point_t curr = corner_points.at(i);
 					point_t next = corner_points.at(i+1);
-					point_t obstacle = closest_obstacles.at(i-1);
+					
+					bool hasObstacle = false;
+					point_t obstaclePoint;
+					
 					//Since obstacle is the center of occupied cell, we want p to be at its edge
-					point_t p = midPoint(obstacle, curr);
+					if (obst_size > 0) {
+						int start = std::min(obst_size-1, i-1);
+						for (int j = start; j >= 0; j--) {
+							point_indexed indexedObstacle = closest_obstacles.at(j);
+							if (indexedObstacle.index == i) {
+								hasObstacle = true;
+								obstaclePoint = indexedObstacle.point;
+								break;
+							}
+						}
+					}
 					
 					
 					if (i == 1) {
 						q0 = prev;
 					}
 					else {
-						q0 = midPoint(prev, curr);
+						q0 = geometry::midPoint(prev, curr);
 					}
-					if (i == corner_points.size()-2) {
+					if (i == size-2) {
 						q2 = next;
 					}
 					else {
-						q2 = midPoint(next, curr);
+						q2 = geometry::midPoint(next, curr);
 					}
-					point_arr curve = planning::trajectory_bezier(q0, curr, q2, p, bezierSegments);
 					
-					ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+					point_arr curve;
+					if (hasObstacle) {
+						point_t p = geometry::midPoint(obstaclePoint, curr);
+						curve = planning::trajectory_bezier(q0, curr, q2, p, bezierSegments);
+						ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+					}
+					else {
+						curve = planning::quadratic_bezier(q0, curr, q2, bezierSegments);
+						ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
+					}
 					
 					//Append curve points
 					pts.insert(pts.end(), curve.begin(), curve.end());
 				}	
-				pts.push_back(endPoint);		
+				pts.push_back(endPoint);	
 			}
 			else {
 				pts = corner_points;
@@ -326,7 +339,7 @@ void controlSkid(pose_t waypointPose)
 {
 	double dx = waypointPose.position.x-currentPose.position.x;
 	double dy = waypointPose.position.y-currentPose.position.y;
-	double angle = normalize_angle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+	double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 	
 	
 	lunabotics::Control controlMsg;
