@@ -16,6 +16,7 @@
 #include "planning/bezier_smooth.h"
 #include "tf/tf.h"
 #include "types.h"
+#include "motion/pid.h"
 #include <numeric>
 
 using namespace std;
@@ -51,6 +52,7 @@ ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
 lunabotics::PID pid;
+motion::PIDGeometry pidGeometry;
 geometry_msgs::Twist velocities;
 bool drive = false;
 pose_arr waypoints;
@@ -151,6 +153,8 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 	currentPose.position = msg.odometry.pose.pose.position;
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
 	velocities = msg.odometry.twist.twist;
+	pidGeometry.setLinearVelocity(velocities.linear.x);
+	pidGeometry.setCurrentPose(currentPose);
 }
 
 void controlModeCallback(const lunabotics::ControlMode& msg)
@@ -187,6 +191,8 @@ point_t midPoint(point_t p1, point_t p2)
 void pidCallback(const lunabotics::PID& msg) 
 {
 	pid = msg;
+	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
+	pidGeometry.setVelocityOffset(msg.velocity_offset);
 }
 
 void goalCallback(const lunabotics::Goal& msg) 
@@ -277,9 +283,6 @@ void goalCallback(const lunabotics::Goal& msg)
 			
 			pose_t waypoint;
 			waypoint.position = pt;
-			//waypoint.position.x = x_m;
-			//waypoint.position.y = y_m;
-			//waypoint.position.z = 0;
 			waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
 			waypoints.push_back(waypoint);
 			sstr << "->(" << x_m << "," << y_m << ")";
@@ -292,6 +295,7 @@ void goalCallback(const lunabotics::Goal& msg)
 			pose.pose = waypoint;
 			pathMsg.poses.push_back(pose);
 		}
+		pidGeometry.setTrajectory(pts);
 		
 		wayIterator = controlMode == ACKERMANN ? waypoints.begin() : waypoints.begin()+1;		
 		ROS_INFO("Returned path: %s", sstr.str().c_str());
@@ -397,131 +401,66 @@ void controlAckermann(pose_t waypointPose)
 	}
 	
 	if (waypoints.size() >= 2) {
-		pose_arr::iterator closestWaypoint1 = waypoints.begin();
-		pose_arr::iterator closestWaypoint2 = waypoints.begin()+1;
-		
-		//Get tip of the linear velocity vector. Shortest distance from this tip to the trajectory is used as PID error.
-		
-		double theta = tf::getYaw(currentPose.orientation);
-		double x = currentPose.position.x + velocities.linear.x * cos(theta);
-		double y = currentPose.position.y + velocities.linear.x * sin(theta);
-		
-		point_t testPoint;
-		testPoint.x = x;
-		testPoint.y = y;
-		
-		//point_t testPoint = currentPose.position;
-		
-		
-		
-		double dist1 = point_distance(testPoint, (*closestWaypoint1).position);
-		double dist2 = point_distance(testPoint, (*closestWaypoint2).position);
-		if (dist2 < dist1) {
-			//Swap values to keep waypoint1 always the closest one
-			double tmp_dist = dist1;
-			dist1 = dist2;
-			dist2 = tmp_dist;
-			pose_arr::iterator tmp_waypoint = closestWaypoint1;
-			closestWaypoint1 = closestWaypoint2;
-			closestWaypoint2 = tmp_waypoint;
-		}
-		for (pose_arr::iterator it = waypoints.begin()+2; it < waypoints.end(); it++) {
-			double dist = point_distance(testPoint, (*it).position);
-			if (dist < dist1) {
-				dist2 = dist1, closestWaypoint2 = closestWaypoint1;
-				dist1 = dist, closestWaypoint1 = it;
-			}
-			else if (dist < dist2) {
-				dist2 = dist, closestWaypoint2 = it;
-			}
-		}
-		if (closestWaypoint1 == wayIterator) {
-			wayIterator++;
-		}
-		double length = point_distance((*closestWaypoint1).position, (*closestWaypoint2).position);
-		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
-		double y_err = distance_to_line(dist1, angle);		
-		point_t closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, (*closestWaypoint1).position, (*closestWaypoint2).position);;
-		
-		
-		//ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", testPoint.x,testPoint.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,(*closestWaypoint1).position.x,(*closestWaypoint1).position.y,(*closestWaypoint2).position.x,(*closestWaypoint2).position.y, y_err);
-		
-		lunabotics::ControlParams controlParamsMsg;
-		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
-		controlParamsMsg.velocity_point = testPoint;
-		controlParamsMsg.y_err = y_err;
-		controlParamsMsg.driving = drive;
-		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
-		controlParamsPublisher.publish(controlParamsMsg);
-	/*	
-		if (fabs(angle) > M_PI_2) {
-			//Trajectory is not on the side. First need to reach starting point
-			controlSkid(*closestWaypoint1);
-		}
-		else {
-		*/
 		
 		if (wayIterator >= waypoints.end()) {
 			finish_route();
 			return;
 		}
 		
-		//double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-testPoint.y, closestTrajectoryPoint.x-testPoint.x);
-		double closestTrajectoryPointAngle = atan2((*wayIterator).position.y-testPoint.y, (*wayIterator).position.x-testPoint.x);
-		double angle_diff = closestTrajectoryPointAngle - theta;
-		angle_diff = normalize_angle(angle_diff);
+		point_t traj_p, vel_p;
+		double y_err = pidGeometry.getReferenceDistance(traj_p, vel_p);
+		lunabotics::ControlParams controlParamsMsg;
+		controlParamsMsg.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
+		controlParamsMsg.velocity_point = pidGeometry.getReferencePoint();
+		controlParamsMsg.y_err = y_err;
+		controlParamsMsg.driving = drive;
+		controlParamsMsg.t_trajectory_point = traj_p;
+		controlParamsMsg.t_velocity_point = vel_p;
+		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsPublisher.publish(controlParamsMsg);
 		
-		 //goalAngle - closestTrajectoryPointAngle;
-		if (angle_diff > 0) {
-			y_err *= -1;
-		}
-		
-		
-		
-			//Control law
-					
-			ros::Time now = ros::Time::now();
-			ros::Duration dt = now - y_err_time_prev;
-			y_err_time_prev = now;
-			if (dt.toSec() != 0 && !isnan(y_err)) {
-				double d_y_err = y_err - y_err_prev / dt.toSec();
+		//Control law
 				
-				if (y_err_int.size() == 10) {
-					y_err_int.erase(y_err_int.begin());
-				}
-				y_err_int.push_back(y_err);
-				double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
-				
-				double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
-				
-				//ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
-				
-				float v = linear_speed_limit;
-				if (isnan(dw)) {
-					dw = 0;
-					v = 0;
-				}
-				else {
-					//The higher angular speed, the lower linear speed is
-					#pragma message("This top w is for stage only");
-					double top_w = 1.57;
-					v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
-					v = std::max((float)0.01, v);
-				}
-				
-				lunabotics::Control controlMsg;
-				controlMsg.motion.linear.x = v;
-				controlMsg.motion.angular.z = dw;
-				controlPublisher.publish(controlMsg);
+		ros::Time now = ros::Time::now();
+		ros::Duration dt = now - y_err_time_prev;
+		y_err_time_prev = now;
+		if (dt.toSec() != 0 && !isnan(y_err)) {
+			double d_y_err = y_err - y_err_prev / dt.toSec();
+			
+			if (y_err_int.size() == 10) {
+				y_err_int.erase(y_err_int.begin());
 			}
-			y_err_prev = y_err;
-	//	}
+			y_err_int.push_back(y_err);
+			double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
+			
+			double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
+			
+			//ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
+			
+			float v = linear_speed_limit;
+			if (isnan(dw)) {
+				dw = 0;
+				v = 0;
+			}
+			else {
+				//The higher angular speed, the lower linear speed is
+				#pragma message("This top w is for stage only");
+				double top_w = 1.57;
+				v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
+				v = std::max((float)0.01, v);
+			}
+			
+			lunabotics::Control controlMsg;
+			controlMsg.motion.linear.x = v;
+			controlMsg.motion.angular.z = dw;
+			controlPublisher.publish(controlMsg);
+		}
+		y_err_prev = y_err;
 	}
 	else {
 		//No need for curvature, just straight driving
 		controlSkid(waypointPose);
 	}
-	
 	return;
 	
 	///////////////////////////////////////////////////////////////////

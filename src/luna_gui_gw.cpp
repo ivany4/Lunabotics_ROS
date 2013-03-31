@@ -4,6 +4,7 @@
 #include "lunabotics/Vision.h"
 #include "lunabotics/ControlParams.h"
 #include "lunabotics/ControlMode.h"
+#include "lunabotics/PID.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
@@ -19,6 +20,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <bitset>
+#include "motion/pid.h"
 
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
@@ -35,6 +37,7 @@ struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
+motion::PIDGeometry pidGeometry;
 nav_msgs::Path path;
 CTRL_MODE_TYPE controlMode = ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -100,6 +103,20 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	telemetry = msg;
 	sendTelemetry = true;
+	
+	//if (!controlParams.driving) {
+		point_t traj_p, vel_p;
+		pose_t currentPose = msg.odometry.pose.pose;
+		pidGeometry.setCurrentPose(currentPose);
+		pidGeometry.setLinearVelocity(msg.odometry.twist.twist.linear.x);
+		controlParams.driving = true;
+		controlParams.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
+		controlParams.velocity_point = pidGeometry.getReferencePoint();
+		controlParams.y_err = pidGeometry.getReferenceDistance(traj_p, vel_p);
+		controlParams.t_trajectory_point = traj_p;
+		controlParams.t_velocity_point = vel_p;
+		controlParams.next_waypoint_idx = 0;
+	//}
 }
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
@@ -114,12 +131,22 @@ void controlModeCallback(const lunabotics::ControlMode& msg)
 
 void controlParamsCallback(const lunabotics::ControlParams& msg)
 {
-	controlParams = msg;					
+	controlParams = msg;		
 }
 
 void pathCallback(const nav_msgs::Path& msg)
 {    
 	path = msg;
+	
+#pragma message("Test code")
+//	if (!controlParams.driving) {
+		point_arr poses;
+		for (vector<geometry_msgs::PoseStamped>::iterator it = path.poses.begin(); it < path.poses.end(); it++) {
+			poses.push_back((*it).pose.position);
+		}
+		pidGeometry.setTrajectory(poses);
+//	}
+	
 	sendPath = true;
 }
 
@@ -130,10 +157,18 @@ void visionCallback(const lunabotics::Vision& msg)
 	sendVision = true;
 }
 
+void pidCallback(const lunabotics::PID& msg) 
+{
+	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
+	pidGeometry.setVelocityOffset(msg.velocity_offset);
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_gui_gw");
 	ros::NodeHandle nodeHandle;
+	#pragma message("pid listener only for debug");
+	ros::Subscriber pidSubscriber = nodeHandle.subscribe("luna_pid", sizeof(float)*3, pidCallback);
 	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
@@ -193,7 +228,7 @@ int main(int argc, char **argv)
 			    if (controlParams.driving) {
 					size += sizeof(int32_t);
 					if (controlMode == ACKERMANN) {
-						size += sizeof(double)*5;
+						size += sizeof(double)*9;
 					}
 				}
 			}
@@ -251,6 +286,10 @@ int main(int argc, char **argv)
 							encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
 							encodeDouble(buffer, pointer, controlParams.velocity_point.x);
 							encodeDouble(buffer, pointer, controlParams.velocity_point.y);
+							encodeDouble(buffer, pointer, controlParams.t_trajectory_point.x);
+							encodeDouble(buffer, pointer, controlParams.t_trajectory_point.y);
+							encodeDouble(buffer, pointer, controlParams.t_velocity_point.x);
+							encodeDouble(buffer, pointer, controlParams.t_velocity_point.y);
 						}
 					}
 					

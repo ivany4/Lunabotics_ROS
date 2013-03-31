@@ -1,12 +1,10 @@
 #include "bezier_smooth.h"
 #include "ros/ros.h"
 #include "float.h"
+#include "../utils.h"
+
 using namespace std;
 
-enum ROTATION_DIRECTION {
-	CW = 1,
-	CCW = -1
-};
 
 double alpha_p(double beta, double K_alpha, double K_beta)
 {
@@ -24,14 +22,6 @@ bool point_is_within_triangle(point_t p, double alpha_bar, double beta_bar, doub
 	bool condition_2 = p.y*cos(theta) + p.x*sin(theta) > 0;
 	bool condition_3 = p.y*(alpha_bar + beta_bar*cos(theta)) + p.x*beta_bar*sin(theta) - alpha_bar*beta_bar*sin(theta) < 0;
 	return condition_1 && condition_2 && condition_3;
-}
-
-point_t rotate_point(point_t point, double angle, ROTATION_DIRECTION dir)
-{
-	point_t result;
-	result.x = point.x*cos(angle)+point.y*sin(angle)*dir;
-	result.y = -point.x*sin(angle)*dir+point.y*cos(angle);
-	return result;
 }
 
 point_arr planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int segments)

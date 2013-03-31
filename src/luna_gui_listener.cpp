@@ -245,6 +245,8 @@ int main(int argc, char **argv)
 					pidMsg.p = decodeFloat(buffer, pointer);
 					pidMsg.i = decodeFloat(buffer, pointer);
 					pidMsg.d = decodeFloat(buffer, pointer);
+					pidMsg.velocity_offset = decodeFloat(buffer, pointer);
+					pidMsg.velocity_multiplier = decodeFloat(buffer, pointer);
 					pidPublisher.publish(pidMsg);
 				}
 				break;

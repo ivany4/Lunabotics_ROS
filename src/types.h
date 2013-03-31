@@ -16,6 +16,12 @@ enum CTRL_MODE_TYPE {
     LATERAL   		 = 2
 };
 
+enum ROTATION_DIRECTION {
+	CW = 1,
+	CCW = -1
+};
+
 std::string controlModeToString(CTRL_MODE_TYPE type);
+point_t rotate_point(point_t point, double angle, ROTATION_DIRECTION dir);
 
 #endif //_TYPES_H_
