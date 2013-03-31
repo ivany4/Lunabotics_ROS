@@ -18,9 +18,9 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_fear");
 	ros::NodeHandle nodeHandle;
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("luna_vision", 256, visionCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::Publisher emergencyPublisher = nodeHandle.advertise<lunabotics::Emergency>("luna_alert", 256);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("lunabotics/vision", 256, visionCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
+	ros::Publisher emergencyPublisher = nodeHandle.advertise<lunabotics::Emergency>("lunabotics/emergency", 256);
 	ros::Rate loop_rate(50);
 	
 	ROS_INFO("Emergency behavior ready"); 

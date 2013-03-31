@@ -65,6 +65,10 @@ void stop() {
 	drive = false;
 	lunabotics::Control controlMsg;
 	controlMsg.motion.linear.x = 0;
+	controlMsg.motion.linear.y = 0;
+	controlMsg.motion.linear.z = 0;
+	controlMsg.motion.angular.x = 0;
+	controlMsg.motion.angular.y = 0;
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
 	lunabotics::ControlParams controlParamsMsg;
@@ -343,12 +347,16 @@ void controlSkid(pose_t waypointPose)
 	
 	
 	lunabotics::Control controlMsg;
+	controlMsg.motion.linear.x = 0;
+	controlMsg.motion.linear.y = 0;
+	controlMsg.motion.linear.z = 0;
+	controlMsg.motion.angular.x = 0;
+	controlMsg.motion.angular.y = 0;
+	controlMsg.motion.angular.z = 0;
 	
 	switch (skidState) {
 		case STOPPED: {
 			ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
-			controlMsg.motion.linear.x = 0;
-			controlMsg.motion.angular.z = 0;
 			
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				wayIterator++;
@@ -469,6 +477,10 @@ void controlAckermann(pose_t waypointPose)
 			
 			lunabotics::Control controlMsg;
 			controlMsg.motion.linear.x = v;
+			controlMsg.motion.linear.y = 0;
+			controlMsg.motion.linear.z = 0;
+			controlMsg.motion.angular.x = 0;
+			controlMsg.motion.angular.y = 0;
 			controlMsg.motion.angular.z = dw;
 			controlPublisher.publish(controlMsg);
 		}
@@ -517,6 +529,10 @@ void controlAckermann(pose_t waypointPose)
 		
 		lunabotics::Control controlMsg;
 		controlMsg.motion.linear.x = v;
+		controlMsg.motion.linear.y = 0;
+		controlMsg.motion.linear.z = 0;
+		controlMsg.motion.angular.x = 0;
+		controlMsg.motion.angular.y = 0;
 		controlMsg.motion.angular.z = w;
 		controlPublisher.publish(controlMsg);
 	}
@@ -533,16 +549,16 @@ int main(int argc, char **argv)
 	pid.i = 0.1;
 	pid.d = 0.18;//1;
 	
-	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("luna_alert", 256, emergencyCallback);
-	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("luna_auto", 1, autonomyCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::Subscriber goalSubscriber = nodeHandle.subscribe("luna_goal", 256, goalCallback);
-	ros::Subscriber pidSubscriber = nodeHandle.subscribe("luna_pid", sizeof(float)*3, pidCallback);
-	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
-	controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
-	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("luna_path", 256);
-	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("luna_ctrl_params", 256);
-	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
+	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("lunabotics/emergency", 256, emergencyCallback);
+	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("lunabotics/autonomy", 1, autonomyCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
+	ros::Subscriber goalSubscriber = nodeHandle.subscribe("lunabotics/goal", 256, goalCallback);
+	ros::Subscriber pidSubscriber = nodeHandle.subscribe("lunabotics/pid", sizeof(float)*3, pidCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("lunabotics/control_mode", 1, controlModeCallback);
+	controlPublisher = nodeHandle.advertise<lunabotics::Control>("lunabotics/control", 256);
+	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("lunaabotics/path", 256);
+	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("lunabotics/control_params", 256);
+	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("lunabotics/map");
 	
 	
 	

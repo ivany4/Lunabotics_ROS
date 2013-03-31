@@ -167,14 +167,14 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_gw");
 	ros::NodeHandle nodeHandle;
 	#pragma message("pid listener only for debug");
-	ros::Subscriber pidSubscriber = nodeHandle.subscribe("luna_pid", sizeof(float)*3, pidCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("luna_map_update", 0, mapUpdateCallback);
-	ros::Subscriber pathSubscriber = nodeHandle.subscribe("luna_path", 256, pathCallback);
-	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("luna_ctrl_mode", 1, controlModeCallback);
-	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("luna_ctrl_params", 1, controlParamsCallback);
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("luna_vision", 1, visionCallback);
-	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("luna_map");
+	ros::Subscriber pidSubscriber = nodeHandle.subscribe("lunabotics/pid", sizeof(float)*3, pidCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
+	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("lunabotics/map_update", 0, mapUpdateCallback);
+	ros::Subscriber pathSubscriber = nodeHandle.subscribe("lunabotics/path", 256, pathCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("lunabotics/control_mode", 1, controlModeCallback);
+	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("lunabotics/control_params", 1, controlParamsCallback);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("lunabotics/vision", 1, visionCallback);
+	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("lunabotics/map");
 	nav_msgs::GetMap mapService;
     
     

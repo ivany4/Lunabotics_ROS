@@ -63,12 +63,12 @@ int main(int argc, char **argv)
 	}
 	
 	ros::NodeHandle nodeHandle;
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("luna_ctrl", 256);
-	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("luna_pid", sizeof(float)*3);
-	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("luna_auto", 1);
-	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("luna_ctrl_mode", 1);
-	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("luna_goal", 1);
-	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("luna_map_update", 1);
+	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("lunabotics/control", 256);
+	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("lunabotics/pid", sizeof(float)*3);
+	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("lunabotics/autonomy", 1);
+	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("lunabotics/control_mode", 1);
+	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("lunabotics/goal", 1);
+	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("lunabotics/map_update", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
@@ -201,11 +201,15 @@ int main(int argc, char **argv)
 					else if (!driveLeft && driveRight) {
 						stageAngularSpeed = -1.0;
 					}
+					//////////////////////////////////////////////////////////////////
 					
 					controlMsg.control_type = 0;	//Motion only
 					controlMsg.motion.linear.x = stageLinearSpeed;
+					controlMsg.motion.linear.y = 0;
+					controlMsg.motion.linear.z = 0;
+					controlMsg.motion.angular.x = 0;
+					controlMsg.motion.angular.y = 0;
 					controlMsg.motion.angular.z = stageAngularSpeed;
-					//////////////////////////////////////////////////////////////////
 					
 					
 					controlPublisher.publish(controlMsg);

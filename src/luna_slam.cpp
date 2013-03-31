@@ -94,9 +94,9 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_slam");
 	ros::NodeHandle nodeHandle;
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("luna_vision", 256, visionCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("luna_tm", 256, telemetryCallback);
-	ros::ServiceServer mapServer = nodeHandle.advertiseService("luna_map", getMap);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("lunabotics/vision", 256, visionCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
+	ros::ServiceServer mapServer = nodeHandle.advertiseService("lunabotics/map", getMap);
 	
 	ROS_INFO("SLAM ready"); 
 
