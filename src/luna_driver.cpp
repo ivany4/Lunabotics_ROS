@@ -339,10 +339,14 @@ void goalCallback(const lunabotics::Goal& msg)
 	delete path;
 }
 
-void controlSkid(pose_t waypointPose) 
+void controlSkid() 
 {
-	double dx = waypointPose.position.x-currentPose.position.x;
-	double dy = waypointPose.position.y-currentPose.position.y;
+	if (wayIterator >= waypoints.end()) {
+		finish_route();
+		return;
+	}
+	double dx = (*wayIterator).position.x-currentPose.position.x;
+	double dy = (*wayIterator).position.y-currentPose.position.y;
 	double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 	
 	
@@ -418,20 +422,53 @@ void controlSkid(pose_t waypointPose)
 	controlPublisher.publish(controlMsg);
 }
 
-void controlAckermann(pose_t waypointPose)
+void controlAckermann()
 {
 	//////////////////////////////// ARC-TURN WITH DIFFERENTIAL DRIVE TEST /////////////////////
 	
 	if (wayIterator >= waypoints.end()) {
 		finish_route();
+		return;
 	}
+	
+	//If suddenly skipped a waypoint, proceed with the next ones, don't get stuck with current
+	double dist = geometry::distanceBetweenPoints((*wayIterator).position, currentPose.position);
+	for (pose_arr::iterator it = wayIterator+1; it < waypoints.end(); it++) {
+		double newDist = geometry::distanceBetweenPoints((*it).position, currentPose.position);
+		if (newDist < dist) {
+			wayIterator = it;
+			dist = newDist;
+		}
+	}
+	
+	if (dist < distanceAccuracy) {
+		wayIterator++;
+	}
+	if (wayIterator >= waypoints.end()) {
+		finish_route();
+		return;
+	}
+	
+	
+	double dx = (*wayIterator).position.x-currentPose.position.x;
+	double dy = (*wayIterator).position.y-currentPose.position.y;
 	
 	if (waypoints.size() >= 2) {
 		
-		if (wayIterator >= waypoints.end()) {
-			finish_route();
-			return;
+		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
+		if (wayIterator < waypoints.begin()+2) {
+			ROS_WARN("IT'S THE BEGINNING!");
+			
+			wayIterator = waypoints.begin()+1;
+			double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+			if (fabs(angle) > angleAccuracy) {
+				ROS_WARN("Angle %f is bigger than desired %d. Skidding", angle, angleAccuracy);
+				controlSkid();
+				return;
+			}
 		}
+		
+		
 		
 		double y_err = pidGeometry.getReferenceDistance();
 		lunabotics::ControlParams controlParamsMsg;
@@ -488,7 +525,7 @@ void controlAckermann(pose_t waypointPose)
 	}
 	else {
 		//No need for curvature, just straight driving
-		controlSkid(waypointPose);
+		controlSkid();
 	}
 	return;
 	
@@ -499,10 +536,7 @@ void controlAckermann(pose_t waypointPose)
 	
 	
 	
-	
-	double dx = waypointPose.position.x-currentPose.position.x;
-	double dy = waypointPose.position.y-currentPose.position.y;
-	double theta = tf::getYaw(waypointPose.orientation) - tf::getYaw(currentPose.orientation);
+	double theta = tf::getYaw((*wayIterator).orientation) - tf::getYaw(currentPose.orientation);
 	
 	//Reparametrization
 	double rho = sqrt(pow(dx, 2)+pow(dy, 2));
@@ -645,9 +679,8 @@ int main(int argc, char **argv)
 		//Whenever needed send control message
 		if (drive) {
 			if (wayIterator < waypoints.end()) {
-				pose_t waypointPose = *wayIterator;
 			
-				if (isnan(waypointPose.position.x) || isnan(waypointPose.position.y)) {
+				if (isnan((*wayIterator).position.x) || isnan((*wayIterator).position.y)) {
 					ROS_WARN("Waypoint position undetermined");
 				}
 				else if (isnan(currentPose.position.x) || isnan(currentPose.position.y)) {
@@ -655,8 +688,8 @@ int main(int argc, char **argv)
 				}
 				else {
 					switch (controlMode) {
-						case ACKERMANN: controlAckermann(waypointPose); break;
-						case TURN_IN_SPOT: controlSkid(waypointPose); break;
+						case ACKERMANN: controlAckermann(); break;
+						case TURN_IN_SPOT: controlSkid(); break;
 						case LATERAL: break;
 						default: break;
 					}
