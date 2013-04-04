@@ -457,12 +457,11 @@ void controlAckermann()
 		
 		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
 		if (wayIterator < waypoints.begin()+2) {
-			ROS_WARN("IT'S THE BEGINNING!");
 			
 			wayIterator = waypoints.begin()+1;
 			double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
-				ROS_WARN("Angle %f is bigger than desired %d. Skidding", angle, angleAccuracy);
+				ROS_WARN("Facing away from the trajectory. Turning in place", angle, angleAccuracy);
 				controlSkid();
 				return;
 			}
