@@ -16,10 +16,10 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_planner");
-	ros::NodeHandle nodeHandle;
-	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("lunabotics/autonomy", 256, autonomyCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("lunabotics/control", 256);
+	ros::NodeHandle nodeHandle("lunabotics");
+	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("autonomy", 256, autonomyCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
 	ros::Rate loop_rate(50);
 	
 	ROS_INFO("State Machine ready"); 

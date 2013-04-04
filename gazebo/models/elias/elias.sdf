@@ -30,6 +30,6 @@
 				</geometry>
 			</visual>
 		</link>
-		<plugin name="ros_model_plugin" filename="libros_model_plugin.so"/>
+		<plugin name="ros_model_plugin" filename="libLunaSimpleControlPlugin.so"/>
 	</model>
 </sdf>

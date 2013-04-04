@@ -25,7 +25,7 @@ namespace gazebo
     public: ROSModelPlugin()
     {
       // Start up ROS
-      std::string name1 = "gz"; // this is what appears in the rostopics
+      std::string name1 = "gazebo"; // this is what appears in the rostopics
       int argc = 0;
       ros::init(argc, NULL, name1);      
     }
@@ -42,13 +42,13 @@ namespace gazebo
       // ROS Nodehandle
       this->nh = new ros::NodeHandle("~");
       // ROS Subscriber
-      this->subvel = this->nh->subscribe<geometry_msgs::Twist>("cmd_vel", 1000, &ROSModelPlugin::ROSCallback_Vel, this );
+      this->subvel = this->nh->subscribe<geometry_msgs::Twist>("/cmd_vel", 1000, &ROSModelPlugin::ROSCallback_Vel, this );
 
       this->nh = new ros::NodeHandle("~");
-      this->pubscan = this->nh->advertise<sensor_msgs::LaserScan>("scan",1000);
+      this->pubscan = this->nh->advertise<sensor_msgs::LaserScan>("/scan",1000);
 
       this->nh = new ros::NodeHandle("~");
-      this->pubodom = this->nh->advertise<nav_msgs::Odometry>("odom",1000);
+      this->pubodom = this->nh->advertise<nav_msgs::Odometry>("/odom",1000);
 
 //***********************************************
       sensors::SensorPtr sensor = sensors::SensorManager::Instance()->GetSensor("laser");
@@ -154,6 +154,9 @@ namespace gazebo
 
 // *********************************************** 
             //set velocities
+            Vlin = std::min(Vlin, (float)0.33);
+            
+            
             float velx,vely;
             velx=Vlin*cos(Yrad);
             vely=Vlin*sin(Yrad);    

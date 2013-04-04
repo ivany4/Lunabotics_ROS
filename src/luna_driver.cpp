@@ -541,7 +541,7 @@ void controlAckermann(pose_t waypointPose)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_driver");
-	ros::NodeHandle nodeHandle;
+	ros::NodeHandle nodeHandle("lunabotics");
 	
 	y_err_time_prev = ros::Time::now();
 	
@@ -549,16 +549,16 @@ int main(int argc, char **argv)
 	pid.i = 0.1;
 	pid.d = 0.18;//1;
 	
-	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("lunabotics/emergency", 256, emergencyCallback);
-	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("lunabotics/autonomy", 1, autonomyCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
-	ros::Subscriber goalSubscriber = nodeHandle.subscribe("lunabotics/goal", 256, goalCallback);
-	ros::Subscriber pidSubscriber = nodeHandle.subscribe("lunabotics/pid", sizeof(float)*3, pidCallback);
-	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("lunabotics/control_mode", 1, controlModeCallback);
-	controlPublisher = nodeHandle.advertise<lunabotics::Control>("lunabotics/control", 256);
-	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("lunaabotics/path", 256);
-	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("lunabotics/control_params", 256);
-	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("lunabotics/map");
+	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("emergency", 256, emergencyCallback);
+	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("autonomy", 1, autonomyCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::Subscriber goalSubscriber = nodeHandle.subscribe("goal", 256, goalCallback);
+	ros::Subscriber pidSubscriber = nodeHandle.subscribe("pid", sizeof(float)*3, pidCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
+	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
+	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("path", 256);
+	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("control_params", 256);
+	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	
 	
 	

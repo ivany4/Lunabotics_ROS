@@ -93,10 +93,10 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_slam");
-	ros::NodeHandle nodeHandle;
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("lunabotics/vision", 256, visionCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
-	ros::ServiceServer mapServer = nodeHandle.advertiseService("lunabotics/map", getMap);
+	ros::NodeHandle nodeHandle("lunabotics");
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 256, visionCallback);
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::ServiceServer mapServer = nodeHandle.advertiseService("map", getMap);
 	
 	ROS_INFO("SLAM ready"); 
 

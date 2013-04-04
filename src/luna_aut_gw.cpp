@@ -30,9 +30,9 @@ void pioneerLaserCallback(const sensor_msgs::LaserScan& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_aut_gw");
-	ros::NodeHandle nodeHandle;
+	ros::NodeHandle nodeHandle("lunabotics");
 	
-	ros::Publisher visionPublisher = nodeHandle.advertise<lunabotics::Vision>("lunabotics/vision", 256);
+	ros::Publisher visionPublisher = nodeHandle.advertise<lunabotics::Vision>("vision", 256);
 	
 	//Stageros subscriptions
 	ros::Subscriber stageLaserSubscriber = nodeHandle.subscribe("/base_scan", 256, stageLaserCallback);

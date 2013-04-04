@@ -20,7 +20,6 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <bitset>
-#include "geometry/geometry.h"
 
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
@@ -37,7 +36,6 @@ struct sockaddr_in server;
 lunabotics::Telemetry telemetry;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
-geometry::PID pidGeometry;
 nav_msgs::Path path;
 CTRL_MODE_TYPE controlMode = ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -103,19 +101,6 @@ void telemetryCallback(const lunabotics::Telemetry& msg)
 {    
 	telemetry = msg;
 	sendTelemetry = true;
-	
-	//if (!controlParams.driving) {
-		pose_t currentPose = msg.odometry.pose.pose;
-		pidGeometry.setCurrentPose(currentPose);
-		pidGeometry.setLinearVelocity(msg.odometry.twist.twist.linear.x);
-		controlParams.driving = true;
-		controlParams.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
-		controlParams.velocity_point = pidGeometry.getReferencePoint();
-		controlParams.y_err = pidGeometry.getReferenceDistance();
-		controlParams.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
-		controlParams.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
-		controlParams.next_waypoint_idx = 0;
-	//}
 }
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
@@ -136,16 +121,6 @@ void controlParamsCallback(const lunabotics::ControlParams& msg)
 void pathCallback(const nav_msgs::Path& msg)
 {    
 	path = msg;
-	
-#pragma message("Test code")
-//	if (!controlParams.driving) {
-		point_arr poses;
-		for (vector<geometry_msgs::PoseStamped>::iterator it = path.poses.begin(); it < path.poses.end(); it++) {
-			poses.push_back((*it).pose.position);
-		}
-		pidGeometry.setTrajectory(poses);
-//	}
-	
 	sendPath = true;
 }
 
@@ -156,25 +131,17 @@ void visionCallback(const lunabotics::Vision& msg)
 	sendVision = true;
 }
 
-void pidCallback(const lunabotics::PID& msg) 
-{
-	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
-	pidGeometry.setVelocityOffset(msg.velocity_offset);
-}
-
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_gui_gw");
-	ros::NodeHandle nodeHandle;
-	#pragma message("pid listener only for debug");
-	ros::Subscriber pidSubscriber = nodeHandle.subscribe("lunabotics/pid", sizeof(float)*3, pidCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("lunabotics/telemetry", 256, telemetryCallback);
-	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("lunabotics/map_update", 0, mapUpdateCallback);
-	ros::Subscriber pathSubscriber = nodeHandle.subscribe("lunabotics/path", 256, pathCallback);
-	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("lunabotics/control_mode", 1, controlModeCallback);
-	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("lunabotics/control_params", 1, controlParamsCallback);
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("lunabotics/vision", 1, visionCallback);
-	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("lunabotics/map");
+	ros::NodeHandle nodeHandle("lunabotics");
+	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("map_update", 0, mapUpdateCallback);
+	ros::Subscriber pathSubscriber = nodeHandle.subscribe("path", 256, pathCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
+	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("control_params", 1, controlParamsCallback);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 1, visionCallback);
+	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	nav_msgs::GetMap mapService;
     
     
@@ -191,20 +158,7 @@ int main(int argc, char **argv)
     addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
     
    	ROS_INFO("GUI Gateway ready");
-   	
-   	/*
-   	ROS_INFO("TEST START");
-   	int a = 0;
-   	char *gg = new char[1];
-   	gg[0] = '2';
-   	ROS_INFO("PUTTING %c", gg[0]);
-   	encodeByte(&gg, a, 2);
-   	ROS_INFO("EXTRACTING %c", gg[0]);
-   	
-   	ROS_INFO("TEST SHIFTED POINTER TO %d", a);
-   	*/
-   	
-   	
+   	   	
 	ros::Rate loop_rate(20);
 	while (ros::ok()) {
 				

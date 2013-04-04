@@ -10,7 +10,6 @@ bool publishTelemetry;
 
 void controlCallback(const lunabotics::Control& msg)
 {	
-	//For stage and pioneer
 	twistMsg.linear.x = msg.motion.linear.x;
 	twistMsg.angular.z = msg.motion.angular.z;
 }
@@ -24,25 +23,18 @@ void odoCallback(const nav_msgs::Odometry& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_mech_gw");
-	ros::NodeHandle nodeHandle;
-	ros::Subscriber controlSubscriber = nodeHandle.subscribe("lunabotics/control", 256, controlCallback);
-	ros::Publisher telemetryPublisher = nodeHandle.advertise<lunabotics::Telemetry>("lunabotics/telemetry", 256);
+	ros::NodeHandle nodeHandle("lunabotics");
+	ros::Subscriber controlSubscriber = nodeHandle.subscribe("control", 256, controlCallback);
+	ros::Publisher telemetryPublisher = nodeHandle.advertise<lunabotics::Telemetry>("telemetry", 256);
 	
 	int twistSize = 256;
 	int odomSize = 256;
 	
-	//Stageros communication protocols
-	ros::Publisher stagePublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", twistSize);	
-	ros::Subscriber stageOdoSubscriber = nodeHandle.subscribe("odom", odomSize, odoCallback);
+	//This is generic. Used by stageros and gazebo lunabotics nodes
+	//To remap for Pioneer use RosAria/cmd_vel and RosAria/pose
+	ros::Publisher ctrlPublisher = nodeHandle.advertise<geometry_msgs::Twist>("/cmd_vel", twistSize);	
+	ros::Subscriber odoSubscriber = nodeHandle.subscribe("/odom", odomSize, odoCallback);
 	
-	//Pioneer communication protocols
-	ros::Publisher pioneerPublisher = nodeHandle.advertise<geometry_msgs::Twist>("RosAria/cmd_vel", twistSize);	
-	ros::Subscriber pioneerOdoSubscriber = nodeHandle.subscribe("RosAria/pose", odomSize, odoCallback);
-	
-	//Gazebo communication protocols
-	ros::Publisher gazeboPublisher = nodeHandle.advertise<geometry_msgs::Twist>("gz/cmd_vel", twistSize);	
-	ros::Subscriber gazeboOdoSubscriber = nodeHandle.subscribe("gz/odom", odomSize, odoCallback);
-			
 	ros::Rate loop_rate(50);
 	telemetryMsg.odometry.header.frame_id = "/map";
 	publishTelemetry = false;
@@ -50,9 +42,8 @@ int main(int argc, char **argv)
 	ROS_INFO("MECH Gateway ready"); 
 	
 	while (ros::ok()) {     
-		stagePublisher.publish(twistMsg);
-        pioneerPublisher.publish(twistMsg);
-        gazeboPublisher.publish(twistMsg);
+		ctrlPublisher.publish(twistMsg);
+		
 		//Whenever needed send telemetry message
 		if (publishTelemetry) {
 			publishTelemetry = false;

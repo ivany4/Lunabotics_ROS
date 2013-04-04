@@ -62,13 +62,13 @@ int main(int argc, char **argv)
 		ros::shutdown();
 	}
 	
-	ros::NodeHandle nodeHandle;
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("lunabotics/control", 256);
-	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("lunabotics/pid", sizeof(float)*3);
-	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("lunabotics/autonomy", 1);
-	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("lunabotics/control_mode", 1);
-	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("lunabotics/goal", 1);
-	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("lunabotics/map_update", 1);
+	ros::NodeHandle nodeHandle("lunabotics");
+	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
+	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("pid", sizeof(float)*3);
+	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
+	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
+	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
+	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	
 	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
