@@ -34,11 +34,12 @@ rebuild=1
 build=0
 in_port="5555"
 in_addr=0
+compile_gazebo=0
 out_port="5556"
 out_addr="192.168.218.1"
 profile="VMWare"
 
-while getopts "a:p:A:P:cdnbr:" opt; 
+while getopts "a:p:A:P:cdnbr:g" opt; 
 do	
 	case $opt in
 	a)	in_addr="$OPTARG";;
@@ -47,6 +48,7 @@ do
 	P)	out_port="$OPTARG";;
 	c)	close=1;;
 	d)  clean=1;;
+	g)  compile_gazebo=1;;
 	b)	build=1;;
 	n)  rebuild=0;;
 	r)	profile="$OPTARG";;
@@ -70,18 +72,20 @@ shift $((OPTIND-1))
 if [ $close ]
 then
 	kill_nodes
-else	
-	if [ `pgrep -n roscore` ] || [ $build -eq 1 ]
-	then
-		if [ $build -eq 0 ]
-		then
+else
+	if [ $compile_gazebo -eq 1 ]; then
+		clrecho 3 "Rebuilding Gazebo plugin..."
+		cd `rospack find lunabotics`/gazebo
+		sh compile_plugin.sh 2>&1
+		cd `rospack find lunabotics`
+	fi
+	if [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
+		if [ $build -eq 0 ]; then
 			kill_nodes
 		fi
 		halt=0
-		if [ $rebuild -eq 1 ]
-		then
-			if [ $clean ]
-			then
+		if [ $rebuild -eq 1 ]; then
+			if [ $clean ]; then
 				clrecho 3 "Cleaning targets..."
 				cd `rospack find lunabotics`
 				make clean
@@ -89,35 +93,28 @@ else
 			clrecho 3 "Building package..."
 			rosmake lunabotics
 			halt=$?
-			if [ $halt -ne 0 ]
-			then
+			if [ $halt -ne 0 ]; then
 				clrecho 1 "Build failed"
 			fi
 		fi
 		
-		if [ $halt -eq 0 ]
-		then
-			if [ $build -eq 1 ]
-			then
+		if [ $halt -eq 0 ]; then
+			if [ $build -eq 1 ]; then
 				clrecho 2 "Build complete"
 			else
-				if [ $in_addr -eq 0 ]
-				then
-					if [ $profile = "Pioneer" ]
-					then
+				if [ $in_addr -eq 0 ]; then
+					if [ $profile = "Pioneer" ]; then
 						out_addr="192.168.1.113"
 						in_addr=`/sbin/ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 					else
 						in_addr=`ifconfig eth0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 					fi
 				fi
-				if [ $in_addr ]
-				then
+				if [ $in_addr ]; then
 					clrecho 3 "Launching nodes..."
 					echo "Using incoming connection $in_addr:$in_port"
 					echo "Using outgoing connection $out_addr:$out_port"
-					if [ $profile = "Pioneer" ]
-					then
+					if [ $profile = "Pioneer" ]; then
 						roscd lunabotics
 						roslaunch lunabotics.launch iip:=$in_addr oip:=$out_addr iport:=$in_port oport:=$out_port
 					else
