@@ -89,7 +89,8 @@ point_t geometry::PID::getClosestTrajectoryPoint()
 			double angle = this->getReferenceAngle(lengthBetweenWaypoints, closestDistance, secondClosestDistance);
 			
 			//Reference point lies not between waypoints 1 and 2 but beyond
-			if (fabs(angle) > M_PI_2) {
+			#pragma message("ALWAYS FALSE FOR TESTING");
+			if (false && fabs(angle) > M_PI_2) {
 				_closestTrajectoryPoint = closestPoint;
 			}
 			else {
