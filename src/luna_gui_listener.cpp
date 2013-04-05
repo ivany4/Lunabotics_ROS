@@ -7,7 +7,6 @@
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
 #include "types.h"
-#include "coding.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,6 +15,7 @@
 #include <string>
 #include <signal.h>
 #include <unistd.h>
+#include "../protos_gen/Telecommand.pb.h"
 
 #define MAXPENDING 5        /* Max connection requests */
 #define BUFFSIZE 256
@@ -27,16 +27,6 @@ int serverSocket = -1;
 int clientSocket = -1;
 float angleTolerance = 0.4;
 float distanceTolerance = 0.1;
-
-
-enum RX_CONTENT_TYPE {
-	STEERING		 = 0,
-	AUTONOMY		 = 1,
-	CTRL_MODE		 = 2,
-	ROUTE			 = 3,
-	MAP_REQUEST		 = 4,
-	PID				 = 5
-};
 
 
 void quit(int sig) { 
@@ -55,6 +45,8 @@ void replyToGUI(const char *msg, int sock) {
 
 int main(int argc, char **argv)
 {
+	GOOGLE_PROTOBUF_VERIFY_VERSION;	//Verify version of ProtoBuf package
+
 	ros::init(argc, argv, "luna_gui_listener");
 	
 	if (argc < 2 || argc > 3) {
@@ -133,6 +125,123 @@ int main(int argc, char **argv)
 			/* Print client message */
 	        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
 				
+			lunabotics::Telecommand tc;
+
+			if (!tc.ParseFromArray(buffer, received)) {
+				ROS_WARN("Failed to parse Telecommand object");
+				continue;
+			}
+				
+			switch(tc.type()) {
+				case lunabotics::Telecommand::SET_AUTONOMY: {
+					
+					ROS_INFO("%s autonomy", tc.autonomy_data().enabled() ? "Enabling" : "Disabling");
+					
+					std_msgs::Bool autonomyMsg;
+					autonomyMsg.data = tc.autonomy_data().enabled();
+					autonomyPublisher.publish(autonomyMsg);
+				}
+				break;
+				
+				case lunabotics::Telecommand::STEERING_MODE: {
+					
+					lunabotics::SteeringModeType type = tc.steering_mode_data().type();
+					
+					ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
+					
+					lunabotics::ControlMode controlModeMsg;
+					controlModeMsg.mode = type;
+					if (type == lunabotics::ACKERMANN) {
+						controlModeMsg.linear_speed_limit = tc.steering_mode_data().ackermann_steering_data().max_linear_velocity();
+						controlModeMsg.smth_else = tc.steering_mode_data().ackermann_steering_data().bezier_curve_segments();
+					}
+					controlModePublisher.publish(controlModeMsg);
+					
+				}
+				break;
+				
+				case lunabotics::Telecommand::TELEOPERATION: {
+					lunabotics::Control controlMsg;
+					
+				    bool driveForward 	= tc.teleoperation_data().forward();
+				    bool driveBackward 	= tc.teleoperation_data().backward();
+				    bool driveLeft 		= tc.teleoperation_data().left();
+				    bool driveRight 	= tc.teleoperation_data().right();
+		
+					ROS_INFO("%s%s%s%s", driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
+					
+					float stageLinearSpeed = 0;
+					if (driveForward && !driveBackward) {
+						stageLinearSpeed = 5.0;
+					}
+					else if (!driveForward && driveBackward) {
+						stageLinearSpeed = -3.0;
+					}
+					
+					float stageAngularSpeed = 0;
+					if (driveLeft && !driveRight) {
+						stageAngularSpeed = 1.0;
+					}
+					else if (!driveLeft && driveRight) {
+						stageAngularSpeed = -1.0;
+					}
+					
+					controlMsg.control_type = 0;	//Motion only
+					controlMsg.motion.linear.x = stageLinearSpeed;
+					controlMsg.motion.linear.y = 0;
+					controlMsg.motion.linear.z = 0;
+					controlMsg.motion.angular.x = 0;
+					controlMsg.motion.angular.y = 0;
+					controlMsg.motion.angular.z = stageAngularSpeed;
+					
+					
+					controlPublisher.publish(controlMsg);
+
+				}
+				break;
+				
+				case lunabotics::Telecommand::DEFINE_ROUTE: {
+					float goalX = tc.define_route_data().goal().x();
+					float goalY = tc.define_route_data().goal().y();
+					float toleranceAngle = tc.define_route_data().heading_accuracy();
+					float toleranceDistance = tc.define_route_data().position_accuracy();
+					
+					ROS_INFO("Navigation to (%.1f,%.1f)", goalX, goalY);
+					
+					lunabotics::Goal goalMsg;
+					goalMsg.point.x = goalX;
+					goalMsg.point.y = goalY;
+					goalMsg.angleAccuracy = toleranceAngle;
+					goalMsg.distanceAccuracy = toleranceDistance;
+					goalPublisher.publish(goalMsg);
+					
+					//replyToGUI("OK", clientSocket);
+				}
+				break;
+				
+				case lunabotics::Telecommand::REQUEST_MAP: {
+					ROS_INFO("Receiving map request");
+					std_msgs::Empty emptyMsg;
+					mapRequestPublisher.publish(emptyMsg);
+				}
+				break;
+				
+				case lunabotics::Telecommand::ADJUST_PID: {
+					lunabotics::PID pidMsg;
+					pidMsg.p = tc.adjust_pid_data().p();
+					pidMsg.i = tc.adjust_pid_data().i();
+					pidMsg.d = tc.adjust_pid_data().d();
+					pidMsg.velocity_offset = tc.adjust_pid_data().velocity_offset();
+					pidMsg.velocity_multiplier = tc.adjust_pid_data().velocity_multiplier();
+					pidPublisher.publish(pidMsg);
+				}
+				break;
+				
+				default:
+					replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
+				break;
+			}
+				/*
 			int pointer = 0;	
 			RX_CONTENT_TYPE contentType = (RX_CONTENT_TYPE)decodeByte(buffer, pointer);
 			
@@ -259,6 +368,7 @@ int main(int argc, char **argv)
 					replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
 				break;
 			}
+			*/
 		}
 		       
 		ros::spinOnce();

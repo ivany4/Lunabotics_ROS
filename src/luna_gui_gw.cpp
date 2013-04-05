@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "lunabotics/Control.h"
-#include "lunabotics/Telemetry.h"
+#include "lunabotics/State.h"
 #include "lunabotics/Vision.h"
 #include "lunabotics/ControlParams.h"
 #include "lunabotics/ControlMode.h"
@@ -10,7 +10,6 @@
 #include "std_msgs/Empty.h"
 #include "tf/tf.h"
 #include "types.h"
-#include "coding.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -20,6 +19,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <bitset>
+#include "../protos_gen/Telemetry.pb.h"
 
 #define SERVER_ADDR	"192.168.218.1"
 #define SERVER_PORT	"5556"
@@ -29,24 +29,16 @@ using namespace std;
 int sock;
 bool sock_conn = false;
 bool sendMap = false;
-bool sendTelemetry = false;
+bool sendState = false;
 bool sendVision = false;
 bool sendPath = false;
 struct sockaddr_in server;
-lunabotics::Telemetry telemetry;
+lunabotics::State stateMsg;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
 nav_msgs::Path path;
-CTRL_MODE_TYPE controlMode = ACKERMANN;
+lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
-    
-
-enum TX_CONTENT_TYPE {
-	TELEMETRY 	= 0,
-	MAP 		= 1,
-	PATH 		= 2,
-	LASER 		= 3
-};
 
 bool tryConnect() {
 	sock_conn = false;
@@ -63,7 +55,7 @@ bool tryConnect() {
     return sock_conn;
 }
 
-void transmit(char bytes[], int size)
+void transmit(const char *bytes, int size)
 {
 	if (sock_conn) {
 	    int sent_bytes = 0;
@@ -97,10 +89,10 @@ void transmit(char bytes[], int size)
 }
 	
 
-void telemetryCallback(const lunabotics::Telemetry& msg)
+void stateCallback(const lunabotics::State& msg)
 {    
-	telemetry = msg;
-	sendTelemetry = true;
+	stateMsg = msg;
+	sendState = true;
 }
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
@@ -110,7 +102,7 @@ void mapUpdateCallback(const std_msgs::Empty& msg)
 
 void controlModeCallback(const lunabotics::ControlMode& msg)
 {
-	controlMode = (CTRL_MODE_TYPE)msg.mode;					
+	controlMode = (lunabotics::SteeringModeType)msg.mode;					
 }
 
 void controlParamsCallback(const lunabotics::ControlParams& msg)
@@ -126,7 +118,7 @@ void pathCallback(const nav_msgs::Path& msg)
 
 void visionCallback(const lunabotics::Vision& msg)
 {
-	sendTelemetry = false;
+	sendState = false;
 	vision = msg;
 	sendVision = true;
 }
@@ -135,7 +127,7 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_gui_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("path", 256, pathCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
@@ -161,7 +153,7 @@ int main(int argc, char **argv)
    	   	
 	ros::Rate loop_rate(20);
 	while (ros::ok()) {
-				
+		
 		if (!sock_conn) {
 			if (!tryConnect()) {
 		        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
@@ -171,124 +163,86 @@ int main(int argc, char **argv)
 			    sendMap = true;
 			}
 		}
-		else {
-			bitset<8> type;
-			int size = 1;
-			nav_msgs::OccupancyGrid map;
-			if (sendTelemetry) {
-				type.set(TELEMETRY);
-				size += sizeof(double)*9+1+1;
-			    if (controlParams.driving) {
-					size += sizeof(int32_t);
-					if (controlMode == ACKERMANN) {
-						size += sizeof(double)*9;
+		else if (sendMap || sendPath || sendState || sendVision) {
+			
+			lunabotics::Telemetry tm;		
+			if (sendState) {
+				lunabotics::Telemetry::State *state = tm.mutable_state_data();
+				state->mutable_position()->set_x(stateMsg.odometry.pose.pose.position.x);
+				state->mutable_position()->set_y(stateMsg.odometry.pose.pose.position.y);
+				state->set_heading(tf::getYaw(stateMsg.odometry.pose.pose.orientation));
+				state->mutable_velocities()->set_linear(stateMsg.odometry.twist.twist.linear.x);
+				state->mutable_velocities()->set_angular(stateMsg.odometry.twist.twist.angular.z);
+				state->set_steering_mode(controlMode);
+				state->set_autonomy_enabled(controlParams.driving);
+				
+				if (controlParams.driving) {
+					state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
+					if (controlMode == lunabotics::ACKERMANN) {
+						lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
+						ackermannData->set_pid_error(controlParams.y_err);
+						ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
+						ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
+						ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
+						ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
+						ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
+						ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
+						ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
+						ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
 					}
 				}
+				
+			    sendState = false;
 			}
 			if (sendMap) {
-				if (mapClient.call(mapService)) {
-					type.set(MAP);
-					map = mapService.response.map;
-					uint8_t width = map.info.width;
-					uint8_t height = map.info.height;
-					unsigned int mapSize = width*height;
-				    size += 2+sizeof(double)+mapSize;
+				nav_msgs::OccupancyGrid map;
+				bool include_map = false;
+				if (sendMap) {
+					if (mapClient.call(mapService)) {
+						map = mapService.response.map;
+						include_map = true;
+					}
+					else {
+						ROS_WARN("Failed to call service /lunabotics/map");
+					}
 				}
-				else {
-					ROS_WARN("Failed to call service /luna_map");
+				
+				if (include_map) {
+					lunabotics::Telemetry::World *world = tm.mutable_world_data();
+					world->set_width(map.info.width);
+					world->set_height(map.info.height);
+					world->set_resolution(map.info.resolution);
+					unsigned int mapSize = map.info.width*map.info.height;
+					for (unsigned int i = 0; i < mapSize; i++) {
+						world->add_cell(mapService.response.map.data.at(i));
+					}
+					ROS_INFO("Sending a map (%dx%d)", map.info.width, map.info.height);
 				}
+				
+				sendMap = false;
 			}
 			if (sendPath) {
-				type.set(PATH);
-				uint8_t numOfPoses = path.poses.size();
-			    size += 1+numOfPoses*2*sizeof(double);
+			    for (unsigned int i = 0; i < path.poses.size(); i++) {
+					geometry_msgs::PoseStamped pose = path.poses.at(i);
+					lunabotics::Point *point = tm.mutable_path_data()->add_position();
+					point->set_x(pose.pose.position.x);
+					point->set_y(pose.pose.position.y);
+				}
+			    
+			    sendPath = false;
 			}
 			if (sendVision) {
-				type.set(LASER);
-				unsigned int numOfRanges = vision.lidar_data.ranges.size();
-			    size += sizeof(float)*3+sizeof(int)+numOfRanges*sizeof(float);
+				//Encode vision
+			    
+			    sendVision = false;
 			}
 			
-			if (type.any()) {
-			
-			    uint8_t typeValue = (uint8_t)type.to_ulong();
-				
-			    char buffer[size];
-			    int pointer = 0;
-			    			    
-				encodeByte(buffer, pointer, typeValue);
-				
-				
-				if (sendTelemetry) {
-					encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.x);
-					encodeDouble(buffer, pointer, telemetry.odometry.pose.pose.position.y);
-					encodeDouble(buffer, pointer, tf::getYaw(telemetry.odometry.pose.pose.orientation));
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.x);
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.y);
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.linear.z);
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.x);
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.y);
-					encodeDouble(buffer, pointer, telemetry.odometry.twist.twist.angular.z);
-					encodeByte(buffer, pointer, controlMode);
-					encodeByte(buffer, pointer, controlParams.driving);
-					if (controlParams.driving) {
-						encodeInt(buffer, pointer, controlParams.next_waypoint_idx);
-						if (controlMode == ACKERMANN) {
-							encodeDouble(buffer, pointer, controlParams.y_err);
-							encodeDouble(buffer, pointer, controlParams.trajectory_point.x);
-							encodeDouble(buffer, pointer, controlParams.trajectory_point.y);
-							encodeDouble(buffer, pointer, controlParams.velocity_point.x);
-							encodeDouble(buffer, pointer, controlParams.velocity_point.y);
-							encodeDouble(buffer, pointer, controlParams.t_trajectory_point.x);
-							encodeDouble(buffer, pointer, controlParams.t_trajectory_point.y);
-							encodeDouble(buffer, pointer, controlParams.t_velocity_point.x);
-							encodeDouble(buffer, pointer, controlParams.t_velocity_point.y);
-						}
-					}
-					
-				    sendTelemetry = false;
-				}
-				if (sendMap) {
-					uint8_t width = map.info.width;
-					uint8_t height = map.info.height;
-					double res = map.info.resolution;
-					unsigned int mapSize = width*height;
-				    encodeByte(buffer, pointer, width);
-				    encodeByte(buffer, pointer, height);
-				    encodeDouble(buffer, pointer, res);
-					for (unsigned int i = 0; i < mapSize; i++) {
-						encodeByte(buffer, pointer, mapService.response.map.data.at(i));
-					}
-					
-					sendMap = false;
-					ROS_INFO("Sending a map (%dx%d)", width, height);
-				}
-				if (sendPath) {
-					uint8_t numOfPoses = path.poses.size();
-				    encodeByte(buffer, pointer, numOfPoses);
-				    for (unsigned int i = 0; i < path.poses.size(); i++) {
-						geometry_msgs::PoseStamped pose = path.poses.at(i);
-						double x_m = pose.pose.position.x;
-						double y_m = pose.pose.position.y;
-						encodeDouble(buffer, pointer, x_m);
-						encodeDouble(buffer, pointer, y_m);
-					}
-				    
-				    sendPath = false;
-				}
-				if (sendVision) {
-					unsigned int numOfRanges = vision.lidar_data.ranges.size();
-				    encodeFloat(buffer, pointer, vision.lidar_data.angle_min);
-				    encodeFloat(buffer, pointer, vision.lidar_data.angle_max);
-				    encodeFloat(buffer, pointer, vision.lidar_data.angle_increment);
-				    encodeInt(buffer, pointer, numOfRanges);
-				    for (unsigned int i = 0; i < vision.lidar_data.ranges.size(); i++) {
-						encodeFloat(buffer, pointer, vision.lidar_data.ranges.at(i));
-					}
-				    
-				    sendVision = false;
-				}
-			    transmit(buffer, size);
+			if (!tm.IsInitialized()) {
+				ROS_WARN("Error serializing Telemetry");
+				ROS_WARN_STREAM(tm.InitializationErrorString());
+			}
+			else {
+			    transmit(tm.SerializeAsString().c_str(), tm.ByteSize());
 			}
 		}
 		

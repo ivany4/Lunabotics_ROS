@@ -1,0 +1,7 @@
+package lunabotics;
+
+message Twist {
+	required float linear = 1;
+	required float angular = 2;
+}
+

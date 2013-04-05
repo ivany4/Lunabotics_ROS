@@ -1,12 +1,12 @@
 #include "ros/ros.h"
-#include "lunabotics/Telemetry.h"
+#include "lunabotics/State.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
 #include "nav_msgs/Odometry.h"
 
 geometry_msgs::Twist twistMsg;
-lunabotics::Telemetry telemetryMsg;
-bool publishTelemetry;
+lunabotics::State stateMsg;
+bool publishState;
 
 void controlCallback(const lunabotics::Control& msg)
 {	
@@ -16,8 +16,8 @@ void controlCallback(const lunabotics::Control& msg)
 
 void odoCallback(const nav_msgs::Odometry& msg)
 {
-	telemetryMsg.odometry = msg;
-	publishTelemetry = true;
+	stateMsg.odometry = msg;
+	publishState = true;
 }
 
 int main(int argc, char **argv)
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_mech_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber controlSubscriber = nodeHandle.subscribe("control", 256, controlCallback);
-	ros::Publisher telemetryPublisher = nodeHandle.advertise<lunabotics::Telemetry>("telemetry", 256);
+	ros::Publisher statePublisher = nodeHandle.advertise<lunabotics::State>("state", 256);
 	
 	int twistSize = 256;
 	int odomSize = 256;
@@ -36,8 +36,8 @@ int main(int argc, char **argv)
 	ros::Subscriber odoSubscriber = nodeHandle.subscribe("/odom", odomSize, odoCallback);
 	
 	ros::Rate loop_rate(50);
-	telemetryMsg.odometry.header.frame_id = "/map";
-	publishTelemetry = false;
+	stateMsg.odometry.header.frame_id = "base_link";
+	publishState = false;
 	
 	ROS_INFO("MECH Gateway ready"); 
 	
@@ -45,9 +45,9 @@ int main(int argc, char **argv)
 		ctrlPublisher.publish(twistMsg);
 		
 		//Whenever needed send telemetry message
-		if (publishTelemetry) {
-			publishTelemetry = false;
-			telemetryPublisher.publish(telemetryMsg);
+		if (publishState) {
+			publishState = false;
+			statePublisher.publish(stateMsg);
 		}
 		
 		ros::spinOnce();

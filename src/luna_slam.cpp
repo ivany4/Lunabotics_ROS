@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "lunabotics/Vision.h"
-#include "lunabotics/Telemetry.h"
+#include "lunabotics/State.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include <fstream>
@@ -17,7 +17,7 @@ inline int randomNumber(int min, int max)
 
 nav_msgs::OccupancyGrid getMapFromFile()
 {
-	std::ifstream infile("world.txt");
+	std::ifstream infile("/home/ivany4/ROS/pkgs/lunabotics/world.txt");
 	std::string line;
 	nav_msgs::OccupancyGrid map;
 	if (std::getline(infile, line)) {
@@ -47,6 +47,9 @@ nav_msgs::OccupancyGrid getMapFromFile()
 			ROS_ERROR("Failed to read map metadata");
 		}
 	}
+	else {
+		ROS_ERROR("Failed to open file");
+	}
 	map.info.map_load_time = ros::Time::now();
 	return map;
 }
@@ -56,20 +59,22 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	ROS_INFO("Got a map request");
 	
 #if MAP_FROM_FILE
+	ROS_INFO("Reading from file");
 	res.map = getMapFromFile();
 #else
-	//read from Anuraj
-	
-	//for (unsigned int i = 0; i < res.map.info.height; i++) {
-		//for (unsigned int j = 0; j < res.map.info.width; j++) {
-			//int8_t occupancy = ((i+j)*4)%75;
-			//if ((i > 2 && i < 6 && j > 4 && j < 8) || (i > 5 && i < 9 && j > 8 && j < 12)) {
-				//occupancy = 74+i+j;
-			//}
+	res.map.info.width = 24;
+	res.map.info.height = 21;
+	res.map.info.resolution = 0.33;
+	for (unsigned int i = 0; i < res.map.info.height; i++) {
+		for (unsigned int j = 0; j < res.map.info.width; j++) {
+			int8_t occupancy = ((i+j)*4)%75;
+			if ((i > 2 && i < 6 && j > 4 && j < 8) || (i > 5 && i < 9 && j > 8 && j < 12)) {
+				occupancy = 74+i+j;
+			}
 				
-			//res.map.data.push_back(occupancy);
-		//}
-	//}
+			res.map.data.push_back(occupancy);
+		}
+	}
 #endif
 		
 	res.map.header.seq = seq;
@@ -85,7 +90,7 @@ void visionCallback(const lunabotics::Vision& msg)
 	//Update map from new data
 }
 
-void telemetryCallback(const lunabotics::Telemetry& msg)
+void stateCallback(const lunabotics::State& msg)
 {
 	//Update pose from new telemetry
 }
@@ -95,7 +100,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_slam");
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 256, visionCallback);
-	ros::Subscriber telemetrySubscriber = nodeHandle.subscribe("telemetry", 256, telemetryCallback);
+	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
 	ros::ServiceServer mapServer = nodeHandle.advertiseService("map", getMap);
 	
 	ROS_INFO("SLAM ready"); 

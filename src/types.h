@@ -3,6 +3,7 @@
 
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Pose.h"
+#include "../protos_gen/SteeringModeType.pb.h"
 
 typedef std::vector<int8_t> map_grid;
 typedef	geometry_msgs::Point point_t;
@@ -17,17 +18,11 @@ struct point_indexed {
 
 typedef std::vector<point_indexed> point_indexed_arr;
 
-enum CTRL_MODE_TYPE {
-    ACKERMANN 		 = 0,
-    TURN_IN_SPOT     = 1,
-    LATERAL   		 = 2
-};
-
 enum ROTATION_DIRECTION {
 	CW = 1,
 	CCW = -1
 };
 
-std::string controlModeToString(CTRL_MODE_TYPE type);
+std::string controlModeToString(lunabotics::SteeringModeType type);
 
 #endif //_TYPES_H_

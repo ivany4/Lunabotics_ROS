@@ -1,4 +1,4 @@
-# Telemetry data from Mech Interface
+# Robot State from Mech Interface
 
 # Wheel rotation angles
 float32 wheel_roll_angle_front_left

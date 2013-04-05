@@ -16,28 +16,52 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIR})
+
+
 #uncomment if you have defined messages
 rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
-rosbuild_add_library(geometry src/geometry/basic.cpp src/geometry/PID.cpp)
-rosbuild_add_library(planning src/planning/a_star_node.cpp src/planning/a_star_graph.cpp src/planning/bezier_smooth.cpp)
+rosbuild_add_library(protos
+	protos_gen/Point.pb.cc 
+	protos_gen/Twist.pb.cc 
+	protos_gen/SteeringModeType.pb.cc 
+	protos_gen/Telemetry.pb.cc 
+	protos_gen/Telecommand.pb.cc
+)
+target_link_libraries(protos ${PROTOBUF_LIBRARY})
+rosbuild_add_library(geometry 
+	src/geometry/basic.cpp
+	src/geometry/PID.cpp
+)
+rosbuild_add_library(planning
+	src/planning/a_star_node.cpp
+	src/planning/a_star_graph.cpp
+	src/planning/bezier_smooth.cpp
+)
 target_link_libraries(planning geometry)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-rosbuild_add_executable(luna_gui_gw src/luna_gui_gw.cpp src/coding.cpp)
-rosbuild_add_executable(luna_gui_listener src/luna_gui_listener.cpp src/coding.cpp src/types.cpp)
+rosbuild_add_executable(luna_gui_gw src/luna_gui_gw.cpp)
+rosbuild_add_executable(luna_gui_listener src/luna_gui_listener.cpp src/types.cpp)
 rosbuild_add_executable(luna_mech_gw src/luna_mech_gw.cpp)
 rosbuild_add_executable(luna_fear src/luna_fear.cpp)
 rosbuild_add_executable(luna_driver src/luna_driver.cpp src/types.cpp)
 rosbuild_add_executable(luna_planner src/luna_planner.cpp)
 rosbuild_add_executable(luna_slam src/luna_slam.cpp)
 rosbuild_add_executable(luna_aut_gw src/luna_aut_gw.cpp)
-target_link_libraries(luna_gui_gw geometry)
+target_link_libraries(luna_gui_listener protos)
+target_link_libraries(luna_gui_gw 
+	geometry 
+	protos
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(luna_driver planning)
-

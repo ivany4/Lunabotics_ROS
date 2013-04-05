@@ -4,3 +4,4 @@ msg_gen
 src/lunabotics
 msg/_*
 lib
+protos_gen

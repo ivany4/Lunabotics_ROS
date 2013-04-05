@@ -1,11 +1,11 @@
 #include "types.h"
 
-std::string controlModeToString(CTRL_MODE_TYPE type)
+std::string controlModeToString(lunabotics::SteeringModeType type)
 {
 	switch (type) {
-		case ACKERMANN: return "Ackermann";
-		case TURN_IN_SPOT: return "'Turn in spot'";
-		case LATERAL: return "Lateral";
+		case lunabotics::ACKERMANN: return "Ackermann";
+		case lunabotics::TURN_IN_SPOT: return "'Turn in spot'";
+		case lunabotics::CRAB: return "Crab";
 	}
 	return "Undefined";
 }

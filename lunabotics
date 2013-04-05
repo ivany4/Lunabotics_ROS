@@ -26,7 +26,11 @@ kill_nodes() {
 	kill_if_running "luna_fear"
 	echo "-------------------------"
 }
-	
+
+genprotos() {
+	echo "Generating $1"
+	protoc -I=$2 --cpp_out=$3 $2/$1
+}
 
 ########################################################################
 
@@ -35,11 +39,17 @@ build=0
 in_port="5555"
 in_addr=0
 compile_gazebo=0
+compile_protos=0
 out_port="5556"
 out_addr="192.168.218.1"
 profile="VMWare"
 
-while getopts "a:p:A:P:cdnbr:g" opt; 
+CURRENT_PATH=`pwd`
+PACKAGE_PATH=`rospack find lunabotics`
+
+cd $PACKAGE_PATH
+
+while getopts "a:p:A:P:cdnbr:goO" opt; 
 do	
 	case $opt in
 	a)	in_addr="$OPTARG";;
@@ -52,6 +62,8 @@ do
 	b)	build=1;;
 	n)  rebuild=0;;
 	r)	profile="$OPTARG";;
+	o)  compile_protos=1;;
+	O)	compile_protos=2;;
 	\?) echo "$(tput bold)Usage: $0 [-b] [-d] [-c] [-n] [-h] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]$(tput sgr0)" >&2
 		echo ""$(tput sgr0)
 		echo "Options:"
@@ -59,6 +71,8 @@ do
 		echo "-d					Delete build target before compiling"
 		echo "-c					Close running nodes. All other options are ignored when using -c"
 		echo "-n					Do not recompile"
+		echo "-o                    Compile protocol buffers"
+		echo "-O					Compile only protocol buffers"
 		echo "-a ADDR					Specify GUI IP address"
 		echo "-A ADDR					Specify IP address for incoming connections"
 		echo "-p PORT					Specify GUI TCP port"
@@ -75,9 +89,9 @@ then
 else
 	if [ $compile_gazebo -eq 1 ]; then
 		clrecho 3 "Rebuilding Gazebo plugin..."
-		cd `rospack find lunabotics`/gazebo
+		cd gazebo
 		sh compile_plugin.sh 2>&1
-		cd `rospack find lunabotics`
+		cd ..
 	fi
 	if [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
 		if [ $build -eq 0 ]; then
@@ -85,16 +99,42 @@ else
 		fi
 		halt=0
 		if [ $rebuild -eq 1 ]; then
+			PROTOS_GEN_DIR="protos_gen"
+			echo `pwd`
 			if [ $clean ]; then
 				clrecho 3 "Cleaning targets..."
-				cd `rospack find lunabotics`
 				make clean
+				if [ -d $PROTOS_GEN_DIR ]; then
+					echo "Removing protos dir"
+					rm -rf $PROTOS_GEN_DIR
+					PROTOS_GEN_EXISTS=false
+				fi
 			fi
-			clrecho 3 "Building package..."
-			rosmake lunabotics
-			halt=$?
-			if [ $halt -ne 0 ]; then
-				clrecho 1 "Build failed"
+			
+			if [ $compile_protos -gt 0 ] || [ ! -d $PROTOS_GEN_DIR ]; then
+				clrecho 3 "Compiling Protocol Buffers..."
+				if [ ! -d $PROTOS_GEN_DIR ]; then
+					echo "$PROTOS_GEN_DIR doesn't exist. Creating a new one"
+					mkdir -p $PROTOS_GEN_DIR
+				fi
+				PROTOS_SRC="src/protos"
+				genprotos "Point.proto" $PROTOS_SRC $PROTOS_GEN_DIR
+				genprotos "Twist.proto" $PROTOS_SRC $PROTOS_GEN_DIR
+				genprotos "SteeringModeType.proto" $PROTOS_SRC $PROTOS_GEN_DIR
+				genprotos "Telecommand.proto" $PROTOS_SRC $PROTOS_GEN_DIR
+				genprotos "Telemetry.proto" $PROTOS_SRC $PROTOS_GEN_DIR
+			fi			
+			
+			if [ $compile_protos -eq 2 ]; then
+				build=1;
+			else
+				clrecho 3 "Building package..."
+				cd 
+				rosmake lunabotics
+				halt=$?
+				if [ $halt -ne 0 ]; then
+					clrecho 1 "Build failed"
+				fi
 			fi
 		fi
 		
@@ -115,7 +155,6 @@ else
 					echo "Using incoming connection $in_addr:$in_port"
 					echo "Using outgoing connection $out_addr:$out_port"
 					if [ $profile = "Pioneer" ]; then
-						roscd lunabotics
 						roslaunch lunabotics.launch iip:=$in_addr oip:=$out_addr iport:=$in_port oport:=$out_port cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose
 					else
 						gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
@@ -131,3 +170,5 @@ else
 		clrecho 1 "Roscore is not running!!!"
 	fi
 fi
+
+cd $CURRENT_PATH
