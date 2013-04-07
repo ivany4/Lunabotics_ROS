@@ -1,21 +1,42 @@
 cmake_minimum_required(VERSION 2.8)
 
+
 include (FindPkgConfig)
 if (PKG_CONFIG_FOUND)
-  pkg_check_modules(GAZEBO gazebo REQUIRED)
+  pkg_check_modules(GAZEBO gazebo>=1.6 REQUIRED)
+  if (!GAZEBO_FOUND)
+	message(FATAL_ERROR "Gazebo could not be located")
+  else()
+	message(STATUS "Gazebo successfully located")
+  endif()
 else()
   message(FATAL_ERROR "pkg-config is required; please install it")
 endif()
 
+#After installation of 1.6 over 1.5 it got messed up. So, forcing a newer version
+set(GAZEBO_INCLUDE_DIRS "/usr/include/gazebo-1.6;/usr/include/gazebo-1.6/gazebo")
+set(GAZEBO_LIBRARY_DIRS "/usr/include/gazebo-1.6/plugins")
+
+message(STATUS "Including directories ${GAZEBO_INCLUDE_DIRS}")
 include_directories(${GAZEBO_INCLUDE_DIRS})
+message(STATUS "Linking directories ${GAZEBO_LIBRARY_DIRS}")
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
 include(cmake/rospack.cmake)
 
 get_rospack_flags(roscpp)
+message(STATUS "Including directories ${roscpp_INCLUDE_DIRS}")
 include_directories(${roscpp_INCLUDE_DIRS})
+message(STATUS "Linking directories ${roscpp_LIBRARY_DIRS}")
 link_directories(${roscpp_LIBRARY_DIRS})
 set(CMAKE_INSTALL_RPATH "${roscpp_LIBRARY_DIRS}")
+
+#All wheel drive controller
+add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp)
+set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+set_target_properties(AllWheelSteeringPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES})
+install (TARGETS AllWheelSteeringPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #Basic cube controller
 add_library(LunaSimpleControlPlugin SHARED src/ros_model_plugin.cc)
@@ -37,3 +58,5 @@ set_target_properties(LunaOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLA
 set_target_properties(LunaOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
 target_link_libraries(LunaOdometryPlugin ${roscpp_LIBRARIES})
 install (TARGETS LunaOdometryPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+
+
