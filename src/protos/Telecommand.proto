@@ -1,5 +1,6 @@
 import "SteeringModeType.proto";
 import "Point.proto";
+import "AllWheelControl.proto";
 
 package lunabotics;
 
@@ -11,6 +12,7 @@ message Telecommand {
         DEFINE_ROUTE     = 4;
         REQUEST_MAP      = 5;
         ADJUST_PID       = 6;
+        ADJUST_WHEELS    = 7;
     }
 
     required Type type = 1;
@@ -66,5 +68,7 @@ message Telecommand {
 		required float velocity_multiplier = 5;
     }
     optional AdjustPID adjust_pid_data = 7;
+    
+    optional AllWheelControl all_wheel_control_data = 8;
 }
 

@@ -21,9 +21,6 @@ namespace gazebo
 		this->model = _parent;
 	
 		if (this->LoadParams(_sdf)) {
-			// testing to see if race condition exists
-			//ROS_INFO("Left and right joint angles: %.2f, %.2f", this->leftWheelJoint->GetAngle(0), this->rightWheelJoint->GetAngle(0));
-	
 			// Listen to the update event. This event is broadcast every
 			// simulation iteration.
 			this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&AllWheelSteeringPlugin::OnUpdate, this));
@@ -49,6 +46,22 @@ namespace gazebo
 		ROS_INFO("Right front wheel %f,%f", msg->right_front_driving_vel, msg->right_front_steering_ang);
 		ROS_INFO("Left rear wheel %f,%f", msg->left_rear_driving_vel, msg->left_rear_steering_ang);
 		ROS_INFO("Right rear wheel %f,%f", msg->right_rear_driving_vel, msg->right_rear_steering_ang);
+
+
+		this->leftFrontWheelDrivingJoint->SetVelocity(0, msg->left_front_driving_vel);
+		this->rightFrontWheelDrivingJoint->SetVelocity(0, msg->right_front_driving_vel);
+		this->leftRearWheelDrivingJoint->SetVelocity(0, msg->left_rear_driving_vel);
+		this->rightRearWheelDrivingJoint->SetVelocity(0, msg->right_rear_driving_vel);
+		
+		this->leftFrontWheelDrivingJoint->SetMaxForce(0, 5.0);
+		this->rightFrontWheelDrivingJoint->SetMaxForce(0, 5.0);
+		this->leftRearWheelDrivingJoint->SetMaxForce(0, 5.0);
+		this->rightRearWheelDrivingJoint->SetMaxForce(0, 5.0);
+
+		this->leftFrontWheelSteeringJoint->SetVelocity(0, msg->left_front_steering_ang*100);
+		this->rightFrontWheelSteeringJoint->SetVelocity(0, msg->right_front_steering_ang*100);
+		this->leftRearWheelSteeringJoint->SetVelocity(0, msg->left_rear_steering_ang*100);
+		this->rightRearWheelSteeringJoint->SetVelocity(0, msg->right_rear_steering_ang*100);
 /*
  * ROS_INFO("Got a command for the motors: [%f,%f]", msg->linear.x, msg->angular.z);
 		double leftWheelLinearVel = msg->linear.x - msg->angular.z * this->wheelSeparation / 2.0;

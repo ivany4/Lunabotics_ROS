@@ -3,6 +3,7 @@
 #include "lunabotics/ControlMode.h"
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
+#include "lunabotics/AllWheelSteering.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
@@ -16,6 +17,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include "../protos_gen/Telecommand.pb.h"
+#include "../protos_gen/AllWheelControl.pb.h"
 
 #define MAXPENDING 5        /* Max connection requests */
 #define BUFFSIZE 256
@@ -60,6 +62,7 @@ int main(int argc, char **argv)
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
 	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
 	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
+	ros::Publisher allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelSteering>("all_wheel", sizeof(float)*8);
 	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	
 	
@@ -237,130 +240,17 @@ int main(int argc, char **argv)
 				}
 				break;
 				
-				default:
-					replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
-				break;
-			}
-				/*
-			int pointer = 0;	
-			RX_CONTENT_TYPE contentType = (RX_CONTENT_TYPE)decodeByte(buffer, pointer);
-			
-			switch (contentType) {
-				case AUTONOMY: {
-					bool enabled = buffer[pointer++];
-					
-					ROS_INFO("%s autonomy", enabled ? "Enabling" : "Disabling");
-					
-					std_msgs::Bool autonomyMsg;
-					autonomyMsg.data = enabled;
-					autonomyPublisher.publish(autonomyMsg);
-					
-					//replyToGUI("OK", clientSocket);
-				}
-				break;
-				
-				case CTRL_MODE: {
-					
-					CTRL_MODE_TYPE type = (CTRL_MODE_TYPE)decodeByte(buffer, pointer);
-					
-					ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
-					
-					lunabotics::ControlMode controlModeMsg;
-					controlModeMsg.mode = type;
-					if (type == ACKERMANN) {
-						controlModeMsg.linear_speed_limit = decodeFloat(buffer, pointer);
-						controlModeMsg.smth_else = decodeFloat(buffer, pointer);
-					}
-					controlModePublisher.publish(controlModeMsg);
-					
-					
-					
-				    //replyToGUI("OK", clientSocket);
-				    
-				    
-				}
-				break;
-				
-				case STEERING: {
-					lunabotics::Control controlMsg;
-					
-				    bool driveForward 	= buffer[pointer++];
-				    bool driveBackward 	= buffer[pointer++];
-				    bool driveLeft 		= buffer[pointer++];
-				    bool driveRight 	= buffer[pointer++];
-		
-					ROS_INFO("%s%s%s%s", driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
-					
-					
-	
-					//Just to work with Stageros
-					////////////////////////////////////////////////////////////////
-					float stageLinearSpeed = 0;
-					if (driveForward && !driveBackward) {
-						stageLinearSpeed = 5.0;
-					}
-					else if (!driveForward && driveBackward) {
-						stageLinearSpeed = -3.0;
-					}
-					
-					float stageAngularSpeed = 0;
-					if (driveLeft && !driveRight) {
-						stageAngularSpeed = 1.0;
-					}
-					else if (!driveLeft && driveRight) {
-						stageAngularSpeed = -1.0;
-					}
-					//////////////////////////////////////////////////////////////////
-					
-					controlMsg.control_type = 0;	//Motion only
-					controlMsg.motion.linear.x = stageLinearSpeed;
-					controlMsg.motion.linear.y = 0;
-					controlMsg.motion.linear.z = 0;
-					controlMsg.motion.angular.x = 0;
-					controlMsg.motion.angular.y = 0;
-					controlMsg.motion.angular.z = stageAngularSpeed;
-					
-					
-					controlPublisher.publish(controlMsg);
-					
-				    //replyToGUI("OK", clientSocket);
-				}
-				break;
-				
-				case ROUTE: {
-					float goalX = decodeFloat(buffer, pointer);
-					float goalY = decodeFloat(buffer, pointer);
-					float toleranceAngle = decodeFloat(buffer, pointer);
-					float toleranceDistance = decodeFloat(buffer, pointer);
-					
-					ROS_INFO("Navigation to (%.1f,%.1f)", goalX, goalY);
-					
-					lunabotics::Goal goalMsg;
-					goalMsg.point.x = goalX;
-					goalMsg.point.y = goalY;
-					goalMsg.angleAccuracy = toleranceAngle;
-					goalMsg.distanceAccuracy = toleranceDistance;
-					goalPublisher.publish(goalMsg);
-					
-					//replyToGUI("OK", clientSocket);
-				}
-				break;
-				
-				case MAP_REQUEST: {
-					ROS_INFO("Receiving map request");
-					std_msgs::Empty emptyMsg;
-					mapRequestPublisher.publish(emptyMsg);
-				}
-				break;
-				
-				case PID: {
-					lunabotics::PID pidMsg;
-					pidMsg.p = decodeFloat(buffer, pointer);
-					pidMsg.i = decodeFloat(buffer, pointer);
-					pidMsg.d = decodeFloat(buffer, pointer);
-					pidMsg.velocity_offset = decodeFloat(buffer, pointer);
-					pidMsg.velocity_multiplier = decodeFloat(buffer, pointer);
-					pidPublisher.publish(pidMsg);
+				case lunabotics::Telecommand::ADJUST_WHEELS: {
+					lunabotics::AllWheelSteering msg;
+					msg.left_front_driving_vel = tc.all_wheel_control_data().driving().left_front();
+					msg.right_front_driving_vel = tc.all_wheel_control_data().driving().right_front();
+					msg.left_rear_driving_vel = tc.all_wheel_control_data().driving().left_rear();
+					msg.right_rear_driving_vel = tc.all_wheel_control_data().driving().right_rear();
+					msg.left_front_steering_ang = tc.all_wheel_control_data().steering().left_front();
+					msg.right_front_steering_ang = tc.all_wheel_control_data().steering().right_front();
+					msg.left_rear_steering_ang = tc.all_wheel_control_data().steering().left_rear();
+					msg.right_rear_steering_ang = tc.all_wheel_control_data().steering().right_rear();
+					allWheelPublisher.publish(msg);
 				}
 				break;
 				
@@ -368,7 +258,6 @@ int main(int argc, char **argv)
 					replyToGUI("UNKNOWN CONTENT TYPE", clientSocket);
 				break;
 			}
-			*/
 		}
 		       
 		ros::spinOnce();

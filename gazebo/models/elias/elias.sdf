@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.4">
     <model name="elias">
-        <pose>0 0 0.61 0 0 0</pose>
+        <pose>0 0 1 0 0 0</pose>
         <static>false</static>
         <link name="chassis">
             <inertial>
@@ -15,10 +15,27 @@
                     <izz>1.0</izz>
                 </inertia>
             </inertial>
-            <collision name="collision">
+            <collision name="base">
+                <pose>0 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>1 1 1</size>
+					<size>0.1 0.9 0.1</size>
+                    </box>
+                </geometry>
+            </collision>
+            <collision name="front_bar">
+                <pose>0 0.5 -0.4 0 0 0</pose>
+                <geometry>
+                    <box>
+					<size>0.75 0.1 0.1</size>
+                    </box>
+                </geometry>
+            </collision>
+            <collision name="rear_bar">
+                <pose>0 -0.5 -0.4 0 0 0</pose>
+                <geometry>
+                    <box>
+					<size>0.75 0.1 0.1</size>
                     </box>
                 </geometry>
             </collision>
@@ -244,6 +261,24 @@
             <inertial>
                 <mass>0.1</mass>
             </inertial>
+            <collision name="vertical">
+				<pose>0.05 0 0.05 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <collision name="horizontal">
+				<pose>0 0 0 0 1.57 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
             <visual name="vertical">
 				<pose>0.05 0 0.05 0 0 0</pose>
                 <geometry>
@@ -280,6 +315,24 @@
             <inertial>
                 <mass>0.1</mass>
             </inertial>
+            <collision name="vertical">
+				<pose>0.05 0 0.05 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <collision name="horizontal">
+				<pose>0 0 0 0 1.57 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
             <visual name="vertical">
 				<pose>0.05 0 0.05 0 0 0</pose>
                 <geometry>
@@ -316,6 +369,24 @@
             <inertial>
                 <mass>0.1</mass>
             </inertial>
+            <collision name="vertical">
+				<pose>0.05 0 0.05 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <collision name="horizontal">
+				<pose>0 0 0 0 1.57 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
             <visual name="vertical">
 				<pose>0.05 0 0.05 0 0 0</pose>
                 <geometry>
@@ -352,6 +423,24 @@
             <inertial>
                 <mass>0.1</mass>
             </inertial>
+            <collision name="vertical">
+				<pose>0.05 0 0.05 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <collision name="horizontal">
+				<pose>0 0 0 0 1.57 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.10</length>
+                    </cylinder>
+                </geometry>
+            </collision>
             <visual name="vertical">
 				<pose>0.05 0 0.05 0 0 0</pose>
                 <geometry>
@@ -386,7 +475,7 @@
         <joint type="revolute" name="left_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
             </axis>
             <parent>
                 <link_name>left_front_connector</link_name>
@@ -398,7 +487,7 @@
         <joint type="revolute" name="right_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
             </axis>
             <parent>
                 <link_name>right_front_connector</link_name>
@@ -410,7 +499,7 @@
         <joint type="revolute" name="left_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
             </axis>
             <parent>
                 <link_name>left_rear_connector</link_name>
@@ -422,7 +511,7 @@
         <joint type="revolute" name="right_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
             </axis>
             <parent>
                 <link_name>right_rear_connector</link_name>
@@ -439,6 +528,10 @@
 					<lower>-1.57</lower>
 					<upper>1.57</upper>
 	            </limit>
+	            <dynamics>
+					<damping>1000</damping>
+					<friction>1000</friction>
+	            </dynamics>
             </axis>
             <parent>
                 <link_name>chassis</link_name>
@@ -455,6 +548,10 @@
 					<lower>-1.57</lower>
 					<upper>1.57</upper>
 	            </limit>
+	            <dynamics>
+					<damping>1000</damping>
+					<friction>1000</friction>
+	            </dynamics>
             </axis>
             <parent>
                 <link_name>chassis</link_name>
@@ -471,6 +568,10 @@
 					<lower>-1.57</lower>
 					<upper>1.57</upper>
 	            </limit>
+	            <dynamics>
+					<damping>1000</damping>
+					<friction>1000</friction>
+	            </dynamics>
             </axis>
             <parent>
                 <link_name>chassis</link_name>
@@ -487,6 +588,10 @@
 					<lower>-1.57</lower>
 					<upper>1.57</upper>
 	            </limit>
+	            <dynamics>
+					<damping>1000</damping>
+					<friction>1000</friction>
+	            </dynamics>
             </axis>
             <parent>
                 <link_name>chassis</link_name>

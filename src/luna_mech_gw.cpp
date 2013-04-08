@@ -2,6 +2,7 @@
 #include "lunabotics/State.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
+#include "lunabotics/AllWheelSteering.h"
 #include "nav_msgs/Odometry.h"
 
 geometry_msgs::Twist twistMsg;
@@ -20,11 +21,17 @@ void odoCallback(const nav_msgs::Odometry& msg)
 	publishState = true;
 }
 
+void allWheelCallback(const lunabotics::AllWheelSteering& msg)
+{
+	//Do nothing yet
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_mech_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber controlSubscriber = nodeHandle.subscribe("control", 256, controlCallback);
+	ros::Subscriber allWheelSubscriber = nodeHandle.subscribe("all_wheel", sizeof(float)*8, allWheelCallback);
 	ros::Publisher statePublisher = nodeHandle.advertise<lunabotics::State>("state", 256);
 	
 	int twistSize = 256;

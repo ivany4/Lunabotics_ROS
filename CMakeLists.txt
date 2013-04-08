@@ -33,6 +33,7 @@ rosbuild_add_library(protos
 	protos_gen/SteeringModeType.pb.cc 
 	protos_gen/Telemetry.pb.cc 
 	protos_gen/Telecommand.pb.cc
+	protos_gen/AllWheelControl.pb.cc
 )
 target_link_libraries(protos ${PROTOBUF_LIBRARY})
 rosbuild_add_library(geometry 
@@ -45,6 +46,8 @@ rosbuild_add_library(planning
 	src/planning/bezier_smooth.cpp
 )
 target_link_libraries(planning geometry)
+
+rosbuild_add_library(node_base src/Node.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
@@ -61,7 +64,6 @@ rosbuild_add_executable(luna_aut_gw src/luna_aut_gw.cpp)
 target_link_libraries(luna_gui_listener protos)
 target_link_libraries(luna_gui_gw 
 	geometry 
-	protos
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY})
+	protos)
 target_link_libraries(luna_driver planning)
+#target_link_libraries(luna_slam node_base)

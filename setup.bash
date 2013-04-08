@@ -10,7 +10,7 @@ lunastage() {
 }
 
 lunagazebo() {
-	gazebo `rospack find lunabotics`/gazebo/worlds/test.world
+	gazebo `rospack find lunabotics`/gazebo/worlds/cubic.world
 }
 
 lunactrl() {
