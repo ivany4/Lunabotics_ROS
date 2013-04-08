@@ -109,7 +109,7 @@ then
 	if [ $clean ]; then
 		clean_target
 	fi
-elif [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
+elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 	if [ $build -eq 0 ]; then
 		kill_nodes
 	fi
