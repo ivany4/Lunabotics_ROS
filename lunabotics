@@ -1,5 +1,21 @@
 #!/bin/bash 
 
+CURRENT_PATH=`pwd`
+PACKAGE_PATH=`rospack find lunabotics`
+PROTOS_GEN_DIR="protos_gen"
+PROTOS_SRC="src/protos"
+
+rebuild=1
+build=0
+in_port="5555"
+in_addr=0
+compile_gazebo=0
+compile_protos=0
+out_port="5556"
+out_addr="192.168.218.1"
+profile="VMWare"
+
+
 ################################### Functions ##########################
 kill_if_running() {
 	[ "$1" = "" ]  && return 0
@@ -29,23 +45,26 @@ kill_nodes() {
 
 genprotos() {
 	echo "Generating $1"
-	protoc -I=$2 --cpp_out=$3 $2/$1
+	protoc -I=$PROTOS_SRC --cpp_out=$PROTOS_GEN_DIR $PROTOS_SRC/$1
+}
+
+clean_target() {
+	clrecho 3 "Cleaning package..."
+	make clean
+	if [ -d $PROTOS_GEN_DIR ]; then
+		echo "Removing protos dir"
+		rm -rf $PROTOS_GEN_DIR
+		PROTOS_GEN_EXISTS=false
+	fi
+	clrecho 3 "Cleaning gazebo plugins..."
+	cd gazebo
+	sh compile_plugin.sh -d
+	cd ..
+	compile_gazebo=1
 }
 
 ########################################################################
 
-rebuild=1
-build=0
-in_port="5555"
-in_addr=0
-compile_gazebo=0
-compile_protos=0
-out_port="5556"
-out_addr="192.168.218.1"
-profile="VMWare"
-
-CURRENT_PATH=`pwd`
-PACKAGE_PATH=`rospack find lunabotics`
 
 cd $PACKAGE_PATH
 
@@ -87,21 +106,17 @@ shift $((OPTIND-1))
 if [ $close ]
 then
 	kill_nodes
+	if [ $clean ]; then
+		clean_target
+	fi
 elif [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
 	if [ $build -eq 0 ]; then
 		kill_nodes
 	fi
 	halt=0
 	if [ $rebuild -eq 1 ]; then
-		PROTOS_GEN_DIR="protos_gen"
 		if [ $clean ]; then
-			clrecho 3 "Cleaning targets..."
-			make clean
-			if [ -d $PROTOS_GEN_DIR ]; then
-				echo "Removing protos dir"
-				rm -rf $PROTOS_GEN_DIR
-				PROTOS_GEN_EXISTS=false
-			fi
+			clean_target
 		fi
 		
 		if [ $compile_protos -gt 0 ] || [ ! -d $PROTOS_GEN_DIR ]; then
@@ -110,9 +125,8 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
 				echo "$PROTOS_GEN_DIR doesn't exist. Creating a new one"
 				mkdir -p $PROTOS_GEN_DIR
 			fi
-			PROTOS_SRC="src/protos"
 			for proto in $PROTOS_SRC/*; do
-				genprotos $(basename $proto) $PROTOS_SRC $PROTOS_GEN_DIR
+				genprotos $(basename $proto)
 			done
 		fi			
 		
