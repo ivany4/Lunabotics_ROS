@@ -7,11 +7,11 @@ do
 	case $opt in
 	d)	build_plugins=0;;
 	n)	clean_plugins=0;;
-	\?) echo "$(tput bold)Usage: $0 [-d] [-n]" >&2
-		echo ""$(tput sgr0)
+	\?) echo "$(tput bold)Usage: $0 [-dn]$(tput sgr0)" >&2
+		echo ""
 		echo "Options:"
-		echo "-d		Just delete targets"
-		echo "-n		Do not delete targets before compiling"
+		echo -e "$(tput bold)-d		$(tput sgr0)\n	Just delete targets"
+		echo -e "$(tput bold)-n		$(tput sgr0)\n	Do not delete targets before compiling"
 		exit 1;;
 	esac
 done

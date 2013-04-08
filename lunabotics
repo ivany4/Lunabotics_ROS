@@ -58,7 +58,7 @@ clean_target() {
 	fi
 	clrecho 3 "Cleaning gazebo plugins..."
 	cd gazebo
-	sh compile_plugin.sh -d
+	./compile_plugins -d
 	cd ..
 	compile_gazebo=1
 }
@@ -83,21 +83,21 @@ do
 	r)	profile="$OPTARG";;
 	o)  compile_protos=1;;
 	O)	compile_protos=2;;
-	\?) echo "$(tput bold)Usage: $0 [-b] [-d] [-c] [-n] [-h] [-a <incomming IP address>] [-p <incomming port>] [-A <outgoing IP address>] [-P <outgoing port>]$(tput sgr0)" >&2
-		echo ""$(tput sgr0)
+	\?) echo "$(tput bold)Usage: $0 [-bdcnh] [-a=$(tput setaf 4)incomming IP address$(tput setaf 7)] [-p=$(tput setaf 4)incomming port$(tput setaf 7)] [-A=$(tput setaf 4)outgoing IP address$(tput setaf 7)] [-P=$(tput setaf 4)outgoing port$(tput setaf 7)] [-r=$(tput setaf 4)profile$(tput setaf 7)]$(tput sgr0)" >&2
+		echo ""
 		echo "Options:"
-		echo "-b		Build without running. Omitted when using -O"
-		echo "-d		Delete build target before compiling"
-		echo "-c		Close running nodes. All other options are ignored when using -c"
-		echo "-g		Recompile Gazebo plugins. Omitted with -n or -O"
-		echo "-n		Do not recompile"
-		echo "-o		Compile protocol buffers"
-		echo "-O		Compile ONLY protocol buffers"
-		echo "-a ADDR		Specify GUI IP address"
-		echo "-A ADDR		Specify IP address for incoming connections"
-		echo "-p PORT		Specify GUI TCP port"
-		echo "-P ADDR		Specify TCP port for incoming connections"
-		echo "-r PROFILE	Specify profile to be used (VMWare/Pioneer/Elias)"
+		echo -e "$(tput bold)-b		$(tput sgr0)\n	Build without running. Omitted when using -O"
+		echo -e "$(tput bold)-d		$(tput sgr0)\n	Delete build target before compiling"
+		echo -e "$(tput bold)-c		$(tput sgr0)\n	Close running nodes. All other options are ignored when using -c"
+		echo -e "$(tput bold)-g		$(tput sgr0)\n	Recompile Gazebo plugins. Omitted with -n or -O"
+		echo -e "$(tput bold)-n		$(tput sgr0)\n	Do not recompile"
+		echo -e "$(tput bold)-o		$(tput sgr0)\n	Compile protocol buffers"
+		echo -e "$(tput bold)-O		$(tput sgr0)\n	Compile ONLY protocol buffers"
+		echo -e "$(tput bold)-a $(tput setaf 4)incomming IP address$(tput sgr0)\n	Specify GUI IP address"
+		echo -e "$(tput bold)-A $(tput setaf 4)outgoing IP address$(tput sgr0)\n	Specify IP address for incoming connections"
+		echo -e "$(tput bold)-p $(tput setaf 4)incoming port$(tput sgr0)\n	Specify GUI TCP port"
+		echo -e "$(tput bold)-P $(tput setaf 4)outgoing port$(tput sgr0)\n	Specify TCP port for incoming connections"
+		echo -e "$(tput bold)-r $(tput setaf 4)profile$(tput sgr0)\n	Specify profile to be used (VMWare/Pioneer/Elias)"
 		exit 1;;
 	esac
 done
@@ -141,7 +141,7 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ]; then
 			elif [ $compile_gazebo -eq 1 ]; then
 				clrecho 3 "Rebuilding Gazebo plugin..."
 				cd gazebo
-				sh compile_plugin.sh 2>&1
+				./compile_plugins
 				cd ..
 			fi
 		fi
