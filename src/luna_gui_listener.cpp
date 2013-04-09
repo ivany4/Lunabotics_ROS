@@ -29,7 +29,8 @@ int serverSocket = -1;
 int clientSocket = -1;
 float angleTolerance = 0.4;
 float distanceTolerance = 0.1;
-
+ros::Publisher allWheelPublisher;
+ros::Publisher controlPublisher;
 
 void quit(int sig) { 
     close(serverSocket); 
@@ -45,6 +46,26 @@ void replyToGUI(const char *msg, int sock) {
     }
 }
 
+void emergencyStop() {
+	ROS_WARN("Emergency STOP");
+	lunabotics::Control controlMsg;
+	controlMsg.control_type = 0;	//Motion only
+	controlMsg.motion.linear.x = 0;
+	controlMsg.motion.linear.y = 0;
+	controlMsg.motion.linear.z = 0;
+	controlMsg.motion.angular.x = 0;
+	controlMsg.motion.angular.y = 0;
+	controlMsg.motion.angular.z = 0;
+	controlPublisher.publish(controlMsg);
+	
+	lunabotics::AllWheelSteering msg;
+	msg.left_front_driving_vel = 0;
+	msg.right_front_driving_vel = 0;
+	msg.left_rear_driving_vel = 0;
+	msg.right_rear_driving_vel = 0;
+	allWheelPublisher.publish(msg);
+}
+
 int main(int argc, char **argv)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;	//Verify version of ProtoBuf package
@@ -57,12 +78,12 @@ int main(int argc, char **argv)
 	}
 	
 	ros::NodeHandle nodeHandle("lunabotics");
-	ros::Publisher controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
+	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
 	ros::Publisher pidPublisher = nodeHandle.advertise<lunabotics::PID>("pid", sizeof(float)*3);
 	ros::Publisher autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
 	ros::Publisher controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
 	ros::Publisher goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
-	ros::Publisher allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelSteering>("all_wheel", sizeof(float)*8);
+	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelSteering>("all_wheel", sizeof(float)*8);
 	ros::Publisher mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	
 	
@@ -127,14 +148,20 @@ int main(int argc, char **argv)
 	    
 			/* Print client message */
 	        ROS_INFO("Received %d bytes from %s", received, inet_ntoa(client.sin_addr));
+	        if (received <= 0) {
+				ROS_ERROR("Telecommand failed");
+				emergencyStop();
+				continue;
+			}
 				
 			lunabotics::Telecommand tc;
 
 			if (!tc.ParseFromArray(buffer, received)) {
-				ROS_WARN("Failed to parse Telecommand object");
+				ROS_ERROR("Failed to parse Telecommand object");
+				emergencyStop();
 				continue;
 			}
-				
+			
 			switch(tc.type()) {
 				case lunabotics::Telecommand::SET_AUTONOMY: {
 					
