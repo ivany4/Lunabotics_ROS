@@ -98,45 +98,51 @@ planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 	if (mapClient.call(mapService)) {
 		stop();
 		
-		ROS_INFO("Got map from service (%ld nodes)", mapService.response.map.data.size());
-		ROS_INFO("------------------------------------");
-		for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
-		    stringstream sstr;
-			for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
-				int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
-				sstr << setw(3) << static_cast<int>(probability) << " ";
+		unsigned int map_size = mapService.response.map.data.size();
+		if (map_size > 0) {
+			ROS_INFO("Got map from service (%ld cells)", map_size);
+			ROS_INFO("------------------------------------");
+			for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
+			    stringstream sstr;
+				for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
+					int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
+					sstr << setw(3) << static_cast<int>(probability) << " ";
+				}
+				ROS_INFO("%s", sstr.str().c_str());
 			}
-			ROS_INFO("%s", sstr.str().c_str());
-		}
-		ROS_INFO("\n");
-		
-		ROS_INFO("Looking for a path...");
-		
-		//Generate a path
-		float resolution = mapService.response.map.info.resolution;
-		res = resolution;
-		
-		int start_x = round(startPose.position.x/resolution);
-		int start_y = round(startPose.position.y/resolution);
-		int goal_x = round(goalPose.position.x/resolution);
-		int goal_y = round(goalPose.position.y/resolution);
-		
-		planning::path *graph = new planning::path(mapService.response.map.data, 
-								mapService.response.map.info.width, 
-								mapService.response.map.info.height,
-								start_x, start_y, goal_x, goal_y);
-								
-		
-		if (graph->allNodes().size() == 0) {
-			ROS_INFO("Path is not found");
-			planning::path *empty = new planning::path();
-			return empty;
+			ROS_INFO("\n");
+			
+			ROS_INFO("Looking for a path...");
+			
+			//Generate a path
+			float resolution = mapService.response.map.info.resolution;
+			res = resolution;
+			
+			int start_x = round(startPose.position.x/resolution);
+			int start_y = round(startPose.position.y/resolution);
+			int goal_x = round(goalPose.position.x/resolution);
+			int goal_y = round(goalPose.position.y/resolution);
+			
+			planning::path *graph = new planning::path(mapService.response.map.data, 
+									mapService.response.map.info.width, 
+									mapService.response.map.info.height,
+									start_x, start_y, goal_x, goal_y);
+									
+			
+			if (graph->allNodes().size() == 0) {
+				ROS_INFO("Path is not found");
+				planning::path *empty = new planning::path();
+				return empty;
+			}
+			else {
+				if (graph->cornerNodes().size() == 1) {
+					ROS_INFO("Robot is at the goal");
+				}
+				return graph;
+			}
 		}
 		else {
-			if (graph->cornerNodes().size() == 1) {
-				ROS_INFO("Robot is at the goal");
-			}
-			return graph;
+			ROS_ERROR("Failed to get a proper map from the service");
 		}	
 	}
 	else {

@@ -4,7 +4,7 @@
      Lunabotics robot onboard computer program
 
   </description>
-  <author>IVANY4</author>
+  <author>Ivan Sinkarenko</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>https://blogs.aalto.fi/lunaboticsacompetition/</url>
@@ -13,7 +13,6 @@
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="nav_msgs"/>
-  <depend package="gazebo_msgs"/>
   <depend package="roscpp"/>
   <depend package="tf"/>
 </package>
