@@ -27,8 +27,6 @@ using namespace std;
 
 int serverSocket = -1;
 int clientSocket = -1;
-float angleTolerance = 0.4;
-float distanceTolerance = 0.1;
 ros::Publisher allWheelPublisher;
 ros::Publisher controlPublisher;
 
@@ -73,7 +71,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_listener");
 	
 	if (argc < 2 || argc > 3) {
-		ROS_FATAL("USAGE: rosrun lunabotics lunabotics <ip address> [port]");
+		ROS_FATAL("USAGE: rosrun lunabotics luna_gui_listener <ip address> [port]");
 		ros::shutdown();
 	}
 	

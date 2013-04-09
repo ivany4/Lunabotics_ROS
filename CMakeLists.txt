@@ -11,6 +11,8 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 
+rosbuild_add_boost_directories()
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
@@ -20,6 +22,7 @@ include(FindProtobuf)
 find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIR})
 
+add_subdirectory(src)
 
 #uncomment if you have defined messages
 rosbuild_genmsg()
@@ -27,6 +30,7 @@ rosbuild_genmsg()
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
+
 rosbuild_add_library(protos
 	protos_gen/Point.pb.cc 
 	protos_gen/Twist.pb.cc 
@@ -53,6 +57,7 @@ target_link_libraries(planning geometry)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+rosbuild_add_executable(luna_gui src/luna_gui.cpp src/types.cpp)
 rosbuild_add_executable(luna_gui_gw src/luna_gui_gw.cpp)
 rosbuild_add_executable(luna_gui_listener src/luna_gui_listener.cpp src/types.cpp)
 rosbuild_add_executable(luna_mech_gw src/luna_mech_gw.cpp)
@@ -67,3 +72,9 @@ target_link_libraries(luna_gui_gw
 	protos)
 target_link_libraries(luna_driver planning)
 #target_link_libraries(luna_slam node_base)
+
+target_link_libraries(luna_gui protos)
+rosbuild_link_boost(luna_gui 
+	system
+	signals
+)
