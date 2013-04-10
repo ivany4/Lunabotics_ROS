@@ -4,10 +4,13 @@
 #include <physics/physics.hh>
 #include <stdio.h>
 #include <numeric>
+#include "std_msgs/Empty.h"
 
-#define Kp	2
-#define Ki	0.01
-#define Kd	1
+#define Kp	4
+#define Ki	0.1
+#define Kd	1.5
+
+#define STEER_ACCURACY	0.01
 
 namespace gazebo
 {   
@@ -53,7 +56,9 @@ namespace gazebo
 			if (!this->sub) {
 				ROS_ERROR("Could not instantiate subscriber for /lunabotics/all_wheel!");
 			}
-#include <numeric>
+			
+			// ROS Publisher
+			this->rotationCompletePublisher = this->node->advertise<std_msgs::Empty>("steering_complete", 1);
 		}
 		else {
 			ROS_WARN("Could not load the model!");
@@ -61,8 +66,8 @@ namespace gazebo
 	}
 	
 	void AllWheelSteeringPlugin::ROSCallback(const lunabotics::AllWheelSteering::ConstPtr& msg) {
-		ROS_INFO("============ Got command to adjust wheels =============");
 		/*
+		ROS_INFO("============ Got command to adjust wheels =============");
 		ROS_INFO("Left front wheel %f,%f", msg->left_front_driving_vel, msg->left_front_steering_ang);
 		ROS_INFO("Right front wheel %f,%f", msg->right_front_driving_vel, msg->right_front_steering_ang);
 		ROS_INFO("Left rear wheel %f,%f", msg->left_rear_driving_vel, msg->left_rear_steering_ang);
@@ -78,6 +83,8 @@ namespace gazebo
 		this->rightFrontDrivingSpeed = msg->right_front_driving_vel;
 		this->leftRearDrivingSpeed = msg->left_rear_driving_vel;
 		this->rightRearDrivingSpeed = msg->right_rear_driving_vel;
+		
+		this->awaitingRotationCallback = msg->report;
 	}
 	
 	bool AllWheelSteeringPlugin::LoadParams(sdf::ElementPtr _sdf) {
@@ -125,15 +132,8 @@ namespace gazebo
 	}
 	
 	// Called by the world update start event
-	void AllWheelSteeringPlugin::OnUpdate() {
-		
-		
-		////DEBUG
-		
-		//ros::spinOnce();
-		//return;
-		/////////////
-		
+	void AllWheelSteeringPlugin::OnUpdate() 
+	{		
 		double leftFrontSpeedCompensation = 0;
 		double rightFrontSpeedCompensation = 0;
 		double leftRearSpeedCompensation = 0;
@@ -144,37 +144,38 @@ namespace gazebo
 		double actualLeftRearSteeringAngle = this->leftRearWheelSteeringJoint->GetAngle(2).Radian();
 		double actualRightRearSteeringAngle = this->rightRearWheelSteeringJoint->GetAngle(2).Radian();
 		
+		bool reportSteeringComplete = this->awaitingRotationCallback;
+		
 		if (actualLeftFrontSteeringAngle != this->leftFrontSteeringAngle) {
-			//PID here
 			double err = actualLeftFrontSteeringAngle-this->leftFrontSteeringAngle;
 			double signal = this->CalculatePID(err, this->leftFrontPID);
 			this->leftFrontWheelSteeringJoint->SetVelocity(0, signal);	
-			leftFrontSpeedCompensation = -this->DrivingFromSteeringVelocity(signal);		
+			leftFrontSpeedCompensation = -this->DrivingFromSteeringVelocity(signal);	
+			reportSteeringComplete = reportSteeringComplete && fabs(err) < STEER_ACCURACY;	
 		}
 		
 		if (actualRightFrontSteeringAngle != this->rightFrontSteeringAngle) {
-			//PID here
 			double err = actualRightFrontSteeringAngle-this->rightFrontSteeringAngle;
 			double signal = this->CalculatePID(err, this->rightFrontPID);
 			this->rightFrontWheelSteeringJoint->SetVelocity(0, signal);
 			rightFrontSpeedCompensation = this->DrivingFromSteeringVelocity(signal);
-		//	ROS_INFO("From: %f To: %f Err: %f Sig: %f Prev_err: %f Drive: %f", actualRightFrontSteeringAngle, this->rightFrontSteeringAngle, err, signal, this->rightFrontPID.prev_err, rightFrontSpeedCompensation);
+			reportSteeringComplete = reportSteeringComplete && fabs(err) < STEER_ACCURACY;
 		}
 		
 		if (actualLeftRearSteeringAngle != this->leftRearSteeringAngle) {
-			//PID here
 			double err = actualLeftRearSteeringAngle-this->leftRearSteeringAngle;
 			double signal = this->CalculatePID(err, this->leftRearPID);
 			this->leftRearWheelSteeringJoint->SetVelocity(0, signal);
 			leftRearSpeedCompensation = -this->DrivingFromSteeringVelocity(signal);
+			reportSteeringComplete = reportSteeringComplete && fabs(err) < STEER_ACCURACY;
 		}
 		
 		if (actualRightRearSteeringAngle != this->rightRearSteeringAngle) {
-			//PID here
 			double err = actualRightRearSteeringAngle-this->rightRearSteeringAngle;
 			double signal = this->CalculatePID(err, this->rightRearPID);
 			this->rightRearWheelSteeringJoint->SetVelocity(0, signal);
 			rightRearSpeedCompensation = this->DrivingFromSteeringVelocity(signal);
+			reportSteeringComplete = reportSteeringComplete && fabs(err) < STEER_ACCURACY;
 		}
 		
 		
@@ -183,6 +184,12 @@ namespace gazebo
 		this->leftRearWheelDrivingJoint->SetVelocity(0, this->leftRearDrivingSpeed+leftRearSpeedCompensation);
 		this->rightRearWheelDrivingJoint->SetVelocity(0, this->rightRearDrivingSpeed+rightRearSpeedCompensation);
 		
+		if (reportSteeringComplete) {
+			ROS_INFO("DONE!");
+			std_msgs::Empty emptyMsg;
+			this->rotationCompletePublisher.publish(emptyMsg);
+			this->awaitingRotationCallback = false;
+		}
 		
 		ros::spinOnce();
 	}

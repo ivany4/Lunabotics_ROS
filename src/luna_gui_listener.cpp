@@ -181,6 +181,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				msg.right_front_steering_ang = tc.all_wheel_control_data().steering().right_front();
 				msg.left_rear_steering_ang = tc.all_wheel_control_data().steering().left_rear();
 				msg.right_rear_steering_ang = tc.all_wheel_control_data().steering().right_rear();
+				msg.report = true;
 				allWheelPublisher.publish(msg);
 			}
 			break;

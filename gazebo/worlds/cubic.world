@@ -31,5 +31,6 @@
 			<uri>model://elias</uri>
 			<pose>0 0 0.5 0 0 0</pose>
 		</include>
+        <plugin name="clock" filename="libClockServerPlugin.so" />
 	</world>
 </sdf>

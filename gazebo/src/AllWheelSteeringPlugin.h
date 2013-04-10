@@ -4,7 +4,6 @@
 #include <gazebo.hh>
 #include <common/common.hh>
 #include "ros/ros.h"
-//#include <lunabotics/AllWheelSteering.h>
 #include "../../msg_gen/cpp/include/lunabotics/AllWheelSteering.h"
 
 namespace gazebo
@@ -29,7 +28,9 @@ namespace gazebo
 		void OnUpdate();
 		double CalculatePID(double err, PIDData &data);
 		double DrivingFromSteeringVelocity(double steeringVel);
-	
+		
+		
+		
 		// Pointer to the model
 		physics::ModelPtr model;
 	
@@ -63,11 +64,16 @@ namespace gazebo
 		PIDData leftRearPID;
 		PIDData rightRearPID;
 		
+		bool awaitingRotationCallback;
+		
 		// ROS Nodehandle
 		ros::NodeHandle* node;
 	
 		// ROS Subscriber
 		ros::Subscriber sub;
+		
+		// Publishers
+		ros::Publisher rotationCompletePublisher;
 	};
 	
 };

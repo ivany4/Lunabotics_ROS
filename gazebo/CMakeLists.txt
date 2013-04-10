@@ -31,6 +31,13 @@ message(STATUS "Linking directories ${roscpp_LIBRARY_DIRS}")
 link_directories(${roscpp_LIBRARY_DIRS})
 set(CMAKE_INSTALL_RPATH "${roscpp_LIBRARY_DIRS}")
 
+#Clock server
+add_library(ClockServerPlugin SHARED src/ClockServerPlugin.cpp)
+set_target_properties(ClockServerPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+set_target_properties(ClockServerPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+target_link_libraries(ClockServerPlugin ${roscpp_LIBRARIES})
+install (TARGETS ClockServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+
 #All wheel drive controller
 add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp)
 set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")

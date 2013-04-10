@@ -31,5 +31,6 @@
 			<uri>model://pioneer2dx</uri>
 			<pose>0 0 0.1 0 0 0</pose>
 		</include>
+        <plugin name="clock" filename="libClockServerPlugin.so" />
 	</world>
 </sdf>

@@ -7,3 +7,5 @@ float32 left_front_steering_ang
 float32 right_front_steering_ang
 float32 left_rear_steering_ang
 float32 right_rear_steering_ang
+
+bool report
