@@ -523,7 +523,7 @@ void controlAckermann()
 			controlMsg.motion.linear.z = 0;
 			controlMsg.motion.angular.x = 0;
 			controlMsg.motion.angular.y = 0;
-			controlMsg.motion.angular.z = dw;
+			controlMsg.motion.angular.z = -dw;
 			controlPublisher.publish(controlMsg);
 		}
 		y_err_prev = y_err;
