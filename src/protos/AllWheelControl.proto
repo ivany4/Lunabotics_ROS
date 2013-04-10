@@ -1,34 +1,36 @@
 package lunabotics;
 
 message AllWheelControl {
-	enum AllWheelControlType {
-		EXPLICIT 		= 1;
-		PREDEFINED		= 2;
-	}
-	
-	enum PredefinedControlType {
-		CRAB_LEFT 		= 1;
-		CRAB_RIGHT		= 2;
-		WHEELS_INWARD	= 3;
-		WHEELS_OUTWARD	= 4;
-	}
-	required AllWheelControlType all_wheel_type = 1;
+        enum AllWheelControlType {
+                EXPLICIT		= 1;
+                PREDEFINED		= 2;
+        }
 
-	message Wheels {
-		required float left_front = 1;
-		required float right_front = 2;
-		required float left_rear = 3;
-		required float right_rear = 4;
-	}
-	
-	message ExplicitControl {
-		required Wheels steering = 1;
-		required Wheels driving = 2;
-	}
-	optional ExplicitControl explicit_data = 2;
-	
-	message PredefinedControl {
-		required PredefinedControlType command = 1;
-	}
-	optional PredefinedControl predefined_data = 3;
+        enum PredefinedControlType {
+                DRIVE_FORWARD	= 1;
+                DRIVE_BACKWARD	= 2;
+                CRAB_LEFT		= 3;
+                CRAB_RIGHT		= 4;
+                TURN_CW			= 5;
+                TURN_CCW		= 6;
+        }
+        required AllWheelControlType all_wheel_type = 1;
+
+        message Wheels {
+                required float left_front = 1;
+                required float right_front = 2;
+                required float left_rear = 3;
+                required float right_rear = 4;
+        }
+
+        message ExplicitControl {
+                required Wheels steering = 1;
+                required Wheels driving = 2;
+        }
+        optional ExplicitControl explicit_data = 2;
+
+        message PredefinedControl {
+                required PredefinedControlType command = 1;
+        }
+        optional PredefinedControl predefined_data = 3;
 }

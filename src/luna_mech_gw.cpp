@@ -148,6 +148,122 @@ int main(int argc, char **argv)
 					}
 					break;
 					
+					case lunabotics::AllWheelControl::TURN_CCW: {
+						switch (state_cnt) {
+							case 0: {
+								msg.left_front_driving_vel = 0;
+								msg.right_front_driving_vel = 0;
+								msg.left_rear_driving_vel = 0;
+								msg.right_rear_driving_vel = 0;
+								msg.left_front_steering_ang = -M_PI_4;
+								msg.right_front_steering_ang = M_PI_4;
+								msg.left_rear_steering_ang = M_PI_4;
+								msg.right_rear_steering_ang = -M_PI_4;
+							}
+							break;
+							
+							case 1: {
+								msg.left_front_driving_vel = -1;
+								msg.right_front_driving_vel = 1;
+								msg.left_rear_driving_vel = -1;
+								msg.right_rear_driving_vel = 1;
+								msg.left_front_steering_ang = -M_PI_4;
+								msg.right_front_steering_ang = M_PI_4;
+								msg.left_rear_steering_ang = M_PI_4;
+								msg.right_rear_steering_ang = -M_PI_4;
+							}
+							break;
+						}
+					}
+					break;
+					
+					case lunabotics::AllWheelControl::TURN_CW: {
+						switch (state_cnt) {
+							case 0: {
+								msg.left_front_driving_vel = 0;
+								msg.right_front_driving_vel = 0;
+								msg.left_rear_driving_vel = 0;
+								msg.right_rear_driving_vel = 0;
+								msg.left_front_steering_ang = -M_PI_4;
+								msg.right_front_steering_ang = M_PI_4;
+								msg.left_rear_steering_ang = M_PI_4;
+								msg.right_rear_steering_ang = -M_PI_4;
+							}
+							break;
+							
+							case 1: {
+								msg.left_front_driving_vel = 1;
+								msg.right_front_driving_vel = -1;
+								msg.left_rear_driving_vel = 1;
+								msg.right_rear_driving_vel = -1;
+								msg.left_front_steering_ang = -M_PI_4;
+								msg.right_front_steering_ang = M_PI_4;
+								msg.left_rear_steering_ang = M_PI_4;
+								msg.right_rear_steering_ang = -M_PI_4;
+							}
+							break;
+						}
+					}
+					break;
+					
+					case lunabotics::AllWheelControl::DRIVE_FORWARD: {
+						switch (state_cnt) {
+							case 0: {
+								msg.left_front_driving_vel = 0;
+								msg.right_front_driving_vel = 0;
+								msg.left_rear_driving_vel = 0;
+								msg.right_rear_driving_vel = 0;
+								msg.left_front_steering_ang = 0;
+								msg.right_front_steering_ang = 0;
+								msg.left_rear_steering_ang = 0;
+								msg.right_rear_steering_ang = 0;
+							}
+							break;
+							
+							case 1: {
+								msg.left_front_driving_vel = 1;
+								msg.right_front_driving_vel = 1;
+								msg.left_rear_driving_vel = 1;
+								msg.right_rear_driving_vel = 1;
+								msg.left_front_steering_ang = 0;
+								msg.right_front_steering_ang = 0;
+								msg.left_rear_steering_ang = 0;
+								msg.right_rear_steering_ang = 0;
+							}
+							break;
+						}
+					}
+					break;
+					
+					case lunabotics::AllWheelControl::DRIVE_BACKWARD: {
+						switch (state_cnt) {
+							case 0: {
+								msg.left_front_driving_vel = 0;
+								msg.right_front_driving_vel = 0;
+								msg.left_rear_driving_vel = 0;
+								msg.right_rear_driving_vel = 0;
+								msg.left_front_steering_ang = 0;
+								msg.right_front_steering_ang = 0;
+								msg.left_rear_steering_ang = 0;
+								msg.right_rear_steering_ang = 0;
+							}
+							break;
+							
+							case 1: {
+								msg.left_front_driving_vel = -1;
+								msg.right_front_driving_vel = -1;
+								msg.left_rear_driving_vel = -1;
+								msg.right_rear_driving_vel = -1;
+								msg.left_front_steering_ang = 0;
+								msg.right_front_steering_ang = 0;
+								msg.left_rear_steering_ang = 0;
+								msg.right_rear_steering_ang = 0;
+							}
+							break;
+						}
+					}
+					break;
+					
 					default:
 					break;
 				}
