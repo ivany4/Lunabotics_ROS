@@ -4,6 +4,7 @@
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/AllWheelSteering.h"
+#include "lunabotics/AllWheelCommon.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
@@ -21,6 +22,7 @@ boost::asio::ip::tcp::socket sock(io_service);
 boost::array<char, 4096> buffer;
 
 ros::Publisher allWheelPublisher;
+ros::Publisher allWheelCommonPublisher;
 ros::Publisher controlPublisher;
 ros::Publisher controlModePublisher;
 ros::Publisher pidPublisher;
@@ -172,17 +174,34 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			break;
 			
 			case lunabotics::Telecommand::ADJUST_WHEELS: {
-				lunabotics::AllWheelSteering msg;
-				msg.left_front_driving_vel = tc.all_wheel_control_data().driving().left_front();
-				msg.right_front_driving_vel = tc.all_wheel_control_data().driving().right_front();
-				msg.left_rear_driving_vel = tc.all_wheel_control_data().driving().left_rear();
-				msg.right_rear_driving_vel = tc.all_wheel_control_data().driving().right_rear();
-				msg.left_front_steering_ang = tc.all_wheel_control_data().steering().left_front();
-				msg.right_front_steering_ang = tc.all_wheel_control_data().steering().right_front();
-				msg.left_rear_steering_ang = tc.all_wheel_control_data().steering().left_rear();
-				msg.right_rear_steering_ang = tc.all_wheel_control_data().steering().right_rear();
-				msg.report = true;
-				allWheelPublisher.publish(msg);
+				switch (tc.all_wheel_control_data().all_wheel_type()) {
+					case lunabotics::AllWheelControl::EXPLICIT: {
+						lunabotics::AllWheelControl::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
+						lunabotics::AllWheelControl::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
+						lunabotics::AllWheelSteering msg;
+						msg.left_front_driving_vel = driving.left_front();
+						msg.right_front_driving_vel = driving.right_front();
+						msg.left_rear_driving_vel = driving.left_rear();
+						msg.right_rear_driving_vel = driving.right_rear();
+						msg.left_front_steering_ang = steering.left_front();
+						msg.right_front_steering_ang = steering.right_front();
+						msg.left_rear_steering_ang = steering.left_rear();
+						msg.right_rear_steering_ang = steering.right_rear();
+						msg.report = false;
+						allWheelPublisher.publish(msg);
+					}
+					break;
+					
+					case lunabotics::AllWheelControl::PREDEFINED: {
+						lunabotics::AllWheelCommon msg;
+						msg.predefined_cmd = tc.all_wheel_control_data().predefined_data().command();
+						allWheelCommonPublisher.publish(msg);
+					}
+					break;
+					
+					default:
+					break;
+				}
 			}
 			break;
 			
@@ -226,6 +245,7 @@ int main(int argc, char **argv)
 	controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
 	goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
 	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelSteering>("all_wheel", sizeof(float)*8);
+	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	
   	

@@ -100,7 +100,7 @@ planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 		
 		unsigned int map_size = mapService.response.map.data.size();
 		if (map_size > 0) {
-			ROS_INFO("Got map from service (%ld cells)", map_size);
+			ROS_INFO("Got map from service (%d cells)", (int)map_size);
 			ROS_INFO("------------------------------------");
 			for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
 			    stringstream sstr;
@@ -254,7 +254,7 @@ void goalCallback(const lunabotics::Goal& msg)
 						int start = std::min(obst_size-1, i-1);
 						for (int j = start; j >= 0; j--) {
 							point_indexed indexedObstacle = closest_obstacles.at(j);
-							if (indexedObstacle.index == i) {
+							if (indexedObstacle.index == (int)i) {
 								hasObstacle = true;
 								obstaclePoint = indexedObstacle.point;
 								break;
@@ -467,7 +467,7 @@ void controlAckermann()
 			wayIterator = waypoints.begin()+1;
 			double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
-				ROS_WARN("Facing away from the trajectory. Turning in place", angle, angleAccuracy);
+				ROS_WARN("Facing away from the trajectory. Turning in place");
 				controlSkid();
 				return;
 			}
@@ -511,7 +511,7 @@ void controlAckermann()
 			}
 			else {
 				//The higher angular speed, the lower linear speed is
-				#pragma message("This top w is for stage only");
+				#pragma message("This top w is for stage only")
 				double top_w = 1.57;
 				v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
 				v = std::max((float)0.01, v);
