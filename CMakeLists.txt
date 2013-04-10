@@ -57,7 +57,6 @@ target_link_libraries(planning geometry)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-rosbuild_add_executable(luna_gui src/luna_gui.cpp src/types.cpp)
 rosbuild_add_executable(luna_gui_gw src/luna_gui_gw.cpp)
 rosbuild_add_executable(luna_gui_listener src/luna_gui_listener.cpp src/types.cpp)
 rosbuild_add_executable(luna_mech_gw src/luna_mech_gw.cpp)
@@ -73,8 +72,10 @@ target_link_libraries(luna_gui_gw
 target_link_libraries(luna_driver planning)
 #target_link_libraries(luna_slam node_base)
 
-target_link_libraries(luna_gui protos)
-rosbuild_link_boost(luna_gui 
+rosbuild_link_boost(luna_gui_listener 
 	system
 	signals
+)
+rosbuild_link_boost(luna_gui_gw 
+	system
 )

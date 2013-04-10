@@ -10,84 +10,43 @@
 #include "std_msgs/Empty.h"
 #include "tf/tf.h"
 #include "types.h"
-#include <iostream>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <string>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <bitset>
+#include <boost/asio.hpp>
 #include "../protos_gen/Telemetry.pb.h"
 
-#define SERVER_ADDR	"192.168.218.1"
-#define SERVER_PORT	"5556"
+boost::asio::io_service io_service;
+boost::asio::ip::tcp::resolver resolver(io_service);
+boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(), "192.168.218.1", "44325"); 
+boost::asio::ip::tcp::resolver::iterator end; 
+boost::asio::ip::tcp::socket sock(io_service);
+boost::system::error_code error = boost::asio::error::host_not_found;
 
-using namespace std;
-
-int sock;
-bool sock_conn = false;
 bool sendMap = false;
 bool sendState = false;
 bool sendVision = false;
 bool sendPath = false;
-struct sockaddr_in server;
 lunabotics::State stateMsg;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
 nav_msgs::Path path;
 lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
-pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-bool tryConnect() {
-	sock_conn = false;
-	if (sock >= 0) {
-		close(sock);
-	}
-	
-	if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        ROS_FATAL("Failed to create socket");
-	}
-	else {
-	    sock_conn = !(connect(sock, (struct sockaddr *) &server, sizeof(server)) < 0);
-	}
-    return sock_conn;
-}
-
-void transmit(const char *bytes, int size)
+bool tryConnect()
 {
-	if (sock_conn) {
-	    int sent_bytes = 0;
-		pthread_mutex_lock(&sock_mutex);
-	    /* Send the word to the server */
-	    if ((sent_bytes = write(sock, bytes, size)) != size) {
-	        ROS_ERROR("Sending data: Mismatch (%d instead of %d)", sent_bytes, size);
-			pthread_mutex_unlock(&sock_mutex);
-			tryConnect();
-	        return;
-	    }
-	    else {
-		//	ROS_INFO("Sending data: OK");
-		}
-		pthread_mutex_unlock(&sock_mutex);
-	    
-	    //Currently do not wait for reply from server
-	    /*
-	    int received = 0;
-	    char recv_buffer[BUFFSIZE];
-	    bzero(recv_buffer, BUFFSIZE);
-	    if ((received = read(sock, recv_buffer, BUFFSIZE)) < 0) {
-	        ROS_ERROR("Failed to receive additional bytes from client");
-	        return;
-	    }
-	    */
-	    
-	    /* Print server message */
-	    //ROS_INFO("Server answeded: %s", recv_buffer);
+	ROS_INFO("Trying to connect");
+	boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+	int i = 0;
+	while (error && endpoint_iterator != end) {
+		ROS_INFO("Checking endpoint %d", i++);
+	    sock.close();
+	    sock.connect(*endpoint_iterator++, error);
 	}
-}
-	
+	if (error) {
+		//throw boost::system::system_error(error);
+		ROS_WARN("Failed to connect. %s", error.message().c_str());
+	    return false;
+	}
+	return true;
+}	
 
 void stateCallback(const lunabotics::State& msg)
 {    
@@ -136,121 +95,113 @@ int main(int argc, char **argv)
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	nav_msgs::GetMap mapService;
     
-    
-    /* Construct the server sockaddr_in structure */
-    memset(&server, 0, sizeof(server));         	/* Clear struct */
-    server.sin_family = AF_INET;                    /* Internet/IP */ 
-    server.sin_addr.s_addr = argc > 1 ? inet_addr(argv[1]) : inet_addr(SERVER_ADDR); 
-    server.sin_port = argc > 2 ? htons(atoi(argv[2])) : htons(atoi(SERVER_PORT));
-    
-    
-    
-    /* Print connection details */
-    char *addr;
-    addr = inet_ntoa(server.sin_addr); /* cast s_addr as a struct in_addr */
-    
    	ROS_INFO("GUI Gateway ready");
    	   	
 	ros::Rate loop_rate(20);
 	while (ros::ok()) {
-		
-		if (!sock_conn) {
-			if (!tryConnect()) {
-		        ROS_ERROR("Failed to connect to server %s:%hu", addr, ntohs(server.sin_port));
-			}		
-			else {
-			    ROS_INFO("Connected to server on %s:%hu (socket %d)", addr, ntohs(server.sin_port), sock);
-			    sendMap = true;
+		try {
+			if (error) {
+				if (!tryConnect()) {
+			        ROS_ERROR("Failed to connect to server");
+				}		
+				else {
+				    ROS_INFO("Connected to server");
+				    sendMap = true;
+				}
+			}
+			else if (sendMap || sendPath || sendState || sendVision) {
+				
+				lunabotics::Telemetry tm;		
+				if (sendState) {
+					lunabotics::Telemetry::State *state = tm.mutable_state_data();
+					state->mutable_position()->set_x(stateMsg.odometry.pose.pose.position.x);
+					state->mutable_position()->set_y(stateMsg.odometry.pose.pose.position.y);
+					state->set_heading(tf::getYaw(stateMsg.odometry.pose.pose.orientation));
+					state->mutable_velocities()->set_linear(stateMsg.odometry.twist.twist.linear.x);
+					state->mutable_velocities()->set_angular(stateMsg.odometry.twist.twist.angular.z);
+					state->set_steering_mode(controlMode);
+					state->set_autonomy_enabled(controlParams.driving);
+					
+					if (controlParams.driving) {
+						state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
+						if (controlMode == lunabotics::ACKERMANN) {
+							lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
+							ackermannData->set_pid_error(controlParams.y_err);
+							ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
+							ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
+							ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
+							ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
+							ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
+							ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
+							ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
+							ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
+						}
+					}
+					
+				    sendState = false;
+				}
+				if (sendMap) {
+					nav_msgs::OccupancyGrid map;
+					bool include_map = false;
+					if (sendMap) {
+						if (mapClient.call(mapService)) {
+							map = mapService.response.map;
+							include_map = true;
+						}
+						else {
+							ROS_WARN("Failed to call service /lunabotics/map");
+						}
+					}
+					
+					if (include_map) {
+						lunabotics::Telemetry::World *world = tm.mutable_world_data();
+						world->set_width(map.info.width);
+						world->set_height(map.info.height);
+						world->set_resolution(map.info.resolution);
+						unsigned int mapSize = map.info.width*map.info.height;
+						for (unsigned int i = 0; i < mapSize; i++) {
+							world->add_cell(mapService.response.map.data.at(i));
+						}
+						ROS_INFO("Sending a map (%dx%d)", map.info.width, map.info.height);
+					}
+					
+					sendMap = false;
+				}
+				if (sendPath) {
+				    for (unsigned int i = 0; i < path.poses.size(); i++) {
+						geometry_msgs::PoseStamped pose = path.poses.at(i);
+						lunabotics::Point *point = tm.mutable_path_data()->add_position();
+						point->set_x(pose.pose.position.x);
+						point->set_y(pose.pose.position.y);
+					}
+				    
+				    sendPath = false;
+				}
+				if (sendVision) {
+					//Encode vision
+				    
+				    sendVision = false;
+				}
+				
+				if (!tm.IsInitialized()) {
+					ROS_WARN("Error serializing Telemetry");
+					ROS_WARN_STREAM(tm.InitializationErrorString());
+				}
+				else {
+				    boost::asio::write(sock, boost::asio::buffer(tm.SerializeAsString().c_str(), tm.ByteSize()));
+				}
 			}
 		}
-		else if (sendMap || sendPath || sendState || sendVision) {
-			
-			lunabotics::Telemetry tm;		
-			if (sendState) {
-				lunabotics::Telemetry::State *state = tm.mutable_state_data();
-				state->mutable_position()->set_x(stateMsg.odometry.pose.pose.position.x);
-				state->mutable_position()->set_y(stateMsg.odometry.pose.pose.position.y);
-				state->set_heading(tf::getYaw(stateMsg.odometry.pose.pose.orientation));
-				state->mutable_velocities()->set_linear(stateMsg.odometry.twist.twist.linear.x);
-				state->mutable_velocities()->set_angular(stateMsg.odometry.twist.twist.angular.z);
-				state->set_steering_mode(controlMode);
-				state->set_autonomy_enabled(controlParams.driving);
-				
-				if (controlParams.driving) {
-					state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
-					if (controlMode == lunabotics::ACKERMANN) {
-						lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
-						ackermannData->set_pid_error(controlParams.y_err);
-						ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
-						ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
-						ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
-						ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
-						ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
-						ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
-						ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
-						ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
-					}
-				}
-				
-			    sendState = false;
-			}
-			if (sendMap) {
-				nav_msgs::OccupancyGrid map;
-				bool include_map = false;
-				if (sendMap) {
-					if (mapClient.call(mapService)) {
-						map = mapService.response.map;
-						include_map = true;
-					}
-					else {
-						ROS_WARN("Failed to call service /lunabotics/map");
-					}
-				}
-				
-				if (include_map) {
-					lunabotics::Telemetry::World *world = tm.mutable_world_data();
-					world->set_width(map.info.width);
-					world->set_height(map.info.height);
-					world->set_resolution(map.info.resolution);
-					unsigned int mapSize = map.info.width*map.info.height;
-					for (unsigned int i = 0; i < mapSize; i++) {
-						world->add_cell(mapService.response.map.data.at(i));
-					}
-					ROS_INFO("Sending a map (%dx%d)", map.info.width, map.info.height);
-				}
-				
-				sendMap = false;
-			}
-			if (sendPath) {
-			    for (unsigned int i = 0; i < path.poses.size(); i++) {
-					geometry_msgs::PoseStamped pose = path.poses.at(i);
-					lunabotics::Point *point = tm.mutable_path_data()->add_position();
-					point->set_x(pose.pose.position.x);
-					point->set_y(pose.pose.position.y);
-				}
-			    
-			    sendPath = false;
-			}
-			if (sendVision) {
-				//Encode vision
-			    
-			    sendVision = false;
-			}
-			
-			if (!tm.IsInitialized()) {
-				ROS_WARN("Error serializing Telemetry");
-				ROS_WARN_STREAM(tm.InitializationErrorString());
-			}
-			else {
-			    transmit(tm.SerializeAsString().c_str(), tm.ByteSize());
-			}
+		catch (std::exception& e) {
+			ROS_WARN(e.what());
+			error = boost::asio::error::host_not_found;
 		}
 		
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
 	
-	close(sock);
+	sock.close();
 	
 	return 0;
 }
