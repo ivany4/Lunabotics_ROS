@@ -492,7 +492,7 @@ void controlAckermann()
 		ros::Duration dt = now - y_err_time_prev;
 		y_err_time_prev = now;
 		if (dt.toSec() != 0 && !isnan(y_err)) {
-			double d_y_err = y_err - y_err_prev / dt.toSec();
+			double d_y_err = (y_err - y_err_prev) / dt.toSec();
 			
 			if (y_err_int.size() == 10) {
 				y_err_int.erase(y_err_int.begin());

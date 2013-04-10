@@ -142,7 +142,7 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 		if [ $build -eq 1 ]; then
 			clrecho 2 "Build complete"
 		else
-			$in_addr="Unknown"
+			in_addr="Unknown"
 			if [ $profile = "Pioneer" ]; then
 				out_addr="192.168.1.113"
 				in_addr=`/sbin/ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`

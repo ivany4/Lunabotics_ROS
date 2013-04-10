@@ -2,12 +2,19 @@
 #define _ALL_WHEEL_STEERING_PLUGIN_H_
 
 #include <gazebo.hh>
+#include <common/common.hh>
 #include "ros/ros.h"
 //#include <lunabotics/AllWheelSteering.h>
 #include "../../msg_gen/cpp/include/lunabotics/AllWheelSteering.h"
 
 namespace gazebo
 {
+	struct PIDData {
+		std::vector<double> integral;
+		double prev_err;
+		common::Time prev_time;
+	};
+	
 
 	class AllWheelSteeringPlugin : public ModelPlugin
 	{
@@ -20,6 +27,8 @@ namespace gazebo
 		bool FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param);
 		void ROSCallback(const lunabotics::AllWheelSteering::ConstPtr& msg);
 		void OnUpdate();
+		double CalculatePID(double err, PIDData &data);
+		double DrivingFromSteeringVelocity(double steeringVel);
 	
 		// Pointer to the model
 		physics::ModelPtr model;
@@ -35,6 +44,24 @@ namespace gazebo
 		physics::JointPtr rightFrontWheelDrivingJoint;
 		physics::JointPtr leftRearWheelDrivingJoint;
 		physics::JointPtr rightRearWheelDrivingJoint;
+		
+		double leftFrontSteeringAngle;
+		double rightFrontSteeringAngle;
+		double leftRearSteeringAngle;
+		double rightRearSteeringAngle;
+		
+		double leftFrontDrivingSpeed;
+		double rightFrontDrivingSpeed;
+		double leftRearDrivingSpeed;
+		double rightRearDrivingSpeed;
+		
+		double wheelRadius;
+		double linkShoulder;
+		
+		PIDData leftFrontPID;
+		PIDData rightFrontPID;
+		PIDData leftRearPID;
+		PIDData rightRearPID;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;
