@@ -46,17 +46,17 @@ target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES})
 install (TARGETS AllWheelSteeringPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #Differential drive controller
-#add_library(LunaDiffDrivePlugin SHARED src/MotorControlPlugin.cc)
-#set_target_properties(LunaDiffDrivePlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
-#set_target_properties(LunaDiffDrivePlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
-#target_link_libraries(LunaDiffDrivePlugin ${roscpp_LIBRARIES})
-#install (TARGETS LunaDiffDrivePlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+add_library(LunaboticsDiffDrivePlugin SHARED src/LunaboticsDiffDrivePlugin.cpp)
+set_target_properties(LunaboticsDiffDrivePlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+set_target_properties(LunaboticsDiffDrivePlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+target_link_libraries(LunaboticsDiffDrivePlugin ${roscpp_LIBRARIES})
+install (TARGETS LunaboticsDiffDrivePlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #Odometry publisher
-#add_library(LunaOdometryPlugin SHARED src/luna_gazebo_odometry_plugin.cpp)
-#set_target_properties(LunaOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
-#set_target_properties(LunaOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
-#target_link_libraries(LunaOdometryPlugin ${roscpp_LIBRARIES})
-#install (TARGETS LunaOdometryPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+add_library(LunaboticsOdometryPlugin SHARED src/LunaboticsOdometryPlugin.cpp)
+set_target_properties(LunaboticsOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+set_target_properties(LunaboticsOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+target_link_libraries(LunaboticsOdometryPlugin ${roscpp_LIBRARIES})
+install (TARGETS LunaboticsOdometryPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 

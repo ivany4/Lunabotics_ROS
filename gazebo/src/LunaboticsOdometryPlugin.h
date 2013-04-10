@@ -1,5 +1,5 @@
-#ifndef LUNA_GAZEBO_ODOMETRY_PLUGIN_H
-#define LUNA_GAZEBO_ODOMETRY_PLUGIN_H
+#ifndef _LUNABOTICS_ODOMETRY_PLUGIN_H_
+#define _LUNABOTICS_ODOMETRY_PLUGIN_H_
 
 #include <gazebo.hh>
 #include "ros/ros.h"
@@ -8,11 +8,11 @@
 namespace gazebo
 {
 
-	class LunaOdometryPlugin : public ModelPlugin
+	class LunaboticsOdometryPlugin : public ModelPlugin
 	{
 	public:
-		LunaOdometryPlugin();
-		~LunaOdometryPlugin();
+		LunaboticsOdometryPlugin();
+		~LunaboticsOdometryPlugin();
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		void OnUpdate();

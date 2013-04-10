@@ -1,4 +1,4 @@
-#include "luna_gazebo_odometry_plugin.h"
+#include "LunaboticsOdometryPlugin.h"
 
 #include <boost/bind.hpp>
 #include <physics/physics.hh>
@@ -9,22 +9,22 @@
 
 namespace gazebo
 {   
-	LunaOdometryPlugin::LunaOdometryPlugin() {
-		std::string name = "luna_gazebo_odometry_plugin";
+	LunaboticsOdometryPlugin::LunaboticsOdometryPlugin() {
+		std::string name = "gazebo_odometry_plugin";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}
 	
-	LunaOdometryPlugin::~LunaOdometryPlugin() {
+	LunaboticsOdometryPlugin::~LunaboticsOdometryPlugin() {
 		delete this->node;
 	}
 	
-	void LunaOdometryPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
+	void LunaboticsOdometryPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
 		this->model = _parent;
 	
 		// Listen to the update event. This event is broadcast every
 		// simulation iteration.
-		this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&LunaOdometryPlugin::OnUpdate, this));
+		this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&LunaboticsOdometryPlugin::OnUpdate, this));
 
 		this->node = new ros::NodeHandle("~");
 
@@ -38,7 +38,7 @@ namespace gazebo
 	
 	
 	// Called by the world update start event
-	void LunaOdometryPlugin::OnUpdate() {
+	void LunaboticsOdometryPlugin::OnUpdate() {
 		
 		std::vector<double> rangesgz;
 
@@ -88,5 +88,5 @@ namespace gazebo
 	}
 	
 	// Register this plugin with the simulator
-	GZ_REGISTER_MODEL_PLUGIN(LunaOdometryPlugin);
+	GZ_REGISTER_MODEL_PLUGIN(LunaboticsOdometryPlugin);
 }

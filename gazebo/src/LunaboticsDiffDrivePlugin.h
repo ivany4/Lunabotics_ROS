@@ -1,5 +1,5 @@
-#ifndef ROOMBA_MOTOR_CONTROLLER_PLUGIN_H
-#define ROOMBA_MOTOR_CONTROLLER_PLUGIN_H
+#ifndef _LUNABOTICS_DIFF_DRIVE_PLUGIN_H_
+#define _LUNABOTICS_DIFF_DRIVE_PLUGIN_H_
 
 #include <gazebo.hh>
 #include "ros/ros.h"
@@ -8,11 +8,11 @@
 namespace gazebo
 {
 
-	class ROSMotorControllerPlugin : public ModelPlugin
+	class LunaboticsDiffDrivePlugin : public ModelPlugin
 	{
 	public:
-		ROSMotorControllerPlugin();
-		~ROSMotorControllerPlugin();
+		LunaboticsDiffDrivePlugin();
+		~LunaboticsDiffDrivePlugin();
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		bool LoadParams(sdf::ElementPtr _sdf);

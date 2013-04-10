@@ -154,11 +154,11 @@
                 <link_name>right_wheel</link_name>
             </child>
         </joint>
-        <plugin name="diff_drive" filename="libLunaDiffDrivePlugin.so">
+        <plugin name="diff_drive_plugin" filename="libLunaboticsDiffDrivePlugin.so">
             <left_wheel_hinge>left_wheel_hinge</left_wheel_hinge>
             <right_wheel_hinge>right_wheel_hinge</right_wheel_hinge>
             <torque>5</torque>
         </plugin>
-        <plugin name="odometry" filename="libLunaOdometryPlugin.so" />
+        <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
     </model>
 </sdf>

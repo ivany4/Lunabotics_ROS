@@ -620,7 +620,7 @@
                 <link_name>right_rear_connector</link_name>
             </child>
         </joint>
-        <plugin name="ros_model_plugin" filename="libAllWheelSteeringPlugin.so">
+        <plugin name="all_wheel_steering_plugin" filename="libAllWheelSteeringPlugin.so">
 			<left_front_driving_hinge>left_front_driving_hinge</left_front_driving_hinge>
 			<right_front_driving_hinge>right_front_driving_hinge</right_front_driving_hinge>
 			<left_rear_driving_hinge>left_rear_driving_hinge</left_rear_driving_hinge>
@@ -630,5 +630,6 @@
 			<left_rear_steering_hinge>left_rear_steering_hinge</left_rear_steering_hinge>
 			<right_rear_steering_hinge>right_rear_steering_hinge</right_rear_steering_hinge>
         </plugin>
+        <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
     </model>
 </sdf>
