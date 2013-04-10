@@ -85,7 +85,7 @@
                 <pose>0 0 0.04 0 0 3.14</pose>
                 <geometry>
                     <mesh>
-                       <uri>model://elias/monkey.dae</uri>
+                       <uri>model://elias/meshes/monkey.dae</uri>
                     </mesh>
                 </geometry>
             </visual>
@@ -140,7 +140,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/elias.material</uri>
+                        <uri>model://elias/materials/scripts</uri>
+                        <uri>model://elias/materials/textures</uri>
                         <name>Lunabotics/Wheel</name>
                     </script>
                 </material>
@@ -182,7 +183,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/elias.material</uri>
+                        <uri>model://elias/materials/scripts</uri>
+                        <uri>model://elias/materials/textures</uri>
                         <name>Lunabotics/Wheel</name>
                     </script>
                 </material>
@@ -224,7 +226,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/elias.material</uri>
+                        <uri>model://elias/materials/scripts</uri>
+                        <uri>model://elias/materials/textures</uri>
                         <name>Lunabotics/Wheel</name>
                     </script>
                 </material>
@@ -266,7 +269,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/elias.material</uri>
+                        <uri>model://elias/materials/scripts</uri>
+                        <uri>model://elias/materials/textures</uri>
                         <name>Lunabotics/Wheel</name>
                     </script>
                 </material>
