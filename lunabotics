@@ -7,11 +7,8 @@ PROTOS_SRC="src/protos"
 
 rebuild=1
 build=0
-in_port="5555"
-in_addr=0
 compile_gazebo=0
 compile_protos=0
-out_port="5556"
 out_addr="192.168.218.1"
 profile="VMWare"
 
@@ -68,13 +65,10 @@ clean_target() {
 
 cd $PACKAGE_PATH
 
-while getopts "a:p:A:P:cdnbr:goO" opt; 
+while getopts "a:cdnbr:goO" opt; 
 do	
 	case $opt in
-	a)	in_addr="$OPTARG";;
-	p)	in_port="$OPTARG";;
-	A)	out_addr="$OPTARG";;
-	P)	out_port="$OPTARG";;
+	a)	out_addr="$OPTARG";;
 	c)	close=1;;
 	d)  clean=1;;
 	g)  compile_gazebo=1;;
@@ -83,7 +77,7 @@ do
 	r)	profile="$OPTARG";;
 	o)  compile_protos=1;;
 	O)	compile_protos=2;;
-	\?) echo "$(tput bold)Usage: $0 [-bdcnh] [-a=$(tput setaf 4)incomming IP address$(tput setaf 7)] [-p=$(tput setaf 4)incomming port$(tput setaf 7)] [-A=$(tput setaf 4)outgoing IP address$(tput setaf 7)] [-P=$(tput setaf 4)outgoing port$(tput setaf 7)] [-r=$(tput setaf 4)profile$(tput setaf 7)]$(tput sgr0)" >&2
+	\?) echo "$(tput bold)Usage: $0 [-bdcnh] [-a=$(tput setaf 4)outgoing IP address$(tput setaf 7)] [-r=$(tput setaf 4)profile$(tput setaf 7)]$(tput sgr0)" >&2
 		echo ""
 		echo "Options:"
 		echo -e "$(tput bold)-b		$(tput sgr0)\n	Build without running. Omitted when using -O"
@@ -93,10 +87,7 @@ do
 		echo -e "$(tput bold)-n		$(tput sgr0)\n	Do not recompile"
 		echo -e "$(tput bold)-o		$(tput sgr0)\n	Compile protocol buffers"
 		echo -e "$(tput bold)-O		$(tput sgr0)\n	Compile ONLY protocol buffers"
-		echo -e "$(tput bold)-a $(tput setaf 4)incomming IP address$(tput sgr0)\n	Specify GUI IP address"
-		echo -e "$(tput bold)-A $(tput setaf 4)outgoing IP address$(tput sgr0)\n	Specify IP address for incoming connections"
-		echo -e "$(tput bold)-p $(tput setaf 4)incoming port$(tput sgr0)\n	Specify GUI TCP port"
-		echo -e "$(tput bold)-P $(tput setaf 4)outgoing port$(tput sgr0)\n	Specify TCP port for incoming connections"
+		echo -e "$(tput bold)-a $(tput setaf 4)outgoing IP address$(tput sgr0)\n	Specify GUI IP address"
 		echo -e "$(tput bold)-r $(tput setaf 4)profile$(tput sgr0)\n	Specify profile to be used (VMWare/Pioneer/Elias1/Elias2)\n	$(tput bold)VMWare$(tput sgr0) - Default profile, used for VMWare machine setup. Start's up nodes in different terminal windows.\n	$(tput bold)Pioneer$(tput sgr0) - Used for Pioneer proxy robot, has predefined IP address and different local ip address lookup routine.\n	$(tput bold)Elias1$(tput sgr0) - Used on Master elias machine.\n	$(tput bold)Elias2$(tput sgr0) - Used on Slave elias machine."
 		exit 1;;
 	esac
@@ -151,34 +142,31 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 		if [ $build -eq 1 ]; then
 			clrecho 2 "Build complete"
 		else
-			if [ $in_addr -eq 0 ]; then
-				if [ $profile = "Pioneer" ]; then
-					out_addr="192.168.1.113"
-					in_addr=`/sbin/ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
-				elif [ $profile = "Elias1" ] || [ $profile = "Elias2" ]; then
-					in_addr=`ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
-				else
-					in_addr=`ifconfig eth0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
-				fi
-			fi
-			if [ $in_addr ]; then
-				clrecho 3 "Launching nodes..."
-				echo "Using incoming connection $in_addr:$in_port"
-				echo "Using outgoing connection $out_addr:$out_port"
-				if [ $profile = "Pioneer" ]; then
-					roslaunch lunabotics.launch iip:=$in_addr oip:=$out_addr iport:=$in_port oport:=$out_port cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose
-				elif [ $profile = "Elias1" ]; then
-					gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver"
-				elif [ $profile = "Elias2" ]; then
-					roslaunch comm.launch iip:=$in_addr oip:=$out_addr iport:=$in_port oport:=$out_port
-				else
-					gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr' '$out_port'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener '$in_addr' '$in_port'"
-					gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver" #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
-				fi
-				clrecho 2 "Nodes are up and running. Enjoy! :)"
+			$in_addr="Unknown"
+			if [ $profile = "Pioneer" ]; then
+				out_addr="192.168.1.113"
+				in_addr=`/sbin/ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
+			elif [ $profile = "Elias1" ] || [ $profile = "Elias2" ]; then
+				out_addr="192.168.218.1"
+				in_addr=`ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 			else
-				clrecho 1 "Cannot find network"
+				in_addr=`ifconfig eth0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 			fi
+			
+			clrecho 3 "Launching nodes..."
+			echo "Using remote IP $out_addr"
+			echo "Local IP address is $in_addr"
+			if [ $profile = "Pioneer" ]; then
+				roslaunch lunabotics.launch oip:=$out_addr cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose
+			elif [ $profile = "Elias1" ]; then
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver"
+			elif [ $profile = "Elias2" ]; then
+				roslaunch comm.launch oip:=$out_addr
+			else
+				gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver" #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+			fi
+			clrecho 2 "Nodes are up and running. Enjoy! :)"
 		fi
 	fi
 else

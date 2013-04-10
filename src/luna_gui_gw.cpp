@@ -15,7 +15,6 @@
 
 boost::asio::io_service io_service;
 boost::asio::ip::tcp::resolver resolver(io_service);
-boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(), "192.168.218.1", "44325"); 
 boost::asio::ip::tcp::resolver::iterator end; 
 boost::asio::ip::tcp::socket sock(io_service);
 boost::system::error_code error = boost::asio::error::host_not_found;
@@ -30,10 +29,10 @@ lunabotics::Vision vision;
 nav_msgs::Path path;
 lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
 
-bool tryConnect()
+bool tryConnect(boost::asio::ip::tcp::resolver::query tcp_query)
 {
 	ROS_INFO("Trying to connect");
-	boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+	boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(tcp_query);
 	int i = 0;
 	while (error && endpoint_iterator != end) {
 		ROS_INFO("Checking endpoint %d", i++);
@@ -84,7 +83,15 @@ void visionCallback(const lunabotics::Vision& msg)
 
 int main(int argc, char **argv)
 {
+	if (argc < 1) {
+		ROS_ERROR("USAGE: rosrun luna_gui_gw <GUI IP Address>");
+		return 1;
+	}
+	
 	ros::init(argc, argv, "luna_gui_gw");
+	
+	boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(), argv[1], "44325"); 
+	
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("map_update", 0, mapUpdateCallback);
@@ -101,7 +108,7 @@ int main(int argc, char **argv)
 	while (ros::ok()) {
 		try {
 			if (error) {
-				if (!tryConnect()) {
+				if (!tryConnect(query)) {
 			        ROS_ERROR("Failed to connect to server");
 				}		
 				else {

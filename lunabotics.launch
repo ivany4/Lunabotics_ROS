@@ -1,6 +1,6 @@
 <launch>
-  <node name="luna_gui_gw" pkg="lunabotics" type="luna_gui_gw" args="$(arg oip) $(arg oport)" />
-  <node name="luna_gui_listener" pkg="lunabotics" type="luna_gui_listener" args="$(arg iip) $(arg iport) " />
+  <node name="luna_gui_gw" pkg="lunabotics" type="luna_gui_gw" args="$(arg oip)" />
+  <node name="luna_gui_listener" pkg="lunabotics" type="luna_gui_listener" />
   <node name="luna_mech_gw" pkg="lunabotics" type="luna_mech_gw">
 	<remap from="cmd_vel" to="$(arg cmd_vel)" />
 	<remap from="odom" to="$(arg odom)" />

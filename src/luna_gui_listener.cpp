@@ -216,7 +216,7 @@ int main(int argc, char **argv)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;	//Verify version of ProtoBuf package
 
-	ros::init(argc, argv, "luna_gui");
+	ros::init(argc, argv, "luna_gui_listener");
 		
 	ros::NodeHandle nodeHandle("lunabotics");
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
