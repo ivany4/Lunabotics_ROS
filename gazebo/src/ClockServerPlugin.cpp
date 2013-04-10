@@ -17,6 +17,7 @@ namespace gazebo
 	}
 	
 	void ClockServerPlugin::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf) {
+		ROS_INFO("Loading Clock World Plugin");
 		this->node = new ros::NodeHandle("~");
 	
 		// Listen to the update event. This event is broadcast every

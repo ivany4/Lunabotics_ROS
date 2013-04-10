@@ -21,6 +21,7 @@ namespace gazebo
 	}
 	
 	void LunaboticsDiffDrivePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
+		ROS_INFO("Loading Diff Drive Model Plugin");
 		this->model = _parent;
 	
 		if (this->LoadParams(_sdf)) {

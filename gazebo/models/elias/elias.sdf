@@ -624,6 +624,25 @@
                 <link_name>right_rear_connector</link_name>
             </child>
         </joint>
+		<include>
+			<uri>model://hokuyo</uri>
+			<pose>0 0.5 -0.325 0 0 1.57</pose>
+		</include>
+		<joint name="hokuyo_joint" type="revolute">
+			<child>
+				<link_name>hokuyo::link</link_name>
+			</child>
+			<parent>
+				<link_name>chassis</link_name>
+			</parent>
+			<axis>
+				<xyz>0 0 1</xyz>
+				<limit>
+					<upper>0</upper>
+					<lower>0</lower>
+				</limit>
+			</axis>
+		</joint>
         <plugin name="all_wheel_steering_plugin" filename="libAllWheelSteeringPlugin.so">
 			<left_front_driving_hinge>left_front_driving_hinge</left_front_driving_hinge>
 			<right_front_driving_hinge>right_front_driving_hinge</right_front_driving_hinge>

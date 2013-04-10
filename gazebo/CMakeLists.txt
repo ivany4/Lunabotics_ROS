@@ -59,4 +59,11 @@ set_target_properties(LunaboticsOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_L
 target_link_libraries(LunaboticsOdometryPlugin ${roscpp_LIBRARIES})
 install (TARGETS LunaboticsOdometryPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
+#Laser publisher
+add_library(LunaboticsLidarPlugin SHARED src/LunaboticsLidarPlugin.cpp)
+set_target_properties(LunaboticsLidarPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+set_target_properties(LunaboticsLidarPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+target_link_libraries(LunaboticsLidarPlugin ${roscpp_LIBRARIES})
+install (TARGETS LunaboticsLidarPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+
 
