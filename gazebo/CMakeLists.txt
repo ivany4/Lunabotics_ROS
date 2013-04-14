@@ -13,10 +13,6 @@ else()
   message(FATAL_ERROR "pkg-config is required; please install it")
 endif()
 
-#After installation of 1.6 over 1.5 it got messed up. So, forcing a newer version
-set(GAZEBO_INCLUDE_DIRS "/usr/include/gazebo-1.6;/usr/include/gazebo-1.6/gazebo")
-set(GAZEBO_LIBRARY_DIRS "/usr/include/gazebo-1.6/plugins")
-
 message(STATUS "Including directories ${GAZEBO_INCLUDE_DIRS}")
 include_directories(${GAZEBO_INCLUDE_DIRS})
 message(STATUS "Linking directories ${GAZEBO_LIBRARY_DIRS}")
@@ -25,10 +21,17 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 include(cmake/rospack.cmake)
 
 get_rospack_flags(roscpp)
-message(STATUS "Including directories ${roscpp_INCLUDE_DIRS}")
+get_rospack_flags(tf)
+get_rospack_flags(lunabotics)
+
+message(STATUS "Including directories ${roscpp_INCLUDE_DIRS} ${lunabotics_INCLUDE_DIRS} ${tf_INCLUDE_DIRS}")
 include_directories(${roscpp_INCLUDE_DIRS})
-message(STATUS "Linking directories ${roscpp_LIBRARY_DIRS}")
+include_directories(${lunabotics_INCLUDE_DIRS})
+include_directories(${tf_INCLUDE_DIRS})
+message(STATUS "Linking directories ${roscpp_LIBRARY_DIRS} ${lunabotics_LIBRARY_DIRS} ${tf_LIBRARY_DIRS}")
 link_directories(${roscpp_LIBRARY_DIRS})
+link_directories(${lunabotics_LIBRARY_DIRS})
+link_directories(${tf_LIBRARY_DIRS})
 set(CMAKE_INSTALL_RPATH "${roscpp_LIBRARY_DIRS}")
 
 #Clock server
@@ -38,11 +41,18 @@ set_target_properties(ClockServerPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_
 target_link_libraries(ClockServerPlugin ${roscpp_LIBRARIES})
 install (TARGETS ClockServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
+#Transform server
+add_library(TransformServerPlugin SHARED src/TransformServerPlugin.cpp)
+set_target_properties(TransformServerPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${tf_CFLAGS_OTHER}")
+set_target_properties(TransformServerPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${tf_LDFLAGS_OTHER}")
+target_link_libraries(TransformServerPlugin ${roscpp_LIBRARIES} ${tf_LIBRARIES})
+install (TARGETS TransformServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+
 #All wheel drive controller
 add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp)
-set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
-set_target_properties(AllWheelSteeringPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
-target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES})
+set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${lunabotics_CFLAGS_OTHER}")
+set_target_properties(AllWheelSteeringPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${lunabotics_LDFLAGS_OTHER}")
+target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES} ${lunabotics_LIBRARIES})
 install (TARGETS AllWheelSteeringPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #Differential drive controller

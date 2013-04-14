@@ -4,7 +4,7 @@
 #include <gazebo.hh>
 #include <common/common.hh>
 #include "ros/ros.h"
-#include "../../msg_gen/cpp/include/lunabotics/AllWheelSteering.h"
+#include "lunabotics/AllWheelSteering.h"
 
 namespace gazebo
 {

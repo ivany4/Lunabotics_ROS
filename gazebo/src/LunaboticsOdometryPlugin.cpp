@@ -5,8 +5,6 @@
 #include <common/common.hh>
 #include <stdio.h>
 
-#define DEFAULT_TORQUE	5.0
-
 namespace gazebo
 {   
 	LunaboticsOdometryPlugin::LunaboticsOdometryPlugin() {
@@ -20,6 +18,8 @@ namespace gazebo
 	}
 	
 	void LunaboticsOdometryPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
+		ROS_INFO("Loading Odometry Plugin");
+		
 		this->model = _parent;
 	
 		// Listen to the update event. This event is broadcast every
@@ -52,7 +52,8 @@ namespace gazebo
 
 		nav_msgs::Odometry odom2ros;
 		odom2ros.header.stamp=ros::Time::now();
-		odom2ros.header.frame_id="base_link";
+		odom2ros.header.frame_id="/odom";
+		odom2ros.child_frame_id="/base_link";
 		odom2ros.pose.pose.position=p2ros;
 		odom2ros.pose.pose.orientation=r2ros;
 		//odom2ros.pose.covariance= //covariance 6x6 matrix

@@ -10,7 +10,7 @@ lunastage() {
 }
 
 lunagazebo() {
-	gazebo `rospack find lunabotics`/gazebo/worlds/cubic.world
+	gazebo `rospack find lunabotics`/gazebo/worlds/cubic.sdf
 }
 
 lunactrl() {
@@ -19,4 +19,4 @@ lunactrl() {
 
 export GAZEBO_PLUGIN_PATH=~/local/lib/gazebo_plugins:$GAZEBO_PLUGIN_PATH
 export GAZEBO_MODEL_PATH=`rospack find lunabotics`/gazebo/models:$GAZEBO_MODEL_PATH
-export GAZEBO_MODEL_DATABASE_URI=""
+#export GAZEBO_MODEL_DATABASE_URI=""

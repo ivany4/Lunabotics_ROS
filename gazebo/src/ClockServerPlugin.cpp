@@ -26,8 +26,6 @@ namespace gazebo
 
 		// ROS Publisher
 		this->clockPublisher = this->node->advertise<rosgraph_msgs::Clock>("/clock", 256);
-		
-		ROS_INFO("\n\n===========\n\nClock server ready\n\n===========\n\n");
 	}
 	
 	void ClockServerPlugin::OnUpdate() 

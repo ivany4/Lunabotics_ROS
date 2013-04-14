@@ -5,10 +5,11 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include <fstream>
 
-#define MAP_FROM_FILE	1
-
+#define MAP_FROM_FILE	0
 
 int seq = 0;
+ros::ServiceClient mapClient;
+nav_msgs::GetMap mapService;
 
 inline int randomNumber(int min, int max)
 {
@@ -62,6 +63,17 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 	ROS_INFO("Reading from file");
 	res.map = getMapFromFile();
 #else
+	//Gmapping map
+	
+	if (mapClient.call(mapService)) {
+		res = mapService.response;
+	}
+	else {
+		ROS_WARN("Failed to call /map gmapping");
+	}
+
+	//Generated map
+	/*
 	res.map.info.width = 24;
 	res.map.info.height = 21;
 	res.map.info.resolution = 0.33;
@@ -75,6 +87,7 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 			res.map.data.push_back(occupancy);
 		}
 	}
+	*/
 #endif
 		
 	res.map.header.seq = seq;
@@ -102,6 +115,7 @@ int main(int argc, char **argv)
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 256, visionCallback);
 	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
 	ros::ServiceServer mapServer = nodeHandle.advertiseService("map", getMap);
+	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("/dynamic_map");
 	
 	ROS_INFO("SLAM ready"); 
 

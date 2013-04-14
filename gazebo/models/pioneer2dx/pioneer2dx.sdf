@@ -159,6 +159,6 @@
             <right_wheel_hinge>right_wheel_hinge</right_wheel_hinge>
             <torque>5</torque>
         </plugin>
-        <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
+        <!--<plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />-->
     </model>
 </sdf>
