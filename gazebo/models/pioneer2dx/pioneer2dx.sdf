@@ -20,7 +20,7 @@
                         <radius>0.04</radius>
                     </sphere>
                 </geometry>
-                <surface>
+                <surface> 
                     <friction>
                         <ode>
                             <mu>0</mu>

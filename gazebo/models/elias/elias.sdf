@@ -626,7 +626,7 @@
         </joint>
         <include>
             <uri>model://hokuyo</uri>
-            <pose>0 0.5 -0.325 0 0 1.57</pose>
+            <pose>0 0.5 -0.325 0 0 1.57</pose> 
         </include>
         <joint name="hokuyo_joint" type="revolute">
             <child>
@@ -654,6 +654,6 @@
             <right_rear_steering_hinge>right_rear_steering_hinge</right_rear_steering_hinge>
         </plugin>
         <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
-        <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />
+      <!--  <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />-->
     </model>
 </sdf>
