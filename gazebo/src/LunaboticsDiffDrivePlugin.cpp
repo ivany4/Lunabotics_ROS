@@ -11,7 +11,7 @@
 namespace gazebo
 {   
 	LunaboticsDiffDrivePlugin::LunaboticsDiffDrivePlugin() {
-		std::string name = "gazebo_diff_drive";
+		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}

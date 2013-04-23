@@ -4,6 +4,7 @@
 #include <gazebo.hh>
 #include "ros/ros.h"
 #include <nav_msgs/Odometry.h>
+#include "tf/transform_broadcaster.h"
 
 namespace gazebo
 {
@@ -16,7 +17,7 @@ namespace gazebo
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		void OnUpdate();
-	
+		
 		// Pointer to the model
 		physics::ModelPtr model;
 	
@@ -28,6 +29,7 @@ namespace gazebo
 	
 		// ROS Subscriber
 		ros::Publisher pub;
+		tf::TransformBroadcaster tfBroadcaster;
 	};
 	
 };

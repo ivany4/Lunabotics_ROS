@@ -64,9 +64,9 @@ install (TARGETS LunaboticsDiffDrivePlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/l
 
 #Odometry publisher
 add_library(LunaboticsOdometryPlugin SHARED src/LunaboticsOdometryPlugin.cpp)
-set_target_properties(LunaboticsOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
-set_target_properties(LunaboticsOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
-target_link_libraries(LunaboticsOdometryPlugin ${roscpp_LIBRARIES})
+set_target_properties(LunaboticsOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${tf_CFLAGS_OTHER}")
+set_target_properties(LunaboticsOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${tf_LDFLAGS_OTHER}")
+target_link_libraries(LunaboticsOdometryPlugin ${roscpp_LIBRARIES} ${tf_LIBRARIES})
 install (TARGETS LunaboticsOdometryPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #Laser publisher

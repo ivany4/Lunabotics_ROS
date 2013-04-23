@@ -8,7 +8,7 @@
 namespace gazebo
 {   
 	TransformServerPlugin::TransformServerPlugin() {
-		std::string name = "gazebo_transform_server";
+		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}
@@ -62,14 +62,7 @@ namespace gazebo
 			math::Pose pose = this->lidarLink->GetRelativePose();
 			transform.setOrigin(tf::Vector3(pose.pos.x, pose.pos.y, pose.pos.z));
 			transform.setRotation(tf::Quaternion(pose.rot.x, pose.rot.y, pose.rot.z, pose.rot.w));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "/lidar", "/base_link"));
-			
-			transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-			transform.setRotation(tf::Quaternion(0, 0, 0, 1));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "/odom", "/map"));
-			
-			
-			
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "lidar", "base_link"));
 		}
 		
 		ros::spinOnce();

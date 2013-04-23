@@ -8,7 +8,7 @@
 namespace gazebo
 {   
 	LunaboticsOdometryPlugin::LunaboticsOdometryPlugin() {
-		std::string name = "gazebo_odometry_plugin";
+		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}
@@ -39,23 +39,45 @@ namespace gazebo
 	
 	// Called by the world update start event
 	void LunaboticsOdometryPlugin::OnUpdate() {
+		ros::Time now = ros::Time::now();
 		
-		std::vector<double> rangesgz;
-
 		math::Vector3 p = model->GetWorldPose().pos;
 		math::Quaternion r = model->GetWorldPose().rot;
+	
+	
+		//Publish the /base_link to /odom transform needed for gmapping
+	
+		tf::Transform transform;
+		transform.setOrigin(tf::Vector3(p.x, p.y, p.z));
+		transform.setRotation(tf::Quaternion(r.x, r.y, r.z, r.w));
+		this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "odom"));
 		
-		geometry_msgs::Point p2ros;
-		p2ros.x=p.x; p2ros.y=p.y; p2ros.z=p.z;
-		geometry_msgs::Quaternion r2ros;
-		r2ros.x=r.x; r2ros.y=r.y; r2ros.z=r.z; r2ros.w=r.w;
-
+            
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 		nav_msgs::Odometry odom2ros;
-		odom2ros.header.stamp=ros::Time::now();
-		odom2ros.header.frame_id="/odom";
-		odom2ros.child_frame_id="/base_link";
-		odom2ros.pose.pose.position=p2ros;
-		odom2ros.pose.pose.orientation=r2ros;
+		odom2ros.header.stamp = now;
+		odom2ros.header.frame_id = "odom";
+		odom2ros.child_frame_id = "base_link";
+		odom2ros.pose.pose.position.x = p.x;
+		odom2ros.pose.pose.position.y = p.y;
+		odom2ros.pose.pose.position.z = p.z;
+		odom2ros.pose.pose.orientation.x = r.x;
+		odom2ros.pose.pose.orientation.y = r.y;
+		odom2ros.pose.pose.orientation.z = r.z;
+		odom2ros.pose.pose.orientation.w = r.w;
 		//odom2ros.pose.covariance= //covariance 6x6 matrix
 		
 		
@@ -84,7 +106,7 @@ namespace gazebo
 		odom2ros.twist.twist.angular.z=angularVelocity.z;
 		
 		this->pub.publish(odom2ros);
-            
+		
 		ros::spinOnce();
 	}
 	

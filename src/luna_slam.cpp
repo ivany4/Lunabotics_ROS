@@ -91,7 +91,7 @@ bool getMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 #endif
 		
 	res.map.header.seq = seq;
-	res.map.header.frame_id = 1;
+	res.map.header.frame_id = "map";
 	res.map.header.stamp = ros::Time::now();
 	
 	seq++;

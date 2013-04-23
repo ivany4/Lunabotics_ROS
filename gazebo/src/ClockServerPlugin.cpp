@@ -7,7 +7,7 @@
 namespace gazebo
 {   
 	ClockServerPlugin::ClockServerPlugin() {
-		std::string name = "gazebo_clock_server";
+		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}

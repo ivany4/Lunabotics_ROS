@@ -643,6 +643,7 @@
                 </limit>
             </axis>
         </joint>
+        <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />
         <plugin name="all_wheel_steering_plugin" filename="libAllWheelSteeringPlugin.so">
             <left_front_driving_hinge>left_front_driving_hinge</left_front_driving_hinge>
             <right_front_driving_hinge>right_front_driving_hinge</right_front_driving_hinge>
@@ -654,6 +655,5 @@
             <right_rear_steering_hinge>right_rear_steering_hinge</right_rear_steering_hinge>
         </plugin>
         <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
-      <!--  <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />-->
     </model>
 </sdf>

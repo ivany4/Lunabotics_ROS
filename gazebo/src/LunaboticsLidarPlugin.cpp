@@ -12,7 +12,7 @@ uint32_t seq = 0;
 namespace gazebo
 {   
 	LunaboticsLidarPlugin::LunaboticsLidarPlugin() {
-		std::string name = "gazebo_lidar_plugin";
+		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
 	}

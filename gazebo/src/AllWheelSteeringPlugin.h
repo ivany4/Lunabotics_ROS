@@ -4,7 +4,7 @@
 #include <gazebo.hh>
 #include <common/common.hh>
 #include "ros/ros.h"
-#include "lunabotics/AllWheelSteering.h"
+#include "lunabotics/AllWheelState.h"
 
 namespace gazebo
 {
@@ -24,7 +24,7 @@ namespace gazebo
 	private:
 		bool LoadParams(sdf::ElementPtr _sdf);
 		bool FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param);
-		void ROSCallback(const lunabotics::AllWheelSteering::ConstPtr& msg);
+		void ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg);
 		void OnUpdate();
 		double CalculatePID(double err, PIDData &data);
 		double DrivingFromSteeringVelocity(double steeringVel);
@@ -64,8 +64,6 @@ namespace gazebo
 		PIDData leftRearPID;
 		PIDData rightRearPID;
 		
-		bool awaitingRotationCallback;
-		
 		// ROS Nodehandle
 		ros::NodeHandle* node;
 	
@@ -73,7 +71,7 @@ namespace gazebo
 		ros::Subscriber sub;
 		
 		// Publishers
-		ros::Publisher rotationCompletePublisher;
+		ros::Publisher wheelStatePublisher;
 	};
 	
 };

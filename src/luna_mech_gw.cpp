@@ -2,7 +2,7 @@
 #include "lunabotics/State.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
-#include "lunabotics/AllWheelSteering.h"
+#include "lunabotics/AllWheelState.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Empty.h"
@@ -14,6 +14,10 @@ bool publishState;
 int state_cnt = -1;
 bool increment_state = false;
 lunabotics::AllWheelControl::PredefinedControlType currentPredefinedCommand;
+lunabotics::AllWheelState expectedResult;
+bool expectingResult = false;
+
+#define STEERING_ACCURACY	0.01
 
 void incrementState() {
 	state_cnt++;
@@ -31,15 +35,27 @@ void odoCallback(const nav_msgs::Odometry& msg)
 	publishState = true;
 }
 
-void allWheelCallback(const lunabotics::AllWheelSteering& msg)
+void allWheelStateCallback(const lunabotics::AllWheelState& msg)
 {
-	//Do nothing yet
+	if (expectingResult) {
+		ROS_INFO("Expecting %.2f, %.2f, %.2f, %.2f", msg.left_front_steering_ang, msg.right_front_steering_ang, msg.left_rear_steering_ang, msg.right_rear_steering_ang);
+		ROS_INFO("Getting %.2f, %.2f, %.2f, %.2f", expectedResult.left_front_steering_ang, expectedResult.right_front_steering_ang, expectedResult.left_rear_steering_ang, expectedResult.right_rear_steering_ang);
+		if (fabs(msg.left_front_steering_ang-expectedResult.left_front_steering_ang) <= STEERING_ACCURACY &&
+		fabs(msg.right_front_steering_ang-expectedResult.right_front_steering_ang) <= STEERING_ACCURACY &&
+		fabs(msg.left_rear_steering_ang-expectedResult.left_rear_steering_ang) <= STEERING_ACCURACY &&
+		fabs(msg.right_rear_steering_ang-expectedResult.right_rear_steering_ang) <= STEERING_ACCURACY) {
+			ROS_INFO("Reached correct steering angles");
+			expectingResult = false;
+			incrementState();
+		}
+	}
 }
 
 void allWheelCommonCallback(const lunabotics::AllWheelCommon& msg)
 {
 	currentPredefinedCommand = (lunabotics::AllWheelControl::PredefinedControlType)msg.predefined_cmd;
 	state_cnt = -1;
+	expectingResult = true;
 	incrementState();
 }
 
@@ -54,11 +70,11 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_mech_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber controlSubscriber = nodeHandle.subscribe("control", 256, controlCallback);
-	ros::Subscriber allWheelSubscriber = nodeHandle.subscribe("all_wheel", sizeof(float)*8, allWheelCallback);
 	ros::Subscriber allWheelCommonSubscriber = nodeHandle.subscribe("all_wheel_common", 1, allWheelCommonCallback);
+	ros::Subscriber allWheelStateSubscriber = nodeHandle.subscribe("all_wheel_state", sizeof(float)*8, allWheelStateCallback);
 	ros::Subscriber steeringCallbackSubscriber = nodeHandle.subscribe("steering_complete", 1, steeringCompleteCallback);
 	ros::Publisher statePublisher = nodeHandle.advertise<lunabotics::State>("state", 256);
-	ros::Publisher allWheelStatePublisher = nodeHandle.advertise<lunabotics::AllWheelSteering>("all_wheel", 256);
+	ros::Publisher allWheelStatePublisher = nodeHandle.advertise<lunabotics::AllWheelState>("all_wheel", 256);
 	
 	//This is generic. Used by stageros and gazebo lunabotics nodes
 	//To remap for Pioneer use RosAria/cmd_vel and RosAria/pose
@@ -87,8 +103,7 @@ int main(int argc, char **argv)
 				ROS_INFO("Sequence completed");
 			}
 			else {
-				lunabotics::AllWheelSteering msg;
-				msg.report = true;
+				lunabotics::AllWheelState msg;
 				switch (currentPredefinedCommand) {
 					case lunabotics::AllWheelControl::CRAB_LEFT: {
 						switch (state_cnt) {
@@ -101,6 +116,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_2;
 								msg.left_rear_steering_ang = M_PI_2;
 								msg.right_rear_steering_ang = -M_PI_2;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -113,6 +129,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_2;
 								msg.left_rear_steering_ang = M_PI_2;
 								msg.right_rear_steering_ang = -M_PI_2;
+								expectingResult = false;
 							}
 							break;
 						}
@@ -130,6 +147,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_2;
 								msg.left_rear_steering_ang = M_PI_2;
 								msg.right_rear_steering_ang = -M_PI_2;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -142,6 +160,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_2;
 								msg.left_rear_steering_ang = M_PI_2;
 								msg.right_rear_steering_ang = -M_PI_2;
+								expectingResult = false;
 							}
 							break;
 						}
@@ -159,6 +178,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_4;
 								msg.left_rear_steering_ang = M_PI_4;
 								msg.right_rear_steering_ang = -M_PI_4;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -171,6 +191,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_4;
 								msg.left_rear_steering_ang = M_PI_4;
 								msg.right_rear_steering_ang = -M_PI_4;
+								expectingResult = false;
 							}
 							break;
 						}
@@ -188,6 +209,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_4;
 								msg.left_rear_steering_ang = M_PI_4;
 								msg.right_rear_steering_ang = -M_PI_4;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -200,6 +222,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = M_PI_4;
 								msg.left_rear_steering_ang = M_PI_4;
 								msg.right_rear_steering_ang = -M_PI_4;
+								expectingResult = false;
 							}
 							break;
 						}
@@ -217,6 +240,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = 0;
 								msg.left_rear_steering_ang = 0;
 								msg.right_rear_steering_ang = 0;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -229,6 +253,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = 0;
 								msg.left_rear_steering_ang = 0;
 								msg.right_rear_steering_ang = 0;
+								expectingResult = false;
 							}
 							break;
 						}
@@ -246,6 +271,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = 0;
 								msg.left_rear_steering_ang = 0;
 								msg.right_rear_steering_ang = 0;
+								expectedResult = msg;
 							}
 							break;
 							
@@ -258,6 +284,7 @@ int main(int argc, char **argv)
 								msg.right_front_steering_ang = 0;
 								msg.left_rear_steering_ang = 0;
 								msg.right_rear_steering_ang = 0;
+								expectingResult = false;
 							}
 							break;
 						}
