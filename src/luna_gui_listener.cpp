@@ -3,7 +3,7 @@
 #include "lunabotics/ControlMode.h"
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
-#include "lunabotics/AllWheelState.h"
+#include "lunabotics/AllWheelStateROS.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
@@ -51,11 +51,11 @@ void emergency_stop()
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
 	
-	lunabotics::AllWheelState msg;
-	msg.left_front_driving_vel = 0;
-	msg.right_front_driving_vel = 0;
-	msg.left_rear_driving_vel = 0;
-	msg.right_rear_driving_vel = 0;
+	lunabotics::AllWheelStateROS msg;
+	msg.driving.left_front = 0;
+	msg.driving.right_front = 0;
+	msg.driving.left_rear = 0;
+	msg.driving.right_rear = 0;
 	allWheelPublisher.publish(msg);
 }
 
@@ -176,17 +176,17 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			case lunabotics::Telecommand::ADJUST_WHEELS: {
 				switch (tc.all_wheel_control_data().all_wheel_type()) {
 					case lunabotics::AllWheelControl::EXPLICIT: {
-						lunabotics::AllWheelControl::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
-						lunabotics::AllWheelControl::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
-						lunabotics::AllWheelState msg;
-						msg.left_front_driving_vel = driving.left_front();
-						msg.right_front_driving_vel = driving.right_front();
-						msg.left_rear_driving_vel = driving.left_rear();
-						msg.right_rear_driving_vel = driving.right_rear();
-						msg.left_front_steering_ang = steering.left_front();
-						msg.right_front_steering_ang = steering.right_front();
-						msg.left_rear_steering_ang = steering.left_rear();
-						msg.right_rear_steering_ang = steering.right_rear();
+						lunabotics::AllWheelState::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
+						lunabotics::AllWheelState::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
+						lunabotics::AllWheelStateROS msg;
+						msg.driving.left_front = driving.left_front();
+						msg.driving.right_front = driving.right_front();
+						msg.driving.left_rear = driving.left_rear();
+						msg.driving.right_rear = driving.right_rear();
+						msg.steering.left_front = steering.left_front();
+						msg.steering.right_front = steering.right_front();
+						msg.steering.left_rear = steering.left_rear();
+						msg.steering.right_rear = steering.right_rear();
 						allWheelPublisher.publish(msg);
 					}
 					break;
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
 	autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
 	controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
 	goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
-	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
+	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", sizeof(float)*8);
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	

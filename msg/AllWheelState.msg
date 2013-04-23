@@ -1,9 +1,0 @@
-float32 left_front_driving_vel
-float32 right_front_driving_vel
-float32 left_rear_driving_vel
-float32 right_rear_driving_vel
-
-float32 left_front_steering_ang
-float32 right_front_steering_ang
-float32 left_rear_steering_ang
-float32 right_rear_steering_ang

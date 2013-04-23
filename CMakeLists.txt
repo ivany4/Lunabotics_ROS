@@ -37,6 +37,7 @@ rosbuild_add_library(protos
 	protos_gen/SteeringModeType.pb.cc 
 	protos_gen/Telemetry.pb.cc 
 	protos_gen/Telecommand.pb.cc
+	protos_gen/AllWheelState.pb.cc
 	protos_gen/AllWheelControl.pb.cc
 )
 target_link_libraries(protos ${PROTOBUF_LIBRARY})

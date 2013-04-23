@@ -1,6 +1,7 @@
 import "SteeringModeType.proto";
 import "Point.proto";
 import "Twist.proto";
+import "AllWheelState.proto";
 
 package lunabotics;
 
@@ -40,4 +41,6 @@ message Telemetry {
     message LaserScan {
     }
     optional LaserScan laser_scan_data = 5;
+    
+    optional AllWheelState all_wheel_state = 6;
 }

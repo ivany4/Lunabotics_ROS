@@ -1,0 +1,12 @@
+package lunabotics;
+
+message AllWheelState {
+	message Wheels {
+			required float left_front = 1;
+			required float right_front = 2;
+			required float left_rear = 3;
+			required float right_rear = 4;
+	}
+	required Wheels steering = 1;
+	required Wheels driving = 2;
+}

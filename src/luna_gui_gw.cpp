@@ -4,6 +4,7 @@
 #include "lunabotics/Vision.h"
 #include "lunabotics/ControlParams.h"
 #include "lunabotics/ControlMode.h"
+#include "lunabotics/AllWheelStateROS.h"
 #include "lunabotics/PID.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
@@ -23,9 +24,11 @@ bool sendMap = false;
 bool sendState = false;
 bool sendVision = false;
 bool sendPath = false;
+bool sendAllWheel = false;
 lunabotics::State stateMsg;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
+lunabotics::AllWheelStateROS allWheelStateMsg;
 nav_msgs::Path path;
 lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
 
@@ -81,6 +84,12 @@ void visionCallback(const lunabotics::Vision& msg)
 	sendVision = true;
 }
 
+void AllWheelStateCallback(const lunabotics::AllWheelStateROS& msg)
+{
+	allWheelStateMsg = msg;
+	sendAllWheel = true;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc < 1) {
@@ -99,6 +108,7 @@ int main(int argc, char **argv)
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
 	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("control_params", 1, controlParamsCallback);
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 1, visionCallback);
+	ros::Subscriber AllWheelStateSubscriber = nodeHandle.subscribe("all_wheel_feeback", sizeof(float)*8, AllWheelStateCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	nav_msgs::GetMap mapService;
     
@@ -116,7 +126,7 @@ int main(int argc, char **argv)
 				    sendMap = true;
 				}
 			}
-			else if (sendMap || sendPath || sendState || sendVision) {
+			else if (sendMap || sendPath || sendState || sendVision || sendAllWheel) {
 				
 				lunabotics::Telemetry tm;		
 				if (sendState) {
@@ -189,6 +199,22 @@ int main(int argc, char **argv)
 				    
 				    sendVision = false;
 				}
+				if (sendAllWheel) {
+					lunabotics::AllWheelState *state = tm.mutable_all_wheel_state();
+					lunabotics::AllWheelState::Wheels *steering = state->mutable_steering();
+					lunabotics::AllWheelState::Wheels *driving = state->mutable_driving();
+					steering->set_left_front(allWheelStateMsg.steering.left_front);
+					steering->set_right_front(allWheelStateMsg.steering.right_front);
+					steering->set_left_rear(allWheelStateMsg.steering.left_rear);
+					steering->set_right_rear(allWheelStateMsg.steering.right_rear);
+					driving->set_left_front(allWheelStateMsg.driving.left_front);
+					driving->set_right_front(allWheelStateMsg.driving.right_front);
+					driving->set_left_rear(allWheelStateMsg.driving.left_rear);
+					driving->set_right_rear(allWheelStateMsg.driving.right_rear);
+				}
+				
+				
+				
 				
 				if (!tm.IsInitialized()) {
 					ROS_WARN("Error serializing Telemetry");

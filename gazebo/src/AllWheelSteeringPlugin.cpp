@@ -50,30 +50,30 @@ namespace gazebo
 			this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&AllWheelSteeringPlugin::OnUpdate, this));
 	
 			// ROS Listener
-			this->sub = this->node->subscribe<lunabotics::AllWheelState>("all_wheel", 100, &AllWheelSteeringPlugin::ROSCallback, this);
+			this->sub = this->node->subscribe<lunabotics::AllWheelStateROS>("all_wheel", 100, &AllWheelSteeringPlugin::ROSCallback, this);
 			
 			if (!this->sub) {
 				ROS_ERROR("Could not instantiate subscriber for /lunabotics/all_wheel!");
 			}
 			
 			// ROS Publisher
-			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelState>("all_wheel_state", sizeof(float)*8);
+			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelStateROS>("all_wheel_feeback", sizeof(float)*8);
 		}
 		else {
 			ROS_WARN("Could not load the model!");
 		}
 	}
 	
-	void AllWheelSteeringPlugin::ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg) {		
-		this->leftFrontSteeringAngle = msg->left_front_steering_ang;
-		this->rightFrontSteeringAngle = msg->right_front_steering_ang;
-		this->leftRearSteeringAngle = msg->left_rear_steering_ang;
-		this->rightRearSteeringAngle = msg->right_rear_steering_ang;
+	void AllWheelSteeringPlugin::ROSCallback(const lunabotics::AllWheelStateROS::ConstPtr& msg) {		
+		this->leftFrontSteeringAngle = msg->steering.left_front;
+		this->rightFrontSteeringAngle = msg->steering.right_front;
+		this->leftRearSteeringAngle = msg->steering.left_rear;
+		this->rightRearSteeringAngle = msg->steering.right_rear;
 		
-		this->leftFrontDrivingSpeed = msg->left_front_driving_vel;
-		this->rightFrontDrivingSpeed = msg->right_front_driving_vel;
-		this->leftRearDrivingSpeed = msg->left_rear_driving_vel;
-		this->rightRearDrivingSpeed = msg->right_rear_driving_vel;
+		this->leftFrontDrivingSpeed = msg->driving.left_front;
+		this->rightFrontDrivingSpeed = msg->driving.right_front;
+		this->leftRearDrivingSpeed = msg->driving.left_rear;
+		this->rightRearDrivingSpeed = msg->driving.right_rear;
 	}
 	
 	bool AllWheelSteeringPlugin::LoadParams(sdf::ElementPtr _sdf) {
@@ -134,15 +134,15 @@ namespace gazebo
 		double actualRightRearSteeringAngle = this->rightRearWheelSteeringJoint->GetAngle(2).Radian();
 		
 		
-		lunabotics::AllWheelState msg;	
-		msg.left_front_steering_ang = actualLeftFrontSteeringAngle;
-		msg.right_front_steering_ang = actualRightFrontSteeringAngle;
-		msg.left_rear_steering_ang = actualLeftRearSteeringAngle;
-		msg.right_rear_steering_ang = actualRightRearSteeringAngle;
-		msg.left_front_driving_vel = this->leftFrontWheelDrivingJoint->GetVelocity(0);
-		msg.right_front_driving_vel = this->rightFrontWheelDrivingJoint->GetVelocity(0);
-		msg.left_rear_driving_vel = this->leftRearWheelDrivingJoint->GetVelocity(0);
-		msg.right_rear_driving_vel = this->rightRearWheelDrivingJoint->GetVelocity(0);
+		lunabotics::AllWheelStateROS msg;	
+		msg.steering.left_front = actualLeftFrontSteeringAngle;
+		msg.steering.right_front = actualRightFrontSteeringAngle;
+		msg.steering.left_rear = actualLeftRearSteeringAngle;
+		msg.steering.right_rear = actualRightRearSteeringAngle;
+		msg.driving.left_front = this->leftFrontWheelDrivingJoint->GetVelocity(0);
+		msg.driving.right_front = this->rightFrontWheelDrivingJoint->GetVelocity(0);
+		msg.driving.left_rear = this->leftRearWheelDrivingJoint->GetVelocity(0);
+		msg.driving.right_rear = this->rightRearWheelDrivingJoint->GetVelocity(0);
 		this->wheelStatePublisher.publish(msg);
 			
 		
