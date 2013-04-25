@@ -8,9 +8,7 @@
 #include "../../src/control/PIDController.h"
 
 namespace gazebo
-{
-	typedef lunabotics::control::PIDController * PIDControllerPtr;
-	
+{	
 	class AllWheelSteeringPlugin : public ModelPlugin
 	{
 	public:
@@ -54,10 +52,10 @@ namespace gazebo
 		double wheelRadius;
 		double linkShoulder;
 		
-		PIDControllerPtr leftFrontPID;
-		PIDControllerPtr rightFrontPID;
-		PIDControllerPtr leftRearPID;
-		PIDControllerPtr rightRearPID;
+		lunabotics::control::PIDControllerPtr leftFrontPID;
+		lunabotics::control::PIDControllerPtr rightFrontPID;
+		lunabotics::control::PIDControllerPtr leftRearPID;
+		lunabotics::control::PIDControllerPtr rightRearPID;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;

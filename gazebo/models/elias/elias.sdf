@@ -19,23 +19,23 @@
                 <pose>0 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.1 0.9 0.1</size>
+                        <size>0.9 0.1 0.1</size>
                     </box>
                 </geometry>
             </collision>
             <collision name="front_bar">
-                <pose>0 0.5 -0.4 0 0 0</pose>
+                <pose>0.5 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.1</size>
+                        <size>0.1 0.75 0.1</size>
                     </box>
                 </geometry>
             </collision>
             <collision name="rear_bar">
-                <pose>0 -0.5 -0.4 0 0 0</pose>
+                <pose>-0.5 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.1</size>
+                        <size>0.1 0.75 0.1</size>
                     </box>
                 </geometry>
             </collision>
@@ -43,7 +43,7 @@
                 <pose>0 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.1 0.9 0.1</size>
+                        <size>0.9 0.1 0.1</size>
                     </box>
                 </geometry>
                 <material>
@@ -54,10 +54,10 @@
                 </material>
             </visual>
             <visual name="front_bar">
-                <pose>0 0.5 -0.4 0 0 0</pose>
+                <pose>0.5 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.1</size>
+                        <size>0.1 0.75 0.1</size>
                     </box>
                 </geometry>
                 <material>
@@ -68,10 +68,10 @@
                 </material>
             </visual>
             <visual name="rear_bar">
-                <pose>0 -0.5 -0.4 0 0 0</pose>
+                <pose>-0.5 0 -0.4 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.1</size>
+                        <size>0.1 0.75 0.1</size>
                     </box>
                 </geometry>
                 <material>
@@ -82,7 +82,7 @@
                 </material>
             </visual>
             <visual name="monkey">
-                <pose>0 0 0.04 0 0 3.14</pose>
+                <pose>0 0 0.04 0 0 1.57</pose>
                 <geometry>
                     <mesh>
                         <uri>model://elias/meshes/monkey.dae</uri>
@@ -109,7 +109,7 @@
             </velocity_decay>
         </link>
         <link name="left_front_wheel">
-            <pose>-0.5 0.5 -0.5 0 1.57 0</pose>
+            <pose>0.5 0.5 -0.5 0 1.57 1.57</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -152,7 +152,7 @@
             </velocity_decay>
         </link>
         <link name="right_front_wheel">
-            <pose>0.5 0.5 -0.5 0 1.57 0</pose>
+            <pose>0.5 -0.5 -0.5 0 1.57 1.57</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -195,7 +195,7 @@
             </velocity_decay>
         </link>
         <link name="left_rear_wheel">
-            <pose>-0.5 -0.5 -0.5 0 1.57 0</pose>
+            <pose>-0.5 0.5 -0.5 0 1.57 1.57</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -238,7 +238,7 @@
             </velocity_decay>
         </link>
         <link name="right_rear_wheel">
-            <pose>0.5 -0.5 -0.5 0 1.57 0</pose>
+            <pose>-0.5 -0.5 -0.5 0 1.57 1.57</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -281,7 +281,7 @@
             </velocity_decay>
         </link>
         <link name="left_front_connector">
-            <pose>-0.4 0.5 -0.48 0 0 0</pose>
+            <pose>0.5 0.4 -0.48 0 0 0</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -295,7 +295,7 @@
                 </geometry>
             </collision>
             <collision name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -319,7 +319,7 @@
                 </material>
             </visual>
             <visual name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -339,7 +339,7 @@
             </velocity_decay>
         </link>
         <link name="right_front_connector">
-            <pose>0.4 0.5 -0.48 0 0 3.14</pose>
+            <pose>0.5 -0.4 -0.48 0 0 3.14</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -353,7 +353,7 @@
                 </geometry>
             </collision>
             <collision name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -377,7 +377,7 @@
                 </material>
             </visual>
             <visual name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -397,7 +397,7 @@
             </velocity_decay>
         </link>
         <link name="left_rear_connector">
-            <pose>-0.4 -0.5 -0.48 0 0 0</pose>
+            <pose>-0.5 0.4 -0.48 0 0 0</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -411,7 +411,7 @@
                 </geometry>
             </collision>
             <collision name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -435,7 +435,7 @@
                 </material>
             </visual>
             <visual name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -455,7 +455,7 @@
             </velocity_decay>
         </link>
         <link name="right_rear_connector">
-            <pose>0.4 -0.5 -0.48 0 0 3.14</pose>
+            <pose>-0.5 -0.4 -0.48 0 0 3.14</pose>
             <inertial>
                 <mass>0.1</mass>
             </inertial>
@@ -469,7 +469,7 @@
                 </geometry>
             </collision>
             <collision name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -493,7 +493,7 @@
                 </material>
             </visual>
             <visual name="horizontal">
-                <pose>-0.05 0 -0.015 0 1.57 0</pose>
+                <pose>0 0.05 -0.015 1.57 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -515,7 +515,7 @@
         <joint type="revolute" name="left_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>-1 0 0</xyz>
+                <xyz>0 1 0</xyz>
             </axis>
             <parent>
                 <link_name>left_front_connector</link_name>
@@ -527,7 +527,7 @@
         <joint type="revolute" name="right_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>-1 0 0</xyz>
+                <xyz>0 1 0</xyz>
             </axis>
             <parent>
                 <link_name>right_front_connector</link_name>
@@ -539,7 +539,7 @@
         <joint type="revolute" name="left_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>-1 0 0</xyz>
+                <xyz>0 1 0</xyz>
             </axis>
             <parent>
                 <link_name>left_rear_connector</link_name>
@@ -551,7 +551,7 @@
         <joint type="revolute" name="right_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>-1 0 0</xyz>
+                <xyz>0 1 0</xyz>
             </axis>
             <parent>
                 <link_name>right_rear_connector</link_name>
@@ -626,7 +626,7 @@
         </joint>
         <include>
             <uri>model://hokuyo</uri>
-            <pose>0 0.5 -0.325 0 0 1.57</pose> 
+            <pose>0.5 0 -0.325 0 0 0</pose> 
         </include>
         <joint name="hokuyo_joint" type="revolute">
             <child>

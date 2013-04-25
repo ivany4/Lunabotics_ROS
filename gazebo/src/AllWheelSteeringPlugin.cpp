@@ -6,7 +6,7 @@
 #include <numeric>
 #include "std_msgs/Empty.h"
 
-#define Kp	2
+#define Kp	4
 #define Ki	0.1
 #define Kd	1.5
 
@@ -152,29 +152,39 @@ namespace gazebo
 		msg.driving.right_rear = this->rightRearWheelDrivingJoint->GetVelocity(0);
 		this->wheelStatePublisher.publish(msg);
 			
+		double signal;
+			
 		//Left front pid
-		double signal = -this->leftFrontPID->control(actualLeftFrontSteeringAngle-this->leftFrontSteeringAngle);
-		this->leftFrontWheelSteeringJoint->SetVelocity(0, signal);	
-		double compenstation = -this->DrivingFromSteeringVelocity(signal);
-		this->leftFrontWheelDrivingJoint->SetVelocity(0, this->leftFrontDrivingSpeed+compenstation);
+		if (this->leftFrontPID->control(actualLeftFrontSteeringAngle-this->leftFrontSteeringAngle, signal)) {
+			signal *= -1;
+			this->leftFrontWheelSteeringJoint->SetVelocity(0, signal);	
+			double compenstation = -this->DrivingFromSteeringVelocity(signal);
+			this->leftFrontWheelDrivingJoint->SetVelocity(0, this->leftFrontDrivingSpeed+compenstation);
+		}
 		
 		//Right front PID
-		signal = -this->rightFrontPID->control(actualRightFrontSteeringAngle-this->rightFrontSteeringAngle);
-		this->rightFrontWheelSteeringJoint->SetVelocity(0, signal);	
-		compenstation = this->DrivingFromSteeringVelocity(signal);
-		this->rightFrontWheelDrivingJoint->SetVelocity(0, this->rightFrontDrivingSpeed+compenstation);
+		if (this->rightFrontPID->control(actualRightFrontSteeringAngle-this->rightFrontSteeringAngle, signal)) {
+			signal *= -1;
+			this->rightFrontWheelSteeringJoint->SetVelocity(0, signal);	
+			double compenstation = this->DrivingFromSteeringVelocity(signal);
+			this->rightFrontWheelDrivingJoint->SetVelocity(0, this->rightFrontDrivingSpeed+compenstation);
+		}
 		
 		//Left rear PID
-		signal = -this->leftRearPID->control(actualLeftRearSteeringAngle-this->leftRearSteeringAngle);
-		this->leftRearWheelSteeringJoint->SetVelocity(0, signal);	
-		compenstation = -this->DrivingFromSteeringVelocity(signal);
-		this->leftRearWheelDrivingJoint->SetVelocity(0, this->leftRearDrivingSpeed+compenstation);
+		if (this->leftRearPID->control(actualLeftRearSteeringAngle-this->leftRearSteeringAngle, signal)) {
+			signal *= -1;
+			this->leftRearWheelSteeringJoint->SetVelocity(0, signal);	
+			double compenstation = -this->DrivingFromSteeringVelocity(signal);
+			this->leftRearWheelDrivingJoint->SetVelocity(0, this->leftRearDrivingSpeed+compenstation);
+		}
 		
 		//Right rear PID
-		signal = -this->rightRearPID->control(actualRightRearSteeringAngle-this->rightRearSteeringAngle);
-		this->rightRearWheelSteeringJoint->SetVelocity(0, signal);	
-		compenstation = this->DrivingFromSteeringVelocity(signal);
-		this->rightRearWheelDrivingJoint->SetVelocity(0, this->rightRearDrivingSpeed+compenstation);
+		if (this->rightRearPID->control(actualRightRearSteeringAngle-this->rightRearSteeringAngle, signal)) {
+			signal *= -1;
+			this->rightRearWheelSteeringJoint->SetVelocity(0, signal);	
+			double compenstation = this->DrivingFromSteeringVelocity(signal);
+			this->rightRearWheelDrivingJoint->SetVelocity(0, this->rightRearDrivingSpeed+compenstation);
+		}
 		
 		ros::spinOnce();
 	}
