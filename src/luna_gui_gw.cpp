@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 			}
 		}
 		catch (std::exception& e) {
-			ROS_WARN(e.what());
+			ROS_WARN("%s", e.what());
 			error = boost::asio::error::host_not_found;
 		}
 		

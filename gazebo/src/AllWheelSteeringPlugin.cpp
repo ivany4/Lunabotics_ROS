@@ -6,7 +6,7 @@
 #include <numeric>
 #include "std_msgs/Empty.h"
 
-#define Kp	4
+#define Kp	2
 #define Ki	0.1
 #define Kd	1.5
 
@@ -16,10 +16,18 @@ namespace gazebo
 		std::string name = "gazebo_interface";
 	    int argc = 0;
 		ros::init(argc, NULL, name);
+		this->leftFrontPID = NULL;
+		this->rightFrontPID = NULL;
+		this->leftRearPID = NULL;
+		this->rightRearPID = NULL;
 	}
 	
 	AllWheelSteeringPlugin::~AllWheelSteeringPlugin() {
 		delete this->node;
+		delete this->leftFrontPID;
+		delete this->rightFrontPID;
+		delete this->leftRearPID;
+		delete this->rightRearPID;
 	}
 	
 	void AllWheelSteeringPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
@@ -29,11 +37,10 @@ namespace gazebo
 		if (this->LoadParams(_sdf)) {
 			this->node = new ros::NodeHandle("lunabotics");
 	
-			common::Time now = common::Time::GetWallTime();
-			this->leftFrontPID.prev_time = now;
-			this->rightFrontPID.prev_time = now;
-			this->leftRearPID.prev_time = now;
-			this->rightRearPID.prev_time = now;
+			this->leftFrontPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
+			this->rightFrontPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
+			this->leftRearPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
+			this->rightRearPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
 			
 			this->leftFrontWheelSteeringJoint->SetMaxForce(0, 5.0);
 			this->rightFrontWheelSteeringJoint->SetMaxForce(0, 5.0);
@@ -145,79 +152,33 @@ namespace gazebo
 		msg.driving.right_rear = this->rightRearWheelDrivingJoint->GetVelocity(0);
 		this->wheelStatePublisher.publish(msg);
 			
+		//Left front pid
+		double signal = -this->leftFrontPID->control(actualLeftFrontSteeringAngle-this->leftFrontSteeringAngle);
+		this->leftFrontWheelSteeringJoint->SetVelocity(0, signal);	
+		double compenstation = -this->DrivingFromSteeringVelocity(signal);
+		this->leftFrontWheelDrivingJoint->SetVelocity(0, this->leftFrontDrivingSpeed+compenstation);
 		
+		//Right front PID
+		signal = -this->rightFrontPID->control(actualRightFrontSteeringAngle-this->rightFrontSteeringAngle);
+		this->rightFrontWheelSteeringJoint->SetVelocity(0, signal);	
+		compenstation = this->DrivingFromSteeringVelocity(signal);
+		this->rightFrontWheelDrivingJoint->SetVelocity(0, this->rightFrontDrivingSpeed+compenstation);
 		
-		if (actualLeftFrontSteeringAngle != this->leftFrontSteeringAngle) {
-			double err = actualLeftFrontSteeringAngle-this->leftFrontSteeringAngle;
-			double signal = this->CalculatePID(err, this->leftFrontPID);
-			this->leftFrontWheelSteeringJoint->SetVelocity(0, signal);	
-			leftFrontSpeedCompensation = -this->DrivingFromSteeringVelocity(signal);
-		}
+		//Left rear PID
+		signal = -this->leftRearPID->control(actualLeftRearSteeringAngle-this->leftRearSteeringAngle);
+		this->leftRearWheelSteeringJoint->SetVelocity(0, signal);	
+		compenstation = -this->DrivingFromSteeringVelocity(signal);
+		this->leftRearWheelDrivingJoint->SetVelocity(0, this->leftRearDrivingSpeed+compenstation);
 		
-		if (actualRightFrontSteeringAngle != this->rightFrontSteeringAngle) {
-			double err = actualRightFrontSteeringAngle-this->rightFrontSteeringAngle;
-			double signal = this->CalculatePID(err, this->rightFrontPID);
-			this->rightFrontWheelSteeringJoint->SetVelocity(0, signal);
-			rightFrontSpeedCompensation = this->DrivingFromSteeringVelocity(signal);
-		}
-		
-		if (actualLeftRearSteeringAngle != this->leftRearSteeringAngle) {
-			double err = actualLeftRearSteeringAngle-this->leftRearSteeringAngle;
-			double signal = this->CalculatePID(err, this->leftRearPID);
-			this->leftRearWheelSteeringJoint->SetVelocity(0, signal);
-			leftRearSpeedCompensation = -this->DrivingFromSteeringVelocity(signal);
-		}
-		
-		if (actualRightRearSteeringAngle != this->rightRearSteeringAngle) {
-			double err = actualRightRearSteeringAngle-this->rightRearSteeringAngle;
-			double signal = this->CalculatePID(err, this->rightRearPID);
-			this->rightRearWheelSteeringJoint->SetVelocity(0, signal);
-			rightRearSpeedCompensation = this->DrivingFromSteeringVelocity(signal);
-		}
-		
-		
-		this->leftFrontWheelDrivingJoint->SetVelocity(0, this->leftFrontDrivingSpeed+leftFrontSpeedCompensation);
-		this->rightFrontWheelDrivingJoint->SetVelocity(0, this->rightFrontDrivingSpeed+rightFrontSpeedCompensation);
-		this->leftRearWheelDrivingJoint->SetVelocity(0, this->leftRearDrivingSpeed+leftRearSpeedCompensation);
-		this->rightRearWheelDrivingJoint->SetVelocity(0, this->rightRearDrivingSpeed+rightRearSpeedCompensation);
+		//Right rear PID
+		signal = -this->rightRearPID->control(actualRightRearSteeringAngle-this->rightRearSteeringAngle);
+		this->rightRearWheelSteeringJoint->SetVelocity(0, signal);	
+		compenstation = this->DrivingFromSteeringVelocity(signal);
+		this->rightRearWheelDrivingJoint->SetVelocity(0, this->rightRearDrivingSpeed+compenstation);
 		
 		ros::spinOnce();
 	}
 	
-	double AllWheelSteeringPlugin::CalculatePID(double err, PIDData &data)
-	{
-		common::Time now = common::Time::GetWallTime();		
-		common::Time duration = now - data.prev_time;
-		double dt = duration.Double();
-		
-		if (dt == 0) {
-			return 0;
-		}
-				
-		if (data.integral.size() == 10) {
-			data.integral.erase(data.integral.begin());
-		}
-		data.integral.push_back(err);
-				
-		double p_term = err;
-		double i_term = accumulate(data.integral.begin(), data.integral.end(), 0);
-		double d_term = (err - data.prev_err) / dt;
-		
-		double signal = Kp*p_term + Ki*i_term + Kd*d_term;
-		
-		data.prev_err = err;
-		data.prev_time = now;
-		
-		if (isnan(signal) || isinf(signal)) {
-			signal = 0;
-		}
-		else {
-			signal *= -1;
-		}
-		
-		return signal;
-		
-	}
 	
 	double AllWheelSteeringPlugin::DrivingFromSteeringVelocity(double steeringVel)
 	{

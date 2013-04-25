@@ -1,8 +1,10 @@
 #!/bin/bash 
 
 elias() {
+	CURRENT_PATH=`pwd`
 	roscd lunabotics
 	./lunabotics $1 $2 $3 $4 $5 $6 $7 $8
+	cd $CURRENT_PATH
 }
 
 lunastage() {

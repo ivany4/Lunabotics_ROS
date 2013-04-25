@@ -5,7 +5,7 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include <fstream>
 
-#define MAP_FROM_FILE	0
+#define MAP_FROM_FILE	1
 
 int seq = 0;
 ros::ServiceClient mapClient;

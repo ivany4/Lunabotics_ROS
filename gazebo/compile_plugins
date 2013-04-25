@@ -32,7 +32,8 @@ if [ $build_plugins -eq 1 ]; then
 	echo "Compiling targets"
 	mkdir -p build
 	cd build
-	cmake -DCMAKE_INSTALL_PREFIX=~/local ..
+	PREFIX=~/local
+	cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
 	make
 	make install
 fi

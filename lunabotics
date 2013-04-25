@@ -1,6 +1,5 @@
 #!/bin/bash 
 
-CURRENT_PATH=`pwd`
 PACKAGE_PATH=`rospack find lunabotics`
 PROTOS_GEN_DIR="protos_gen"
 PROTOS_SRC="src/protos"
@@ -174,4 +173,3 @@ else
 	clrecho 1 "Roscore is not running!!!"
 fi
 
-cd $CURRENT_PATH

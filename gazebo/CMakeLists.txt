@@ -49,7 +49,7 @@ target_link_libraries(TransformServerPlugin ${roscpp_LIBRARIES} ${tf_LIBRARIES})
 install (TARGETS TransformServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 
 #All wheel drive controller
-add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp)
+add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp ../src/control/PIDController.cpp)
 set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${lunabotics_CFLAGS_OTHER}")
 set_target_properties(AllWheelSteeringPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${lunabotics_LDFLAGS_OTHER}")
 target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES} ${lunabotics_LIBRARIES})

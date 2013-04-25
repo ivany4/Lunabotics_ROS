@@ -5,16 +5,12 @@
 #include <common/common.hh>
 #include "ros/ros.h"
 #include "lunabotics/AllWheelStateROS.h"
+#include "../../src/control/PIDController.h"
 
 namespace gazebo
 {
-	struct PIDData {
-		std::vector<double> integral;
-		double prev_err;
-		common::Time prev_time;
-	};
+	typedef lunabotics::control::PIDController * PIDControllerPtr;
 	
-
 	class AllWheelSteeringPlugin : public ModelPlugin
 	{
 	public:
@@ -26,7 +22,6 @@ namespace gazebo
 		bool FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param);
 		void ROSCallback(const lunabotics::AllWheelStateROS::ConstPtr& msg);
 		void OnUpdate();
-		double CalculatePID(double err, PIDData &data);
 		double DrivingFromSteeringVelocity(double steeringVel);
 		
 		
@@ -59,10 +54,10 @@ namespace gazebo
 		double wheelRadius;
 		double linkShoulder;
 		
-		PIDData leftFrontPID;
-		PIDData rightFrontPID;
-		PIDData leftRearPID;
-		PIDData rightRearPID;
+		PIDControllerPtr leftFrontPID;
+		PIDControllerPtr rightFrontPID;
+		PIDControllerPtr leftRearPID;
+		PIDControllerPtr rightRearPID;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;
