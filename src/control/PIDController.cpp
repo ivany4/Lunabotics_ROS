@@ -10,33 +10,48 @@ lunabotics::control::PIDController::PIDController(double Kp, double Ki, double K
 lunabotics::control::PIDController::~PIDController() {
 }
 
-double lunabotics::control::PIDController::control(double error) {
+bool lunabotics::control::PIDController::control(double error, double &signal) {
 	ros::Time now = ros::Time::now();		
 	ros::Duration duration = now - this->prev_time;
-	uint64_t diff = duration.toNSec();
 	
-	if (diff == 0) {
-		return 0;
+	bool result = false;
+	
+	if (!duration.isZero()) {
+		double dt = duration.toSec();
+				
+		if (this->integral.size() >= this->integralBufferSize) {
+			this->integral.erase(this->integral.begin());
+		}
+		this->integral.push_back(error);
+				
+		double p_term = this->Kp * error;
+		double i_term = this->Ki * accumulate(this->integral.begin(), this->integral.end(), 0);
+		double d_term = this->Kd * (error-this->prev_error)/dt;
+		
+		signal = p_term + i_term + d_term;
+		
+		ROS_INFO("P:%.2f I:%.2f D:%.2f ERR:%.2f DT:%.2f PREV_ERR:%.2f SGN:%.2f", this->Kp, this->Ki, this->Kd, error, dt, this->prev_error, signal);
+		
+		this->prev_error = error;
+		this->prev_time = now;
+		
+		result = !isnan(signal) && !isinf(signal);
 	}
-	double dt = diff/1000000.0;
-			
-	if (this->integral.size() == this->integralBufferSize) {
-		this->integral.erase(this->integral.begin());
-	}
-	this->integral.push_back(error);
-			
-	double p_term = this->Kp * error;
-	double i_term = this->Ki * accumulate(this->integral.begin(), this->integral.end(), 0);
-	double d_term = this->Kd * (error-this->prev_error)/dt;
-	
-	double signal = p_term + i_term + d_term;
-	
-	this->prev_error = error;
-	this->prev_time = now;
-	
-	if (isnan(signal) || isinf(signal)) {
-		signal = 0;
-	}	
-	return signal;
+	return result;
 }
 		
+
+void lunabotics::control::PIDController::setP(double p)
+{
+	this->Kp = p;
+}
+
+void lunabotics::control::PIDController::setI(double i)
+{
+	this->Ki = i;
+}
+
+void lunabotics::control::PIDController::setD(double d)
+{
+	this->Kd = d;
+}

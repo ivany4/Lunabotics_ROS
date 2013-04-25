@@ -25,7 +25,7 @@ rosbuild_add_executable(luna_planner luna_planner.cpp)
 rosbuild_add_executable(luna_slam luna_slam.cpp)
 rosbuild_add_executable(luna_aut_gw luna_aut_gw.cpp)
 
-target_link_libraries(luna_driver planning)
+target_link_libraries(luna_driver planning control)
 target_link_libraries(luna_gui_gw geometry)
 rosbuild_link_boost(luna_gui_listener system signals)
 rosbuild_link_boost(luna_gui_gw system)

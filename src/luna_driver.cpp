@@ -13,6 +13,7 @@
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
 #include "planning/bezier_smooth.h"
+#include "control/PIDController.h"
 #include "tf/tf.h"
 #include "types.h"
 #include "geometry/geometry.h"
@@ -50,16 +51,13 @@ pose_t currentPose;
 ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
-lunabotics::PID pid;
 geometry::PID pidGeometry;
 geometry_msgs::Twist velocities;
 bool autonomyEnabled = false;
 pose_arr waypoints;
 pose_arr::iterator wayIterator;
-double y_err_prev = 0;
 float linear_speed_limit = 1;
-ros::Time y_err_time_prev;
-vector<double> y_err_int;
+lunabotics::control::PIDControllerPtr pidController;
 
 void stop() {
 	autonomyEnabled = false;
@@ -76,7 +74,6 @@ void stop() {
 	controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
 	controlParamsPublisher.publish(controlParamsMsg);
 	waypoints.clear();
-	y_err_int.clear();
 }
 
 void finish_route() {
@@ -191,7 +188,9 @@ void autonomyCallback(const std_msgs::Bool& msg)
 
 void pidCallback(const lunabotics::PID& msg) 
 {
-	pid = msg;
+	pidController->setP(msg.p);
+	pidController->setI(msg.i);
+	pidController->setD(msg.d);
 	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
 	pidGeometry.setVelocityOffset(msg.velocity_offset);
 }
@@ -199,7 +198,6 @@ void pidCallback(const lunabotics::PID& msg)
 void goalCallback(const lunabotics::Goal& msg) 
 {
 	waypoints.clear();
-	y_err_int.clear();
 	
 	angleAccuracy = msg.angleAccuracy;
 	distanceAccuracy = msg.distanceAccuracy;
@@ -222,7 +220,7 @@ void goalCallback(const lunabotics::Goal& msg)
 		ros::Time now = ros::Time::now();
 		pathMsg.header.stamp = now;
 		pathMsg.header.seq = seq;
-		pathMsg.header.frame_id = "1";
+		pathMsg.header.frame_id = "map";
 		seq++;
 		
 		
@@ -463,7 +461,6 @@ void controlAckermann()
 		
 		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
 		if (wayIterator < waypoints.begin()+2) {
-			
 			wayIterator = waypoints.begin()+1;
 			double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
@@ -487,46 +484,27 @@ void controlAckermann()
 		controlParamsPublisher.publish(controlParamsMsg);
 		
 		//Control law
+		
+		double dw;
+		if (pidController->control(y_err, dw)) {
+			dw *= -3;
+			ROS_WARN("DW %.2f", dw);
+			
+			//The higher angular speed, the lower linear speed is
+			#pragma message("This top w is for diff drive only")
+			double top_w = 1.57;
+			double v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
+			v = std::max(0.01, v);
 				
-		ros::Time now = ros::Time::now();
-		ros::Duration dt = now - y_err_time_prev;
-		y_err_time_prev = now;
-		if (dt.toSec() != 0 && !isnan(y_err)) {
-			double d_y_err = (y_err - y_err_prev) / dt.toSec();
-			
-			if (y_err_int.size() == 10) {
-				y_err_int.erase(y_err_int.begin());
-			}
-			y_err_int.push_back(y_err);
-			double i_y_err = accumulate(y_err_int.begin(), y_err_int.end(), 0);
-			
-			double dw = pid.p*y_err + pid.i*i_y_err + pid.d*d_y_err;
-			
-			//ROS_INFO("y_err:%f, d_y_err:%f, i_y_err:%f, dw:%f",y_err, d_y_err, i_y_err, dw);
-			
-			float v = linear_speed_limit;
-			if (isnan(dw)) {
-				dw = 0;
-				v = 0;
-			}
-			else {
-				//The higher angular speed, the lower linear speed is
-				#pragma message("This top w is for stage only")
-				double top_w = 1.57;
-				v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
-				v = std::max((float)0.01, v);
-			}
-			
 			lunabotics::Control controlMsg;
 			controlMsg.motion.linear.x = v;
 			controlMsg.motion.linear.y = 0;
 			controlMsg.motion.linear.z = 0;
 			controlMsg.motion.angular.x = 0;
 			controlMsg.motion.angular.y = 0;
-			controlMsg.motion.angular.z = -dw;
+			controlMsg.motion.angular.z = dw;
 			controlPublisher.publish(controlMsg);
 		}
-		y_err_prev = y_err;
 	}
 	else {
 		//No need for curvature, just straight driving
@@ -582,12 +560,6 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_driver");
 	ros::NodeHandle nodeHandle("lunabotics");
 	
-	y_err_time_prev = ros::Time::now();
-	
-	pid.p = 0.05;//2;
-	pid.i = 0.1;
-	pid.d = 0.18;//1;
-	
 	ros::Subscriber emergencySubscriber = nodeHandle.subscribe("emergency", 256, emergencyCallback);
 	ros::Subscriber autonomySubscriber = nodeHandle.subscribe("autonomy", 1, autonomyCallback);
 	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
@@ -599,6 +571,7 @@ int main(int argc, char **argv)
 	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("control_params", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	
+	pidController = new lunabotics::control::PIDController(0.05, 0.1, 0.18);
 	
 	
 	ROS_INFO("Driver ready"); 
@@ -606,8 +579,8 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(200);
 	while (ros::ok()) {
 		
-		/*
 		
+		/*
 	/////////////////////////////////////////////////////////////
 	if (!autonomyEnabled) {
 		nav_msgs::Path pathMsg;
@@ -678,7 +651,7 @@ int main(int argc, char **argv)
 		
 		
 	/////////////////////////////////////////////////////////////
-		*/
+		//*/
 		
 		
 		//Whenever needed send control message
@@ -709,6 +682,8 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
+	
+	delete pidController;
 	
 	return 0;
 }
