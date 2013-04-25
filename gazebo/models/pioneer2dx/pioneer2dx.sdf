@@ -135,30 +135,22 @@
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>left_wheel</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>left_wheel</child>
         </joint>
         <joint type="revolute" name="right_wheel_hinge">
             <pose>0 0 0.03 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>right_wheel</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>right_wheel</child>
         </joint>
         <plugin name="diff_drive_plugin" filename="libLunaboticsDiffDrivePlugin.so">
             <left_wheel_hinge>left_wheel_hinge</left_wheel_hinge>
             <right_wheel_hinge>right_wheel_hinge</right_wheel_hinge>
             <torque>5</torque>
         </plugin>
-        <!--<plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />-->
+        <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
     </model>
 </sdf>
