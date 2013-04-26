@@ -7,17 +7,27 @@
 #include "lunabotics/State.h"
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
+#include "lunabotics/ICRControl.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
+#include "geometry_msgs/Point.h"
+#include "lunabotics/JointPositions.h"
+#include "lunabotics/AllWheelStateROS.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <geometry_msgs/Twist.h>
 #include "planning/a_star_graph.h"
 #include "planning/bezier_smooth.h"
+#include "geometry/allwheel.h"
 #include "control/PIDController.h"
 #include "tf/tf.h"
+#include <tf/transform_listener.h>
+#include "message_filters/subscriber.h"
 #include "types.h"
 #include "geometry/geometry.h"
 #include <numeric>
+
+#define ROBOT_DIFF_DRIVE	0
+
 
 using namespace std;
 
@@ -51,13 +61,18 @@ pose_t currentPose;
 ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
+ros::Publisher allWheelPublisher;
+ros::Publisher jointPublisher;
 geometry::PID pidGeometry;
+ros::Publisher ICRPublisher;
 geometry_msgs::Twist velocities;
 bool autonomyEnabled = false;
 pose_arr waypoints;
 pose_arr::iterator wayIterator;
 float linear_speed_limit = 1;
 lunabotics::control::PIDControllerPtr pidController;
+geometry::AllWheelGeometryPtr allWheelGeometry;
+bool jointStatesAcquired = false;
 
 void stop() {
 	autonomyEnabled = false;
@@ -191,8 +206,33 @@ void pidCallback(const lunabotics::PID& msg)
 	pidController->setP(msg.p);
 	pidController->setI(msg.i);
 	pidController->setD(msg.d);
+	#if ROBOT_DIFF_DRIVE
 	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
 	pidGeometry.setVelocityOffset(msg.velocity_offset);
+	#endif
+}
+
+void ICRCallback(const lunabotics::ICRControl& msg) 
+{		
+	geometry_msgs::Point ICRMsg = msg.ICR;
+	ICRPublisher.publish(ICRMsg);
+	
+	float angle_front_left;
+	float angle_front_right;
+	float angle_rear_left;
+	float angle_rear_right;
+	if (allWheelGeometry->calculateAngles(msg.ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+		lunabotics::AllWheelStateROS controlMsg;
+		controlMsg.steering.left_front = angle_front_left;
+		controlMsg.steering.right_front = angle_front_right;
+		controlMsg.steering.left_rear = angle_rear_left;
+		controlMsg.steering.right_rear = angle_rear_right;
+		controlMsg.driving.left_front = 0;
+		controlMsg.driving.right_front = 0;
+		controlMsg.driving.left_rear = 0;
+		controlMsg.driving.right_rear = 0;
+		allWheelPublisher.publish(controlMsg);
+	}
 }
 
 void goalCallback(const lunabotics::Goal& msg) 
@@ -206,8 +246,7 @@ void goalCallback(const lunabotics::Goal& msg)
 	pose_t goal;
 	goal.position = msg.point;
 	goal.orientation = tf::createQuaternionMsgFromYaw(0);
-	
-	ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
+		ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
 			  currentPose.position.x, currentPose.position.y,
 			  goal.position.x, goal.position.y);
 	float resolution;
@@ -426,7 +465,112 @@ void controlSkid()
 	controlPublisher.publish(controlMsg);
 }
 
-void controlAckermann()
+void controlAckermannAllWheel()
+{
+	//////////////////////////////// ARC-TURN WITH ALL-WHEEL STEERING TEST /////////////////////
+	
+	if (wayIterator >= waypoints.end()) {
+		finish_route();
+		return;
+	}
+	
+	//If suddenly skipped a waypoint, proceed with the next ones, don't get stuck with current
+	double dist = geometry::distanceBetweenPoints((*wayIterator).position, currentPose.position);
+	for (pose_arr::iterator it = wayIterator+1; it < waypoints.end(); it++) {
+		double newDist = geometry::distanceBetweenPoints((*it).position, currentPose.position);
+		if (newDist < dist) {
+			wayIterator = it;
+			dist = newDist;
+		}
+	}
+	
+	if (dist < distanceAccuracy) {
+		wayIterator++;
+	}
+	if (wayIterator >= waypoints.end()) {
+		finish_route();
+		return;
+	}
+	
+	
+	double dx = (*wayIterator).position.x-currentPose.position.x;
+	double dy = (*wayIterator).position.y-currentPose.position.y;
+	
+	if (waypoints.size() >= 2) {
+		
+		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
+		if (wayIterator < waypoints.begin()+2) {
+			wayIterator = waypoints.begin()+1;
+			double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+			if (fabs(angle) > angleAccuracy) {
+				ROS_WARN("Facing away from the trajectory. Turning in place");
+				controlSkid();
+				return;
+			}
+		}
+		
+		
+		double y_err = pidGeometry.getReferenceDistance();
+		lunabotics::ControlParams controlParamsMsg;
+		controlParamsMsg.trajectory_point = pidGeometry.getClosestTrajectoryPoint();
+		controlParamsMsg.velocity_point = pidGeometry.getReferencePoint();
+		controlParamsMsg.y_err = y_err;
+		controlParamsMsg.driving = autonomyEnabled;
+		controlParamsMsg.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
+		controlParamsMsg.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
+		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsPublisher.publish(controlParamsMsg);
+		
+		//Control law
+		
+		double signal;
+		if (pidController->control(y_err, signal)) {
+			ROS_WARN("DW %.2f", signal);
+			
+			double gamma1 = -signal/2;
+			double gamma2 = signal/2;
+			
+			//DIMENSIONS
+			double x_offset = 0.5;	//Between robot center and left/right steering joints
+			double y_offset = 0.5;	//Between robot center and front/rear steering joitns
+			
+			////////////////
+			
+			double alpha=M_PI_2-gamma1;
+			point_t ICR;
+			ICR.x = tan(alpha)*y_offset;
+			ICR.y = 0;
+			
+			double offset = ICR.x-x_offset;
+			double angle_front_right = atan2(y_offset, offset);
+			double angle_rear_right = -angle_front_right;
+			offset+= 2*x_offset;
+			double angle_front_left = atan2(y_offset, offset);
+			double angle_rear_left = -angle_front_left;
+			
+			lunabotics::AllWheelStateROS controlMsg;
+			controlMsg.steering.left_front = angle_front_left;
+			controlMsg.steering.right_front = angle_front_right;
+			controlMsg.steering.left_rear = angle_rear_left;
+			controlMsg.steering.right_rear = angle_rear_right;
+			controlMsg.driving.left_front = 1;
+			controlMsg.driving.right_front = 1;
+			controlMsg.driving.left_rear = 1;
+			controlMsg.driving.right_rear = 1;
+			allWheelPublisher.publish(controlMsg);
+		}
+	}
+	else {
+		//No need for curvature, just straight driving
+		controlSkid();
+	}
+	return;
+	
+	///////////////////////////////////////////////////////////////////
+	
+}
+
+void controlAckermannDiffDrive()
 {
 	//////////////////////////////// ARC-TURN WITH DIFFERENTIAL DRIVE TEST /////////////////////
 	
@@ -555,6 +699,7 @@ void controlAckermann()
 	}
 }
 
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_driver");
@@ -566,20 +711,60 @@ int main(int argc, char **argv)
 	ros::Subscriber goalSubscriber = nodeHandle.subscribe("goal", 256, goalCallback);
 	ros::Subscriber pidSubscriber = nodeHandle.subscribe("pid", sizeof(float)*3, pidCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
+	ros::Subscriber ICRSubscriber = nodeHandle.subscribe("icr", sizeof(float)*3, ICRCallback);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
 	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("path", 256);
+	ICRPublisher = nodeHandle.advertise<geometry_msgs::Point>("icr_state", sizeof(float)*2);
+	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", sizeof(float)*8);
 	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("control_params", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
+	jointPublisher = nodeHandle.advertise<lunabotics::JointPositions>("joints", sizeof(float)*2*4);
 	
+	point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
+	allWheelGeometry = new geometry::AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
+		
 	pidController = new lunabotics::control::PIDController(0.05, 0.1, 0.18);
 	
+	tf::TransformListener listener;
 	
 	ROS_INFO("Driver ready"); 
 	
 	ros::Rate loop_rate(200);
 	while (ros::ok()) {
-		
-		
+		tf::StampedTransform transform;
+		point_t point;
+		if (!jointStatesAcquired) {
+			try {
+				listener.lookupTransform("left_front_joint", "base_link", ros::Time(0), transform);
+				point.x = transform.getOrigin().x();
+				point.y = transform.getOrigin().y();
+				allWheelGeometry->set_left_front(point);
+				listener.lookupTransform("right_front_joint", "base_link", ros::Time(0), transform);
+				point.x = transform.getOrigin().x();
+				point.y = transform.getOrigin().y();
+				allWheelGeometry->set_right_front(point);
+				listener.lookupTransform("left_rear_joint", "base_link", ros::Time(0), transform);
+				point.x = transform.getOrigin().x();
+				point.y = transform.getOrigin().y();
+				allWheelGeometry->set_left_rear(point);
+				listener.lookupTransform("right_rear_joint", "base_link", ros::Time(0), transform);
+				point.x = transform.getOrigin().x();
+				point.y = transform.getOrigin().y();
+				allWheelGeometry->set_right_rear(point);
+				jointStatesAcquired = true;
+			}
+			catch (tf::TransformException e) {
+				ROS_ERROR("%s", e.what());
+			}
+		}
+		else {
+			lunabotics::JointPositions msg;
+			msg.left_front = allWheelGeometry->left_front();
+			msg.left_rear = allWheelGeometry->left_rear();
+			msg.right_front = allWheelGeometry->right_front();
+			msg.right_rear = allWheelGeometry->right_rear();
+			jointPublisher.publish(msg);
+		}
 		/*
 	/////////////////////////////////////////////////////////////
 	if (!autonomyEnabled) {
@@ -666,7 +851,13 @@ int main(int argc, char **argv)
 				}
 				else {
 					switch (controlMode) {
-						case lunabotics::ACKERMANN: controlAckermann(); break;
+						case lunabotics::ACKERMANN: 
+							#if ROBOT_DIFF_DRIVE
+								controlAckermannDiffDrive();
+							#else
+								controlAckermannAllWheel();
+							#endif
+								 break;
 						case lunabotics::TURN_IN_SPOT: controlSkid(); break;
 						case lunabotics::CRAB: break;
 						default: break;
@@ -679,11 +870,13 @@ int main(int argc, char **argv)
 			}
 		}
 		
+		
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
 	
 	delete pidController;
+	delete allWheelGeometry;
 	
 	return 0;
 }

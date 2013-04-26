@@ -27,6 +27,10 @@ namespace gazebo
 		event::ConnectionPtr updateConnection;
 		
 		physics::LinkPtr lidarLink;
+		physics::LinkPtr leftFrontConnectorLink;
+		physics::LinkPtr leftRearConnectorLink;
+		physics::LinkPtr rightFrontConnectorLink;
+		physics::LinkPtr rightRearConnectorLink;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;

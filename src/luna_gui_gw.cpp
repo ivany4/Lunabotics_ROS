@@ -6,6 +6,7 @@
 #include "lunabotics/ControlMode.h"
 #include "lunabotics/AllWheelStateROS.h"
 #include "lunabotics/PID.h"
+#include "lunabotics/JointPositions.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
@@ -25,11 +26,14 @@ bool sendState = false;
 bool sendVision = false;
 bool sendPath = false;
 bool sendAllWheel = false;
+bool sendJoints = false;
 lunabotics::State stateMsg;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
+lunabotics::JointPositions joints;
 lunabotics::AllWheelStateROS allWheelStateMsg;
 nav_msgs::Path path;
+point_t ICR;
 lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
 
 bool tryConnect(boost::asio::ip::tcp::resolver::query tcp_query)
@@ -54,6 +58,10 @@ void stateCallback(const lunabotics::State& msg)
 {    
 	stateMsg = msg;
 	sendState = true;
+}
+
+void ICRCallback(const geometry_msgs::Point& msg) {
+	ICR = msg;
 }
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
@@ -84,6 +92,12 @@ void visionCallback(const lunabotics::Vision& msg)
 	sendVision = true;
 }
 
+void jointCallback(const lunabotics::JointPositions& msg)
+{
+	sendJoints = true;
+	joints = msg;
+}
+
 void AllWheelStateCallback(const lunabotics::AllWheelStateROS& msg)
 {
 	allWheelStateMsg = msg;
@@ -108,9 +122,13 @@ int main(int argc, char **argv)
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
 	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("control_params", 1, controlParamsCallback);
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 1, visionCallback);
+	ros::Subscriber ICRSubscriber = nodeHandle.subscribe("icr_state", sizeof(float)*2, ICRCallback);
 	ros::Subscriber AllWheelStateSubscriber = nodeHandle.subscribe("all_wheel_feeback", sizeof(float)*8, AllWheelStateCallback);
+	ros::Subscriber jointSubscriber = nodeHandle.subscribe("joints", sizeof(float)*4*2, jointCallback);
 	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	nav_msgs::GetMap mapService;
+	ICR.x = 0;
+	ICR.y = 0;
     
    	ROS_INFO("GUI Gateway ready");
    	   	
@@ -126,7 +144,7 @@ int main(int argc, char **argv)
 				    sendMap = true;
 				}
 			}
-			else if (sendMap || sendPath || sendState || sendVision || sendAllWheel) {
+			else if (sendMap || sendPath || sendState || sendVision || sendAllWheel || sendJoints) {
 				
 				lunabotics::Telemetry tm;		
 				if (sendState) {
@@ -138,6 +156,8 @@ int main(int argc, char **argv)
 					state->mutable_velocities()->set_angular(stateMsg.odometry.twist.twist.angular.z);
 					state->set_steering_mode(controlMode);
 					state->set_autonomy_enabled(controlParams.driving);
+					state->mutable_icr()->set_x(ICR.x);
+					state->mutable_icr()->set_y(ICR.y);
 					
 					if (controlParams.driving) {
 						state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
@@ -211,8 +231,21 @@ int main(int argc, char **argv)
 					driving->set_right_front(allWheelStateMsg.driving.right_front);
 					driving->set_left_rear(allWheelStateMsg.driving.left_rear);
 					driving->set_right_rear(allWheelStateMsg.driving.right_rear);
+					sendAllWheel = false;
 				}
 				
+				if (sendJoints) {
+					lunabotics::Telemetry::JointPositions *positions = tm.mutable_joints_data();
+					positions->mutable_left_front()->set_x(joints.left_front.x);
+					positions->mutable_left_front()->set_y(joints.left_front.y);
+					positions->mutable_left_rear()->set_x(joints.left_rear.x);
+					positions->mutable_left_rear()->set_y(joints.left_rear.y);
+					positions->mutable_right_front()->set_x(joints.right_front.x);
+					positions->mutable_right_front()->set_y(joints.right_front.y);
+					positions->mutable_right_rear()->set_x(joints.right_rear.x);
+					positions->mutable_right_rear()->set_y(joints.right_rear.y);
+					sendJoints = false;
+				}
 				
 				
 				

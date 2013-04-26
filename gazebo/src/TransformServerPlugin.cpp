@@ -36,7 +36,7 @@ namespace gazebo
 	bool TransformServerPlugin::LoadParams(sdf::ElementPtr _sdf) {
 		bool success = false;
 		
-		if (this->FindLinkByName(_sdf, this->lidarLink, "hokuyo::link")) {
+		if (this->FindLinkByName(_sdf, this->lidarLink, "hokuyo::link") && this->FindLinkByName(_sdf, this->leftFrontConnectorLink, "left_front_connector") && this->FindLinkByName(_sdf, this->rightFrontConnectorLink, "right_front_connector") && this->FindLinkByName(_sdf, this->leftRearConnectorLink, "left_rear_connector") && this->FindLinkByName(_sdf, this->rightRearConnectorLink, "right_rear_connector")) {
 			
 			success = true;
 		}
@@ -63,6 +63,22 @@ namespace gazebo
 			transform.setOrigin(tf::Vector3(pose.pos.x, pose.pos.y, pose.pos.z));
 			transform.setRotation(tf::Quaternion(pose.rot.x, pose.rot.y, pose.rot.z, pose.rot.w));
 			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "lidar", "base_link"));
+			
+			pose = this->leftFrontConnectorLink->GetRelativePose();
+			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "left_front_joint"));
+			
+			pose = this->rightFrontConnectorLink->GetRelativePose();
+			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "right_front_joint"));
+			
+			pose = this->leftRearConnectorLink->GetRelativePose();
+			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "left_rear_joint"));
+			
+			pose = this->rightRearConnectorLink->GetRelativePose();
+			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "right_rear_joint"));
 		}
 		
 		ros::spinOnce();

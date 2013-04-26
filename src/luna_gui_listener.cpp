@@ -5,6 +5,7 @@
 #include "lunabotics/PID.h"
 #include "lunabotics/AllWheelStateROS.h"
 #include "lunabotics/AllWheelCommon.h"
+#include "lunabotics/ICRControl.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
@@ -29,6 +30,7 @@ ros::Publisher pidPublisher;
 ros::Publisher autonomyPublisher;
 ros::Publisher goalPublisher;
 ros::Publisher mapRequestPublisher;
+ros::Publisher ICRPublisher;
 
 
 void quit(int sig) {
@@ -198,6 +200,15 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					}
 					break;
 					
+					case lunabotics::AllWheelControl::ICR: {
+						lunabotics::ICRControl msg;
+						msg.ICR.x = tc.all_wheel_control_data().icr_data().icr().x();
+						msg.ICR.y = tc.all_wheel_control_data().icr_data().icr().y();
+						msg.velocity = tc.all_wheel_control_data().icr_data().velocity();
+						ICRPublisher.publish(msg);
+					}
+					break;
+					
 					default:
 					break;
 				}
@@ -246,6 +257,7 @@ int main(int argc, char **argv)
 	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", sizeof(float)*8);
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
+	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);
 	
   	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 

@@ -654,6 +654,6 @@
             <right_rear_steering_hinge>right_rear_steering_hinge</right_rear_steering_hinge>
         </plugin>
         <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
-      <!--  <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />-->
+        <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />
     </model>
 </sdf>

@@ -7,40 +7,49 @@ package lunabotics;
 
 message Telemetry {
     message State {
-		required Point position = 1;
-		required float heading = 2;
-		required Twist velocities = 3;
-		required SteeringModeType steering_mode = 4;
-		required bool autonomy_enabled = 5;
-		optional int32 next_waypoint_idx = 6;
-		
-		message AckermannTelemetry {
-			required float pid_error = 1;
-			required Point closest_trajectory_point = 2;
-			required Point velocity_vector_point = 3;
-			required Point closest_trajectory_local_point = 4;
-			required Point velocity_vector_local_point = 5;
-		}
-		optional AckermannTelemetry ackermann_telemetry = 7;
+                required Point position = 1;
+                required float heading = 2;
+                required Twist velocities = 3;
+                required SteeringModeType steering_mode = 4;
+                required bool autonomy_enabled = 5;
+                optional int32 next_waypoint_idx = 6;
+                optional Point icr = 7;
+
+                message AckermannTelemetry {
+                        required float pid_error = 1;
+                        required Point closest_trajectory_point = 2;
+                        required Point velocity_vector_point = 3;
+                        required Point closest_trajectory_local_point = 4;
+                        required Point velocity_vector_local_point = 5;
+                }
+                optional AckermannTelemetry ackermann_telemetry = 8;
     }
     optional State state_data = 2;
 
     message World {
-		required int32 width = 1;
-		required int32 height = 2;
-		required float resolution = 3;
-		repeated int32 cell = 4 [packed = true];
+                required int32 width = 1;
+                required int32 height = 2;
+                required float resolution = 3;
+                repeated int32 cell = 4 [packed = true];
     }
     optional World world_data = 3;
 
     message Path {
-		repeated Point position = 1;
+                repeated Point position = 1;
     }
     optional Path path_data = 4;
 
     message LaserScan {
     }
     optional LaserScan laser_scan_data = 5;
-    
+
     optional AllWheelState all_wheel_state = 6;
+    
+    message JointPositions {
+		required Point left_front = 1;
+		required Point left_rear = 2;
+		required Point right_front = 3;
+		required Point right_rear = 4;
+    }
+    optional JointPositions joints_data = 7;
 }

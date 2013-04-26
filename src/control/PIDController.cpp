@@ -30,7 +30,7 @@ bool lunabotics::control::PIDController::control(double error, double &signal) {
 		
 		signal = p_term + i_term + d_term;
 		
-		ROS_INFO("P:%.2f I:%.2f D:%.2f ERR:%.2f DT:%.2f PREV_ERR:%.2f SGN:%.2f", this->Kp, this->Ki, this->Kd, error, dt, this->prev_error, signal);
+		//ROS_INFO("P:%.2f I:%.2f D:%.2f ERR:%.2f DT:%.2f PREV_ERR:%.2f SGN:%.2f", this->Kp, this->Ki, this->Kd, error, dt, this->prev_error, signal);
 		
 		this->prev_error = error;
 		this->prev_time = now;
