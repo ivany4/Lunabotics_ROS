@@ -227,10 +227,26 @@ void ICRCallback(const lunabotics::ICRControl& msg)
 		controlMsg.steering.right_front = angle_front_right;
 		controlMsg.steering.left_rear = angle_rear_left;
 		controlMsg.steering.right_rear = angle_rear_right;
-		controlMsg.driving.left_front = 0;
-		controlMsg.driving.right_front = 0;
-		controlMsg.driving.left_rear = 0;
-		controlMsg.driving.right_rear = 0;
+		float vel_front_left;
+		float vel_front_right;
+		float vel_rear_left;
+		float vel_rear_right;
+		if (fabs(msg.ICR.x-currentPose.position.x) < 0.001 && fabs(msg.ICR.y-currentPose.position.y) < 0.001) {
+			//Point turn
+			vel_front_left = vel_rear_right = msg.velocity;
+			vel_front_right = vel_rear_left = -msg.velocity;
+		}
+		else if (!allWheelGeometry->calculateVelocities(msg.ICR, msg.velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+			vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+		}
+		controlMsg.driving.left_front = vel_front_left;
+		controlMsg.driving.right_front = vel_front_right;
+		controlMsg.driving.left_rear = vel_rear_left;
+		controlMsg.driving.right_rear = vel_rear_right;
+		
+		
+		ROS_INFO("VELOCITY %.2f | %.2f | %.2f | %.2f", vel_front_left, vel_front_right, vel_rear_left, vel_rear_right);
+		
 		allWheelPublisher.publish(controlMsg);
 	}
 }
