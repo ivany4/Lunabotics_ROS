@@ -14,7 +14,7 @@ path::path(): width(0), height(0), initialized(false), map(), nodes(), corner_no
 
 path::path(map_grid map, int width, int height, int start_x, int start_y, int goal_x, int goal_y): width(width), height(height), initialized(true), map(map), nodes(), corner_nodes()
 {
-	ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start_x, start_y, goal_x, goal_y);	
+	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start_x, start_y, goal_x, goal_y);	
 	node_arr graph;
 	
     if (map.at(goal_x+goal_y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
@@ -46,10 +46,10 @@ path::path(map_grid map, int width, int height, int start_x, int start_y, int go
 			node current = open_set.front();
 			sstr.str(std::string());
 			sstr << current;
-			ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
+			//ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
 	
 	        if (current == goal_node) {
-				ROS_INFO("Found goal %s", sstr.str().c_str());
+				//ROS_INFO("Found goal %s", sstr.str().c_str());
 				graph = this->reconstruct_path(came_from, current);
 				reverse(graph.begin(), graph.end());
 				break;
@@ -182,15 +182,15 @@ node_arr path::cornerNodes()
 		return this->corner_nodes;
 	}
 	else if (this->nodes.size() > 1) {
-		ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
+		//ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
 		node_arr graph = this->removeStraightPathWaypoints(this->nodes);		
-		ROS_INFO("After removing straight path nodes %d", (int)graph.size());
+		//ROS_INFO("After removing straight path nodes %d", (int)graph.size());
 		int currentWaypointIdx = 0;
 		int finalWaypointIdx = graph.size()-1;
 		node currentWaypoint = graph.at(currentWaypointIdx);
 		node finalWaypoint = graph.at(finalWaypointIdx);
 		node furthestWaypoint = finalWaypoint;
-		ROS_INFO("Current waypoint %d, final %d", currentWaypointIdx, finalWaypointIdx);
+		//ROS_INFO("Current waypoint %d, final %d", currentWaypointIdx, finalWaypointIdx);
 		int furthesWaypointIdx = finalWaypointIdx;
 		node_arr newGraph;
 	    std::stringstream sstr;
@@ -200,7 +200,7 @@ node_arr path::cornerNodes()
 			sstr << "->" << furthestWaypoint;
 			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint);
 			if (crossesObstacles) {
-				ROS_INFO("%s crosses obstacles", sstr.str().c_str());
+				//ROS_INFO("%s crosses obstacles", sstr.str().c_str());
 				if (--furthesWaypointIdx == currentWaypointIdx+1) {
 					sstr.str(std::string());
 					sstr << currentWaypoint;
@@ -211,14 +211,14 @@ node_arr path::cornerNodes()
 					furthesWaypointIdx = finalWaypointIdx;
 					sstr.str(std::string());
 					sstr << currentWaypoint;
-					ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
+					//ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
 				}
 				else {
 					furthestWaypoint = graph.at(furthesWaypointIdx);
 				}
 			}
 			else {
-				ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
+				//ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
 				newGraph.push_back(currentWaypoint);
 				currentWaypoint = furthestWaypoint;
 				currentWaypointIdx = furthesWaypointIdx;
@@ -226,7 +226,7 @@ node_arr path::cornerNodes()
 				furthesWaypointIdx = finalWaypointIdx;
 				sstr.str(std::string());
 				sstr << currentWaypoint;
-				ROS_INFO("Jumping to %s", sstr.str().c_str());
+				//ROS_INFO("Jumping to %s", sstr.str().c_str());
 			}
 		}
 		newGraph.push_back(finalWaypoint);
@@ -244,7 +244,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 	
 	std::stringstream sstr;
 	sstr << node1 << " and " << node2;
-	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
+	//ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
 	int denom = node2.x-node1.x;
 	if (denom == 0) {
@@ -253,7 +253,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 		int end = std::max(node1.y, node2.y);
 		for (int y = begin+1; y < end-1; y++) {
 			int8_t occupancy = this->mapAt(node1.x, y);
-			ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
+			//ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
 			}
@@ -263,7 +263,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 		double k = (node2.y-node1.y)/((float)denom);
 		double b = node1.y-k*node1.x;
 		
-		ROS_INFO("Line K=%.2f B=%.2f", k, b);
+		//ROS_INFO("Line K=%.2f B=%.2f", k, b);
 		
 		int start, finish;
 		if (fabs(k) > 1) {
@@ -278,7 +278,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 			for (int i = start; i < finish; i++) {
 				int x = round((i-b)/k);
 				int8_t occupancy = this->mapAt(x, i);
-				ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+				//ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
@@ -296,7 +296,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 			for (int i = start; i < finish; i++) {
 				int y = round(k*i+b);
 				int8_t occupancy = this->mapAt(i, y);
-				ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
+				//ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
@@ -362,7 +362,7 @@ node_arr path::removeStraightPathWaypoints(node_arr originalGraph)
 		node previousNode = originalGraph.at(i-1);
 		node nextNode = originalGraph.at(i+1);
 		node node = originalGraph.at(i);
-		ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
+		//ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
 		if (!((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y)) {
 			newGraph.push_back(node);
 		}

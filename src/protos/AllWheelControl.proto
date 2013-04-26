@@ -20,6 +20,7 @@ message AllWheelControl {
                 CRAB_RIGHT		= 4;
                 TURN_CW			= 5;
                 TURN_CCW		= 6;
+                STOP			= 7;
         }
         message PredefinedControl {
                 required PredefinedControlType command = 1;

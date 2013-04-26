@@ -160,18 +160,25 @@ int main(int argc, char **argv)
 					state->mutable_icr()->set_y(ICR.y);
 					
 					if (controlParams.driving) {
-						state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
-						if (controlMode == lunabotics::ACKERMANN) {
-							lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
-							ackermannData->set_pid_error(controlParams.y_err);
-							ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
-							ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
-							ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
-							ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
-							ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
-							ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
-							ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
-							ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
+						if (controlParams.has_trajectory_data) {
+							state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
+							if (controlMode == lunabotics::ACKERMANN) {
+								lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
+								ackermannData->set_pid_error(controlParams.y_err);
+								ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
+								ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
+								ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
+								ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
+								ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
+								ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
+								ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
+								ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
+							}
+						}
+						if (controlParams.has_point_turn_state) {
+							lunabotics::Telemetry::PointTurnState st = (lunabotics::Telemetry::PointTurnState)controlParams.point_turn_state;
+							ROS_ERROR("STATE %d", st);
+							state->mutable_point_turn_telemetry()->set_state(st);
 						}
 					}
 					

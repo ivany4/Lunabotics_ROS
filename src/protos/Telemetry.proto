@@ -6,6 +6,12 @@ import "AllWheelState.proto";
 package lunabotics;
 
 message Telemetry {
+	enum PointTurnState {
+		STOPPED = 1;
+		DRIVING = 2;
+		TURNING = 3;
+	}
+
     message State {
                 required Point position = 1;
                 required float heading = 2;
@@ -23,6 +29,11 @@ message Telemetry {
                         required Point velocity_vector_local_point = 5;
                 }
                 optional AckermannTelemetry ackermann_telemetry = 8;
+                
+                message PointTurnTelemetry {
+					required PointTurnState state = 1;
+				}
+				optional PointTurnTelemetry point_turn_telemetry = 9;
     }
     optional State state_data = 2;
 

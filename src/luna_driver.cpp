@@ -8,6 +8,7 @@
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/ICRControl.h"
+#include "lunabotics/AllWheelCommon.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/Path.h"
 #include "geometry_msgs/Point.h"
@@ -22,6 +23,8 @@
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
 #include "message_filters/subscriber.h"
+#include "../protos_gen/AllWheelControl.pb.h"
+#include "../protos_gen/Telemetry.pb.h"
 #include "types.h"
 #include "geometry/geometry.h"
 #include <numeric>
@@ -39,12 +42,6 @@ float distanceAccuracy = 0.2;
 #define Ka	0.7
 #define Kb	-0.05
 
-enum SKID_STATE {
-	STOPPED	= 0,
-	DRIVING	= 1,
-	TURNING	= 2
-};
-
 inline int sign(double value) {
 	if (value > angleAccuracy) return 1;
 	if (value < -angleAccuracy) return -1;
@@ -53,8 +50,8 @@ inline int sign(double value) {
 
 int seq = 0;
 int bezierSegments = 20;
-lunabotics::SteeringModeType controlMode;
-SKID_STATE skidState;
+lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
+lunabotics::Telemetry::PointTurnState skidState = lunabotics::Telemetry::STOPPED;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 pose_t currentPose;
@@ -62,6 +59,7 @@ ros::Publisher controlPublisher;
 ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
 ros::Publisher allWheelPublisher;
+ros::Publisher allWheelCommonPublisher;
 ros::Publisher jointPublisher;
 geometry::PID pidGeometry;
 ros::Publisher ICRPublisher;
@@ -171,6 +169,7 @@ void emergencyCallback(const lunabotics::Emergency& msg)
 
 void stateCallback(const lunabotics::State& msg)
 {    
+	//ROS_INFO("Pose updated");
 	currentPose.position = msg.odometry.pose.pose.position;
 	currentPose.orientation = msg.odometry.pose.pose.orientation;
 	velocities = msg.odometry.twist.twist;
@@ -214,7 +213,7 @@ void pidCallback(const lunabotics::PID& msg)
 
 void ICRCallback(const lunabotics::ICRControl& msg) 
 {		
-	geometry_msgs::Point ICRMsg = msg.ICR;
+	point_t ICRMsg = msg.ICR;
 	ICRPublisher.publish(ICRMsg);
 	
 	float angle_front_left;
@@ -366,20 +365,20 @@ void goalCallback(const lunabotics::Goal& msg)
 			waypoint.position = pt;
 			waypoint.orientation = tf::createQuaternionMsgFromYaw(0);
 			waypoints.push_back(waypoint);
-			sstr << "->(" << x_m << "," << y_m << ")";
+	//		sstr << "->(" << x_m << "," << y_m << ")";
 			
 			
 			geometry_msgs::PoseStamped pose;
 			pose.header.seq = poseSeq++;
 			pose.header.stamp = now;
-			pose.header.frame_id = "1";
+			pose.header.frame_id = "map";
 			pose.pose = waypoint;
 			pathMsg.poses.push_back(pose);
 		}
 		pidGeometry.setTrajectory(pts);
 		
 		wayIterator = controlMode == lunabotics::ACKERMANN ? waypoints.begin() : waypoints.begin()+1;		
-		ROS_INFO("Returned path: %s", sstr.str().c_str());
+	//	ROS_INFO("Returned path: %s", sstr.str().c_str());
 		pose_t waypoint = waypoints.at(0);
 		ROS_INFO("Heading towards (%.1f,%.1f)", (*wayIterator).position.x, (*wayIterator).position.y);
 		
@@ -398,7 +397,90 @@ void goalCallback(const lunabotics::Goal& msg)
 	delete path;
 }
 
-void controlSkid() 
+
+void controlSkidAllWheel() 
+{
+	if (wayIterator >= waypoints.end()) {
+		ROS_INFO("Finishing route");
+		finish_route();
+		return;
+	}
+	double dx = (*wayIterator).position.x-currentPose.position.x;
+	double dy = (*wayIterator).position.y-currentPose.position.y;
+	double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
+	
+	lunabotics::AllWheelCommon msg;
+
+	lunabotics::ControlParams controlParamsMsg;
+	controlParamsMsg.driving = autonomyEnabled;
+	
+	switch (skidState) {
+		case lunabotics::Telemetry::STOPPED: {
+			ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			
+			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
+				wayIterator++;
+				if (wayIterator >= waypoints.end()) {
+					finish_route();
+				}
+				else {
+					controlParamsMsg.has_trajectory_data = true;
+					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;	
+					pose_t nextWaypointPose = *wayIterator;
+					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
+				}
+			}
+			else if (fabs(angle) > angleAccuracy) {
+				skidState = lunabotics::Telemetry::TURNING;
+			}
+			else if (fabs(dx) > distanceAccuracy || fabs(dy) > distanceAccuracy) {
+				skidState = lunabotics::Telemetry::DRIVING;
+			}				
+		}	
+		break;
+		case lunabotics::Telemetry::DRIVING: {	
+			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
+				skidState = lunabotics::Telemetry::STOPPED;
+				msg.predefined_cmd = lunabotics::AllWheelControl::STOP;
+			}
+			else if (fabs(angle) > angleAccuracy) {
+				skidState = lunabotics::Telemetry::TURNING;
+			}	
+			else {
+				msg.predefined_cmd = lunabotics::AllWheelControl::DRIVE_FORWARD;
+			}
+		}
+		break;
+		case lunabotics::Telemetry::TURNING: {
+			int direction = sign(angle);
+			ROS_INFO("SKID: turning  %d (%.2f-%.2f)      dx: %.5f dy: %.5f angle: %.5f", direction, angle, angleAccuracy, dx, dy, angle);
+		
+			if (direction == 0) {
+				skidState = lunabotics::Telemetry::STOPPED;
+				msg.predefined_cmd = lunabotics::AllWheelControl::STOP;
+			}
+			else {
+				ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
+				if (direction == -1) {
+					msg.predefined_cmd = lunabotics::AllWheelControl::TURN_CW;
+				}
+				else {
+					msg.predefined_cmd = lunabotics::AllWheelControl::TURN_CCW;
+				}
+			}	
+		}
+		break;
+		default: break;
+	}
+	
+	controlParamsMsg.point_turn_state = skidState;
+	controlParamsMsg.has_point_turn_state = true;
+	controlParamsPublisher.publish(controlParamsMsg);
+	allWheelCommonPublisher.publish(msg);
+}
+
+void controlSkidDiffDrive() 
 {
 	if (wayIterator >= waypoints.end()) {
 		finish_route();
@@ -409,6 +491,9 @@ void controlSkid()
 	double angle = geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 	
 	
+	lunabotics::ControlParams controlParamsMsg;
+	controlParamsMsg.driving = autonomyEnabled;
+	controlParamsMsg.has_point_turn_state = true;
 	lunabotics::Control controlMsg;
 	controlMsg.motion.linear.x = 0;
 	controlMsg.motion.linear.y = 0;
@@ -416,9 +501,9 @@ void controlSkid()
 	controlMsg.motion.angular.x = 0;
 	controlMsg.motion.angular.y = 0;
 	controlMsg.motion.angular.z = 0;
-	
+					
 	switch (skidState) {
-		case STOPPED: {
+		case lunabotics::Telemetry::STOPPED: {
 			ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
@@ -427,31 +512,29 @@ void controlSkid()
 					finish_route();
 				}
 				else {
-					lunabotics::ControlParams controlParamsMsg;
-					controlParamsMsg.driving = autonomyEnabled;
-					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;	
-					controlParamsPublisher.publish(controlParamsMsg);
+					controlParamsMsg.has_trajectory_data = true;
+					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
 					pose_t nextWaypointPose = *wayIterator;
 					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
 			}
 			else if (fabs(angle) > angleAccuracy) {
-				skidState = TURNING;
+				skidState = lunabotics::Telemetry::TURNING;
 			}
 			else if (fabs(dx) > distanceAccuracy || fabs(dy) > distanceAccuracy) {
-				skidState = DRIVING;
+				skidState = lunabotics::Telemetry::DRIVING;
 			}				
 		}	
 		break;
-		case DRIVING: {	
+		case lunabotics::Telemetry::DRIVING: {	
 		//	ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
-				skidState = STOPPED;
+				skidState = lunabotics::Telemetry::STOPPED;
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 0;
 			}
 			else if (fabs(angle) > angleAccuracy) {
-				skidState = TURNING;
+				skidState = lunabotics::Telemetry::TURNING;
 			}	
 			else {
 				controlMsg.motion.linear.x = 1;
@@ -459,12 +542,12 @@ void controlSkid()
 			}
 		}
 		break;
-		case TURNING: {
+		case lunabotics::Telemetry::TURNING: {
 			ROS_INFO("SKID: turning        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			int direction = sign(angle);
 		
 			if (direction == 0) {
-				skidState = STOPPED;
+				skidState = lunabotics::Telemetry::STOPPED;
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 0;
 			}
@@ -478,7 +561,18 @@ void controlSkid()
 		default: break;
 	}
 	
+	controlParamsMsg.point_turn_state = skidState;
+	controlParamsPublisher.publish(controlParamsMsg);
 	controlPublisher.publish(controlMsg);
+}
+
+void controlSkid() {
+	//	ROS_INFO("Control mode point-turn");
+		#if ROBOT_DIFF_DRIVE
+			controlSkidDiffDrive();
+		#else
+			controlSkidAllWheel();
+		#endif
 }
 
 void controlAckermannAllWheel()
@@ -544,36 +638,52 @@ void controlAckermannAllWheel()
 			ROS_WARN("DW %.2f", signal);
 			
 			double gamma1 = -signal/2;
-			double gamma2 = signal/2;
 			
-			//DIMENSIONS
-			double x_offset = 0.5;	//Between robot center and left/right steering joints
-			double y_offset = 0.5;	//Between robot center and front/rear steering joitns
+			if (fabs(gamma1) < 0.00001) {
+				gamma1 = 0.01;
+			}
 			
-			////////////////
-			
-			double alpha=M_PI_2-gamma1;
 			point_t ICR;
-			ICR.x = tan(alpha)*y_offset;
+			double alpha = M_PI_2-gamma1;
+			double offset_y = allWheelGeometry->left_front().x;
+			double offset_x = tan(alpha)*offset_y;
+			ICR.x = offset_x;
 			ICR.y = 0;
+			ICRPublisher.publish(ICR);
 			
-			double offset = ICR.x-x_offset;
-			double angle_front_right = atan2(y_offset, offset);
-			double angle_rear_right = -angle_front_right;
-			offset+= 2*x_offset;
-			double angle_front_left = atan2(y_offset, offset);
-			double angle_rear_left = -angle_front_left;
+			ROS_INFO("Alpha %f offset %f,%f", alpha, offset_x, offset_y);
 			
-			lunabotics::AllWheelStateROS controlMsg;
-			controlMsg.steering.left_front = angle_front_left;
-			controlMsg.steering.right_front = angle_front_right;
-			controlMsg.steering.left_rear = angle_rear_left;
-			controlMsg.steering.right_rear = angle_rear_right;
-			controlMsg.driving.left_front = 1;
-			controlMsg.driving.right_front = 1;
-			controlMsg.driving.left_rear = 1;
-			controlMsg.driving.right_rear = 1;
-			allWheelPublisher.publish(controlMsg);
+			float velocity = 0.1;
+			
+			float angle_front_left;
+			float angle_front_right;
+			float angle_rear_left;
+			float angle_rear_right;
+			if (allWheelGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+				lunabotics::AllWheelStateROS controlMsg;
+				controlMsg.steering.left_front = angle_front_left;
+				controlMsg.steering.right_front = angle_front_right;
+				controlMsg.steering.left_rear = angle_rear_left;
+				controlMsg.steering.right_rear = angle_rear_right;
+				float vel_front_left;
+				float vel_front_right;
+				float vel_rear_left;
+				float vel_rear_right;
+				if (fabs(ICR.x-currentPose.position.x) < 0.001 && fabs(ICR.y-currentPose.position.y) < 0.001) {
+					//Point turn
+					vel_front_left = vel_rear_right = velocity;
+					vel_front_right = vel_rear_left = -velocity;
+				}
+				else if (!allWheelGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+					vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+				}
+				controlMsg.driving.left_front = vel_front_left;
+				controlMsg.driving.right_front = vel_front_right;
+				controlMsg.driving.left_rear = vel_rear_left;
+				controlMsg.driving.right_rear = vel_rear_right;
+				
+				allWheelPublisher.publish(controlMsg);
+			}
 		}
 	}
 	else {
@@ -715,6 +825,15 @@ void controlAckermannDiffDrive()
 	}
 }
 
+void controlAckermann() 
+{
+//	ROS_INFO("Control mode ackermann");
+	#if ROBOT_DIFF_DRIVE
+		controlAckermannDiffDrive();
+	#else
+		controlAckermannAllWheel();
+	#endif
+}
 
 int main(int argc, char **argv)
 {
@@ -735,6 +854,7 @@ int main(int argc, char **argv)
 	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("control_params", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
 	jointPublisher = nodeHandle.advertise<lunabotics::JointPositions>("joints", sizeof(float)*2*4);
+	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(uint32_t));
 	
 	point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
 	allWheelGeometry = new geometry::AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
@@ -857,6 +977,7 @@ int main(int argc, char **argv)
 		
 		//Whenever needed send control message
 		if (autonomyEnabled) {
+			//ROS_INFO("autonomous");
 			if (wayIterator < waypoints.end()) {
 			
 				if (isnan((*wayIterator).position.x) || isnan((*wayIterator).position.y)) {
@@ -867,16 +988,14 @@ int main(int argc, char **argv)
 				}
 				else {
 					switch (controlMode) {
-						case lunabotics::ACKERMANN: 
-							#if ROBOT_DIFF_DRIVE
-								controlAckermannDiffDrive();
-							#else
-								controlAckermannAllWheel();
-							#endif
-								 break;
+						case lunabotics::ACKERMANN: controlAckermann(); break;
 						case lunabotics::TURN_IN_SPOT: controlSkid(); break;
-						case lunabotics::CRAB: break;
-						default: break;
+						case lunabotics::CRAB: 
+						//	ROS_INFO("Control mode crab");
+								break;
+						default:
+						ROS_INFO("Control mode UNKNOWN");
+						 break;
 					}
 				}
 			}
@@ -885,6 +1004,8 @@ int main(int argc, char **argv)
 				stop();
 			}
 		}
+		
+		//ROS_INFO("beat");
 		
 		
 		ros::spinOnce();

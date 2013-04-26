@@ -121,10 +121,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = -1;
-								msg.driving.right_front = 1;
-								msg.driving.left_rear = 1;
-								msg.driving.right_rear = -1;
+								msg.driving.left_front = -3;
+								msg.driving.right_front = 3;
+								msg.driving.left_rear = 3;
+								msg.driving.right_rear = -3;
 								msg.steering.left_front = -M_PI_2;
 								msg.steering.right_front = M_PI_2;
 								msg.steering.left_rear = M_PI_2;
@@ -152,10 +152,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = 1;
-								msg.driving.right_front = -1;
-								msg.driving.left_rear = -1;
-								msg.driving.right_rear = 1;
+								msg.driving.left_front = 3;
+								msg.driving.right_front = -3;
+								msg.driving.left_rear = -3;
+								msg.driving.right_rear = 3;
 								msg.steering.left_front = -M_PI_2;
 								msg.steering.right_front = M_PI_2;
 								msg.steering.left_rear = M_PI_2;
@@ -183,10 +183,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = -1;
-								msg.driving.right_front = 1;
-								msg.driving.left_rear = -1;
-								msg.driving.right_rear = 1;
+								msg.driving.left_front = -3;
+								msg.driving.right_front = 3;
+								msg.driving.left_rear = -3;
+								msg.driving.right_rear = 3;
 								msg.steering.left_front = -M_PI_4;
 								msg.steering.right_front = M_PI_4;
 								msg.steering.left_rear = M_PI_4;
@@ -214,10 +214,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = 1;
-								msg.driving.right_front = -1;
-								msg.driving.left_rear = 1;
-								msg.driving.right_rear = -1;
+								msg.driving.left_front = 3;
+								msg.driving.right_front = -3;
+								msg.driving.left_rear = 3;
+								msg.driving.right_rear = -3;
 								msg.steering.left_front = -M_PI_4;
 								msg.steering.right_front = M_PI_4;
 								msg.steering.left_rear = M_PI_4;
@@ -245,10 +245,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = 1;
-								msg.driving.right_front = 1;
-								msg.driving.left_rear = 1;
-								msg.driving.right_rear = 1;
+								msg.driving.left_front = 3;
+								msg.driving.right_front = 3;
+								msg.driving.left_rear = 3;
+								msg.driving.right_rear = 3;
 								msg.steering.left_front = 0;
 								msg.steering.right_front = 0;
 								msg.steering.left_rear = 0;
@@ -276,10 +276,10 @@ int main(int argc, char **argv)
 							break;
 							
 							case 1: {
-								msg.driving.left_front = -1;
-								msg.driving.right_front = -1;
-								msg.driving.left_rear = -1;
-								msg.driving.right_rear = -1;
+								msg.driving.left_front = -3;
+								msg.driving.right_front = -3;
+								msg.driving.left_rear = -3;
+								msg.driving.right_rear = -3;
 								msg.steering.left_front = 0;
 								msg.steering.right_front = 0;
 								msg.steering.left_rear = 0;
@@ -288,6 +288,19 @@ int main(int argc, char **argv)
 							}
 							break;
 						}
+					}
+					break;
+					
+					case lunabotics::AllWheelControl::STOP: {
+						msg.driving.left_front = 0;
+						msg.driving.right_front = 0;
+						msg.driving.left_rear = 0;
+						msg.driving.right_rear = 0;
+						msg.steering.left_front = 0;
+						msg.steering.right_front = 0;
+						msg.steering.left_rear = 0;
+						msg.steering.right_rear = 0;
+						expectingResult = false;
 					}
 					break;
 					
