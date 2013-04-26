@@ -11,7 +11,7 @@ geometry::AllWheelGeometry::~AllWheelGeometry()
 
 bool geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
-	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
+//	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
 	
 	bool ICROnRight = -this->rf.y < ICR.x;
 	bool ICROnLeft = ICR.x < -this->lf.y;
@@ -25,44 +25,44 @@ bool geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front,
 	else {
 		if (ICROnRight) {
 			//ICR is on the right from the robot
-			ROS_INFO("ICR on the right");
+		//	ROS_INFO("ICR on the right");
 			
 			double offset = ICR.x+this->rf.y;
-			ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
+		//	ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 			right_front = -atan2(this->rf.x-ICR.y, offset);
 			right_rear = atan2(-this->rr.x+ICR.y, offset);
 			offset += (this->lf.y-this->rf.y);
-			ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
+		//	ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
 			left_front = -atan2(this->lf.x-ICR.y, offset);
 			left_rear = atan2(-this->lr.x+ICR.y, offset);
 		}
 		else if (ICROnLeft) {
 			//ICR is on the left from the robot
-			ROS_INFO("ICR on the left");
+		//	ROS_INFO("ICR on the left");
 			
 			double offset = -this->lf.y-ICR.x;
 			left_front = atan2(this->lf.x-ICR.y, offset);
 			left_rear = -atan2(-this->lr.x+ICR.y, offset);
-			ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
+		//	ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
 			offset += (this->lf.y-this->rf.y);
 			right_front = atan2(this->rf.x-ICR.y, offset);
 			right_rear = -atan2(-this->rr.x+ICR.y, offset);
-			ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
+	//		ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 		}
 		else {
 			//ICR is underneath the robot
-			ROS_INFO("ICR in between");
+		//	ROS_INFO("ICR in between");
 			
 			double offset = this->lf.y+ICR.x;
 			left_front = -atan2(this->lf.x-ICR.y, offset);
 			left_rear = atan2(-this->lr.x+ICR.y, offset);
-			ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
+	//		ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
 			offset = -this->rf.y-ICR.x;
 			right_front = atan2(this->rf.x-ICR.y, offset);
 			right_rear = -atan2(-this->rr.x+ICR.y, offset);
-			ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
+	//		ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 		}
-		ROS_INFO("Calculated angles are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
+	//	ROS_INFO("Calculated angles are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
 	}
 	return true;
 }
@@ -74,7 +74,7 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 	ICRPoint.x = ICR.y;
 	ICRPoint.y = -ICR.x;
 	
-	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
+//	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
 	bool ICROnRight = -this->rf.y < ICRPoint.y;
 	bool ICROnLeft = ICRPoint.y < -this->lf.y;
 	bool ICROnTop = ICRPoint.x > this->lf.x;
@@ -95,10 +95,10 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		double wheel_offset = 0.1;
 		
 		
-		ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
+	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
 		if (ICROnRight) {
-			ROS_INFO("ICR on the right");
+	//		ROS_INFO("ICR on the right");
 			right_front_shoulder -= wheel_offset;
 			right_rear_shoulder -= wheel_offset;
 			left_front_shoulder += wheel_offset;
@@ -106,7 +106,7 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		}
 		else if (ICROnLeft) {
 			//ICR is on the left from the robot
-			ROS_INFO("ICR on the left");
+	//		ROS_INFO("ICR on the left");
 			right_front_shoulder += wheel_offset;
 			right_rear_shoulder += wheel_offset;
 			left_front_shoulder -= wheel_offset;
@@ -114,14 +114,14 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		}
 		else {
 			//ICR is underneath the robot
-			ROS_INFO("ICR in between");
+	//		ROS_INFO("ICR in between");
 			right_front_shoulder += wheel_offset;
 			right_rear_shoulder += wheel_offset;
 			left_front_shoulder += wheel_offset;
 			left_rear_shoulder += wheel_offset;
 		}
 		
-		ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
+	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
 		point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
 		double center_shoulder = geometry::distanceBetweenPoints(ICRPoint, zeroPoint);
@@ -151,11 +151,11 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		}
 		
 		if (isinf(left_front) || isnan(left_front) || isinf(right_front) || isnan(right_front) || isinf(left_rear) || isnan(left_rear) || isinf(right_rear) || isnan(right_rear)) {
-			ROS_INFO("INF or NAN");
+	//		ROS_INFO("INF or NAN");
 			left_front = right_front = left_rear = right_rear = 0;	
 		}
 		
-		ROS_INFO("Calculated velocities are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
+	//	ROS_INFO("Calculated velocities are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
 	}
 	return true;
 }

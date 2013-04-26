@@ -74,6 +74,7 @@ bool jointStatesAcquired = false;
 
 void stop() {
 	autonomyEnabled = false;
+#if ROBOT_DIFF_DRIVE
 	lunabotics::Control controlMsg;
 	controlMsg.motion.linear.x = 0;
 	controlMsg.motion.linear.y = 0;
@@ -82,6 +83,11 @@ void stop() {
 	controlMsg.motion.angular.y = 0;
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
+#else
+	lunabotics::AllWheelCommon msg;
+	msg.predefined_cmd = lunabotics::AllWheelControl::STOP;
+	allWheelCommonPublisher.publish(msg);
+#endif
 	lunabotics::ControlParams controlParamsMsg;
 	controlParamsMsg.driving = autonomyEnabled;
 	controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
@@ -629,12 +635,14 @@ void controlAckermannAllWheel()
 		controlParamsMsg.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
 		controlParamsMsg.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
 		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsMsg.has_trajectory_data = true;
 		controlParamsPublisher.publish(controlParamsMsg);
 		
 		//Control law
 		
 		double signal;
 		if (pidController->control(y_err, signal)) {
+			signal *= -10.0;
 			ROS_WARN("DW %.2f", signal);
 			
 			double gamma1 = -signal/2;
@@ -751,6 +759,7 @@ void controlAckermannDiffDrive()
 		controlParamsMsg.t_trajectory_point = pidGeometry.getClosestTrajectoryPointInLocalFrame();
 		controlParamsMsg.t_velocity_point = pidGeometry.getReferencePointInLocalFrame();
 		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
+		controlParamsMsg.has_trajectory_data = true;
 		controlParamsPublisher.publish(controlParamsMsg);
 		
 		//Control law
