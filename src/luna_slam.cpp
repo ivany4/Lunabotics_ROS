@@ -18,8 +18,8 @@ inline int randomNumber(int min, int max)
 
 nav_msgs::OccupancyGrid getMapFromFile()
 {
-	std::ifstream infile("/home/ivany4/ROS/pkgs/lunabotics/openworld.txt");
-	//std::ifstream infile("/home/ivany4/ROS/pkgs/lunabotics/world.txt");
+	//std::ifstream infile("/home/ivany4/ROS/pkgs/lunabotics/openworld.txt");
+	std::ifstream infile("/home/ivany4/ROS/pkgs/lunabotics/world.txt");
 	std::string line;
 	nav_msgs::OccupancyGrid map;
 	if (std::getline(infile, line)) {

@@ -40,7 +40,7 @@ void lunabotics::control::PredefinedCmdController::incrementCnt()
 	if (this->_cnt > 1) {
 		this->_cnt = -1;
 		this->_state_updated = false;
-		ROS_INFO("Sequence completed");
+		//ROS_INFO("Sequence completed");
 	}
 	else {
 		this->_state_updated = true;
@@ -50,13 +50,13 @@ void lunabotics::control::PredefinedCmdController::incrementCnt()
 void lunabotics::control::PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 {
 	if (this->_expecting_result) {
-		ROS_INFO("Expecting %.2f, %.2f, %.2f, %.2f", state.steering.left_front, state.steering.right_front, state.steering.left_rear, state.steering.right_rear);
-		ROS_INFO("Getting %.2f, %.2f, %.2f, %.2f", this->_expected_state.steering.left_front, this->_expected_state.steering.right_front, this->_expected_state.steering.left_rear, this->_expected_state.steering.right_rear);
+		//ROS_INFO("Expecting %.2f, %.2f, %.2f, %.2f", state.steering.left_front, state.steering.right_front, state.steering.left_rear, state.steering.right_rear);
+		//ROS_INFO("Getting %.2f, %.2f, %.2f, %.2f", this->_expected_state.steering.left_front, this->_expected_state.steering.right_front, this->_expected_state.steering.left_rear, this->_expected_state.steering.right_rear);
 		if (fabs(state.steering.left_front-this->_expected_state.steering.left_front) <= STEERING_ACCURACY &&
 		fabs(state.steering.right_front-this->_expected_state.steering.right_front) <= STEERING_ACCURACY &&
 		fabs(state.steering.left_rear-this->_expected_state.steering.left_rear) <= STEERING_ACCURACY &&
 		fabs(state.steering.right_rear-this->_expected_state.steering.right_rear) <= STEERING_ACCURACY) {
-			ROS_INFO("Reached correct steering angles");
+			//ROS_INFO("Reached correct steering angles");
 			this->_expecting_result = false;
 			this->incrementCnt();
 		}

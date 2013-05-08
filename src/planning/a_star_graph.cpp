@@ -4,6 +4,7 @@
 #include <math.h>
 #include <list>
 #include <sstream>
+#include <algorithm>
 #include "float.h"
 using namespace lunabotics;
 using namespace lunabotics::planning;
@@ -186,8 +187,8 @@ node_arr path::cornerNodes()
 		//ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
 		node_arr graph = this->removeStraightPathWaypoints(this->nodes);		
 		//ROS_INFO("After removing straight path nodes %d", (int)graph.size());
-		int currentWaypointIdx = 0;
-		int finalWaypointIdx = graph.size()-1;
+		int currentWaypointIdx = graph.size()-1;
+		int finalWaypointIdx = 0;
 		node currentWaypoint = graph.at(currentWaypointIdx);
 		node finalWaypoint = graph.at(finalWaypointIdx);
 		node furthestWaypoint = finalWaypoint;
@@ -202,12 +203,12 @@ node_arr path::cornerNodes()
 			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint);
 			if (crossesObstacles) {
 				//ROS_INFO("%s crosses obstacles", sstr.str().c_str());
-				if (--furthesWaypointIdx == currentWaypointIdx+1) {
+				if (++furthesWaypointIdx == currentWaypointIdx-1) {
 					sstr.str(std::string());
 					sstr << currentWaypoint;
 					ROS_INFO("Saving %s", sstr.str().c_str());
 					newGraph.push_back(currentWaypoint);
-					currentWaypoint = graph.at(++currentWaypointIdx);
+					currentWaypoint = graph.at(--currentWaypointIdx);
 					furthestWaypoint = finalWaypoint;
 					furthesWaypointIdx = finalWaypointIdx;
 					sstr.str(std::string());
@@ -231,6 +232,7 @@ node_arr path::cornerNodes()
 			}
 		}
 		newGraph.push_back(finalWaypoint);
+		std::reverse(newGraph.begin(), newGraph.end());
 		this->corner_nodes = newGraph;
 		return newGraph;
 	}
@@ -245,16 +247,16 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 	
 	std::stringstream sstr;
 	sstr << node1 << " and " << node2;
-	//ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
+	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
 	int denom = node2.x-node1.x;
 	if (denom == 0) {
 		//Line is vertical
 		int begin = std::min(node1.y, node2.y);
 		int end = std::max(node1.y, node2.y);
-		for (int y = begin+1; y < end-1; y++) {
+		for (int y = begin+1; y < end; y++) {
 			int8_t occupancy = this->mapAt(node1.x, y);
-			//ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
+			ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
 			}
@@ -264,7 +266,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 		double k = (node2.y-node1.y)/((float)denom);
 		double b = node1.y-k*node1.x;
 		
-		//ROS_INFO("Line K=%.2f B=%.2f", k, b);
+		ROS_INFO("Line K=%.2f B=%.2f", k, b);
 		
 		int start, finish;
 		if (fabs(k) > 1) {
@@ -279,7 +281,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 			for (int i = start; i < finish; i++) {
 				int x = round((i-b)/k);
 				int8_t occupancy = this->mapAt(x, i);
-				//ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+				ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
@@ -297,7 +299,7 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 			for (int i = start; i < finish; i++) {
 				int y = round(k*i+b);
 				int8_t occupancy = this->mapAt(i, y);
-				//ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
+				ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
