@@ -165,6 +165,13 @@ node_indexed_arr path::closestObstacleNodes()
 				}
 				node_indexed t;
 				t.node = closest_node;
+				
+				//std::stringstream sstr;
+				//sstr << curr_waypoint << " is " << closest_node;
+				//ROS_INFO("Closest node for %s", sstr.str().c_str());
+				
+				
+				
 				t.index = i;
 				this->obstacle_nodes.push_back(t);
 			}
@@ -206,7 +213,7 @@ node_arr path::cornerNodes()
 				if (++furthesWaypointIdx == currentWaypointIdx-1) {
 					sstr.str(std::string());
 					sstr << currentWaypoint;
-					ROS_INFO("Saving %s", sstr.str().c_str());
+					//ROS_INFO("Saving %s", sstr.str().c_str());
 					newGraph.push_back(currentWaypoint);
 					currentWaypoint = graph.at(--currentWaypointIdx);
 					furthestWaypoint = finalWaypoint;
@@ -245,9 +252,9 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 {
 	if (node1 == node2) return false;
 	
-	std::stringstream sstr;
-	sstr << node1 << " and " << node2;
-	ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
+	//std::stringstream sstr;
+	//sstr << node1 << " and " << node2;
+	//ROS_INFO("Checking obstacles between %s", sstr.str().c_str());
 	
 	int denom = node2.x-node1.x;
 	if (denom == 0) {
@@ -256,17 +263,21 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 		int end = std::max(node1.y, node2.y);
 		for (int y = begin+1; y < end; y++) {
 			int8_t occupancy = this->mapAt(node1.x, y);
-			ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
+			//ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
 			}
 		}
 	}
 	else {
+		line l;
+		l.p1.x = node1.x; l.p1.y = node1.y;
+		l.p2.x = node2.x; l.p2.y = node2.y;
+		
 		double k = (node2.y-node1.y)/((float)denom);
 		double b = node1.y-k*node1.x;
 		
-		ROS_INFO("Line K=%.2f B=%.2f", k, b);
+		//ROS_INFO("Line K=%.2f B=%.2f", k, b);
 		
 		int start, finish;
 		if (fabs(k) > 1) {
@@ -279,9 +290,20 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 				finish = node1.y;
 			}
 			for (int i = start; i < finish; i++) {
-				int x = round((i-b)/k);
-				int8_t occupancy = this->mapAt(x, i);
-				ROS_INFO("Occupancy of (%d,%d) is %d", x, i, occupancy);
+				int x1 = floor((i-b)/k);
+				int x2 = ceil((i-b)/k);
+				int8_t occupancy = 0;
+				if (this->lineIntersectsNodeAt(l, x1, i)) {
+					occupancy = this->mapAt(x1, i);
+					//ROS_INFO("Occupancy of (%d,%d) is %d", x1, i, occupancy);
+				}
+				if (occupancy <= OCC_THRESHOLD) {
+					if (this->lineIntersectsNodeAt(l, x2, i)) {
+						occupancy = this->mapAt(x2, i);
+						//ROS_INFO("Occupancy of (%d,%d) is %d", x2, i, occupancy);
+					}
+				}
+					
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
@@ -297,9 +319,21 @@ bool path::isObstacleBetweenNodes(node node1, node node2)
 				finish = node1.x;
 			}
 			for (int i = start; i < finish; i++) {
-				int y = round(k*i+b);
-				int8_t occupancy = this->mapAt(i, y);
-				ROS_INFO("Occupancy of (%d,%d) is %d", i, y, occupancy);
+				int y1 = floor(k*i+b);
+				int y2 = ceil(k*i+b);
+				
+				int8_t occupancy = 0;
+				if (this->lineIntersectsNodeAt(l, i, y1)) {
+					occupancy = this->mapAt(i, y1);
+					//ROS_INFO("Occupancy of (%d,%d) is %d", i, y1, occupancy);
+				}
+				if (occupancy <= OCC_THRESHOLD) {
+					if (this->lineIntersectsNodeAt(l, i, y2)) {
+						occupancy = this->mapAt(i, y2);
+						//ROS_INFO("Occupancy of (%d,%d) is %d", i, y2, occupancy);
+					}
+				}
+				
 				if (occupancy > OCC_THRESHOLD) {
 					return true;
 				}
@@ -336,6 +370,55 @@ point_indexed_arr path::pointRepresentation(node_indexed_arr graph, float resolu
 	return points;
 }
 
+bool path::lineIntersectsNodeAt(line l, int x, int y)
+{
+	point_f lt;
+	lt.x = x-0.5;
+	lt.y = y-0.5;
+	point_f rt;
+	rt.x = x+0.5;
+	rt.y = y-0.5;
+	point_f lb;
+	lb.x = x-0.5;
+	lb.y = y+0.5;
+	point_f rb;
+	rb.x = x+0.5;
+	rb.y = y+0.5;
+	
+	line leftEdge; leftEdge.p1 = lt; leftEdge.p2 = lb;
+	line rightEdge; rightEdge.p1 = rt; rightEdge.p2 = rb;
+	line topEdge; topEdge.p1 = lt; topEdge.p2 = rt;
+	line bottomEdge; bottomEdge.p1 = lb; bottomEdge.p2 = rb;
+	
+	return this->linesIntersect(l, leftEdge) ||
+		   this->linesIntersect(l, rightEdge) ||
+		   this->linesIntersect(l, topEdge) ||
+		   this->linesIntersect(l, bottomEdge);
+}
+
+
+bool path::linesIntersect(line l1, line l2)
+{
+	float q = (l1.p1.y - l2.p1.y) * (l2.p2.x - l2.p1.x) - (l1.p1.x - l2.p1.x) * (l2.p2.y - l2.p1.y);
+	float d = (l1.p2.x - l1.p1.x) * (l2.p2.y - l2.p1.y) - (l1.p2.y - l1.p1.y) * (l2.p2.x - l2.p1.x);
+
+	if (d == 0)
+	{
+		return false;
+	}
+
+	float r = q / d;
+
+	q = (l1.p1.y - l2.p1.y) * (l1.p2.x - l1.p1.x) - (l1.p1.x - l2.p1.x) * (l1.p2.y - l1.p1.y);
+	float s = q / d;
+
+	if (r < 0 || r > 1 || s < 0 || s > 1)
+	{
+		return false;
+	}
+
+	return true;
+}
 
 bool path::in_set(node_list set, node node) {
 	node_list::iterator it = find(set.begin(), set.end(), node);

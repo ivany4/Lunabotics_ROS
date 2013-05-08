@@ -16,6 +16,11 @@ struct point_indexed {
 	int index;
 };
 
+struct point_f {
+	float x;
+	float y;
+};
+
 typedef std::vector<point_indexed> point_indexed_arr;
 
 enum ROTATION_DIRECTION {

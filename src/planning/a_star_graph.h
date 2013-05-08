@@ -2,6 +2,7 @@
 #define _PLANNING_GRAPH_H_
 
 #include "a_star_node.h"
+#include "../types.h"
 
 namespace lunabotics {
 namespace planning
@@ -13,6 +14,11 @@ namespace planning
 	
 	typedef std::vector<node_indexed> node_indexed_arr;
 	
+	struct line {
+		point_f p1;
+		point_f p2;
+	};
+		
 	
 	class path
 	{
@@ -25,6 +31,8 @@ namespace planning
 		node_arr corner_nodes;
 		node_indexed_arr obstacle_nodes;
 		
+		bool lineIntersectsNodeAt(line l, int x, int y);
+		bool linesIntersect(line l1, line l2);
 		bool in_set(node_list set, node node);
 		double distance(node node1, node node2);
 		node_arr reconstruct_path(node_list came_from, node current);

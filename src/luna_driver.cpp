@@ -104,7 +104,7 @@ void stop() {
 }
 
 void finish_route() {
-	ROS_INFO("Route completed");
+	//ROS_INFO("Route completed");
 	stop();
 	
 	//Send empty path to clear map in GUI
@@ -276,9 +276,9 @@ void goalCallback(const lunabotics::Goal& msg)
 	pose_t goal;
 	goal.position = msg.point;
 	goal.orientation = tf::createQuaternionMsgFromYaw(0);
-		ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
-			  currentPose.position.x, currentPose.position.y,
-			  goal.position.x, goal.position.y);
+		//ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
+		//	  currentPose.position.x, currentPose.position.y,
+		//	  goal.position.x, goal.position.y);
 	float resolution;
 	lunabotics::planning::path *path = getPath(currentPose, goal, resolution);
 	
@@ -347,11 +347,11 @@ void goalCallback(const lunabotics::Goal& msg)
 					if (hasObstacle) {
 						point_t p = lunabotics::geometry::midPoint(obstaclePoint, curr);
 						curve = lunabotics::planning::trajectory_bezier(q0, curr, q2, p, bezierSegments);
-						ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+						//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
 					}
 					else {
 						curve = lunabotics::planning::quadratic_bezier(q0, curr, q2, bezierSegments);
-						ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
+						//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
 					}
 					
 					//Append curve points
@@ -395,7 +395,7 @@ void goalCallback(const lunabotics::Goal& msg)
 		wayIterator = controlMode == lunabotics::proto::ACKERMANN ? waypoints.begin() : waypoints.begin()+1;		
 	//	ROS_INFO("Returned path: %s", sstr.str().c_str());
 		pose_t waypoint = waypoints.at(0);
-		ROS_INFO("Heading towards (%.1f,%.1f)", (*wayIterator).position.x, (*wayIterator).position.y);
+		//ROS_INFO("Heading towards (%.1f,%.1f)", (*wayIterator).position.x, (*wayIterator).position.y);
 		
 		pathPublisher.publish(pathMsg);
 		
@@ -416,7 +416,7 @@ void goalCallback(const lunabotics::Goal& msg)
 void controlSkidAllWheel() 
 {
 	if (wayIterator >= waypoints.end()) {
-		ROS_INFO("Finishing route");
+		//ROS_INFO("Finishing route");
 		finish_route();
 		return;
 	}
@@ -431,7 +431,7 @@ void controlSkidAllWheel()
 	
 	switch (skidState) {
 		case lunabotics::proto::Telemetry::STOPPED: {
-			ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			//ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				wayIterator++;
@@ -442,7 +442,7 @@ void controlSkidAllWheel()
 					controlParamsMsg.has_trajectory_data = true;
 					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;	
 					pose_t nextWaypointPose = *wayIterator;
-					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
+					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
 			}
 			else if (fabs(angle) > angleAccuracy) {
@@ -454,7 +454,7 @@ void controlSkidAllWheel()
 		}	
 		break;
 		case lunabotics::proto::Telemetry::DRIVING: {	
-			ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			//ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				skidState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
@@ -469,14 +469,14 @@ void controlSkidAllWheel()
 		break;
 		case lunabotics::proto::Telemetry::TURNING: {
 			int direction = sign(angle);
-			ROS_INFO("SKID: turning  %d (%.2f-%.2f)      dx: %.5f dy: %.5f angle: %.5f", direction, angle, angleAccuracy, dx, dy, angle);
+			//ROS_INFO("SKID: turning  %d (%.2f-%.2f)      dx: %.5f dy: %.5f angle: %.5f", direction, angle, angleAccuracy, dx, dy, angle);
 		
 			if (direction == 0) {
 				skidState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
 			else {
-				ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
+				//ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
 				if (direction == -1) {
 					msg.predefined_cmd = lunabotics::proto::AllWheelControl::TURN_CW;
 				}
@@ -519,7 +519,7 @@ void controlSkidDiffDrive()
 					
 	switch (skidState) {
 		case lunabotics::proto::Telemetry::STOPPED: {
-			ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			//ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
 			if (fabs(dx) < distanceAccuracy && fabs(dy) < distanceAccuracy) {
 				wayIterator++;
@@ -530,7 +530,7 @@ void controlSkidDiffDrive()
 					controlParamsMsg.has_trajectory_data = true;
 					controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
 					pose_t nextWaypointPose = *wayIterator;
-					ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
+					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypointPose.position.x, nextWaypointPose.position.y);
 				}
 			}
 			else if (fabs(angle) > angleAccuracy) {
@@ -558,7 +558,7 @@ void controlSkidDiffDrive()
 		}
 		break;
 		case lunabotics::proto::Telemetry::TURNING: {
-			ROS_INFO("SKID: turning        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			//ROS_INFO("SKID: turning        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			int direction = sign(angle);
 		
 			if (direction == 0) {
@@ -567,7 +567,7 @@ void controlSkidDiffDrive()
 				controlMsg.motion.angular.z = 0;
 			}
 			else {
-				ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
+				//ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
 				controlMsg.motion.linear.x = 0;
 				controlMsg.motion.angular.z = 1*direction;
 			}	
@@ -628,7 +628,7 @@ void controlAckermannAllWheel()
 			wayIterator = waypoints.begin()+1;
 			double angle = lunabotics::geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
-				ROS_WARN("Facing away from the trajectory. Turning in place");
+				//ROS_WARN("Facing away from the trajectory. Turning in place");
 				controlSkid();
 				return;
 			}
@@ -751,7 +751,7 @@ void controlAckermannDiffDrive()
 			wayIterator = waypoints.begin()+1;
 			double angle = lunabotics::geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
-				ROS_WARN("Facing away from the trajectory. Turning in place");
+				//ROS_WARN("Facing away from the trajectory. Turning in place");
 				controlSkid();
 				return;
 			}
