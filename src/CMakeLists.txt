@@ -16,6 +16,10 @@ add_subdirectory(geometry)
 add_subdirectory(planning)
 add_subdirectory(control)
 
+message (STATUS "FOOOOOOOO ${FOO}")
+
+#add_definitions(-DFOO)
+
 rosbuild_add_executable(luna_gui_gw luna_gui_gw.cpp)
 rosbuild_add_executable(luna_gui_listener luna_gui_listener.cpp types.cpp)
 rosbuild_add_executable(luna_mech_gw luna_mech_gw.cpp)
@@ -27,6 +31,7 @@ rosbuild_add_executable(luna_aut_gw luna_aut_gw.cpp)
 
 target_link_libraries(luna_driver planning control)
 target_link_libraries(luna_gui_gw geometry)
+target_link_libraries(luna_gui_listener geometry)
 rosbuild_link_boost(luna_gui_listener system signals)
 rosbuild_link_boost(luna_gui_gw system)
 

@@ -5,6 +5,16 @@
 geometry::AllWheelGeometry::AllWheelGeometry(point_t left_front, point_t left_rear, point_t right_front, point_t right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
 }
 
+geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
+{
+	this->lf = copy->left_front();
+	this->lr = copy->left_rear();
+	this->rf = copy->right_front();
+	this->rr = copy->right_rear();
+	this->_wheel_offset = copy->wheel_offset();
+	this->_wheel_radius = copy->wheel_radius();
+}
+
 geometry::AllWheelGeometry::~AllWheelGeometry()
 {
 }
@@ -63,6 +73,7 @@ bool geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front,
 	//		ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 		}
 	//	ROS_INFO("Calculated angles are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
+	
 	}
 	return true;
 }
@@ -92,33 +103,30 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		double left_rear_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->lr);
 		double right_rear_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->rr);
 		
-		double wheel_offset = 0.1;
-		
-		
 	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
 		if (ICROnRight) {
 	//		ROS_INFO("ICR on the right");
-			right_front_shoulder -= wheel_offset;
-			right_rear_shoulder -= wheel_offset;
-			left_front_shoulder += wheel_offset;
-			left_rear_shoulder += wheel_offset;
+			right_front_shoulder -= this->_wheel_offset;
+			right_rear_shoulder -= this->_wheel_offset;
+			left_front_shoulder += this->_wheel_offset;
+			left_rear_shoulder += this->_wheel_offset;
 		}
 		else if (ICROnLeft) {
 			//ICR is on the left from the robot
 	//		ROS_INFO("ICR on the left");
-			right_front_shoulder += wheel_offset;
-			right_rear_shoulder += wheel_offset;
-			left_front_shoulder -= wheel_offset;
-			left_rear_shoulder -= wheel_offset;
+			right_front_shoulder += this->_wheel_offset;
+			right_rear_shoulder += this->_wheel_offset;
+			left_front_shoulder -= this->_wheel_offset;
+			left_rear_shoulder -= this->_wheel_offset;
 		}
 		else {
 			//ICR is underneath the robot
 	//		ROS_INFO("ICR in between");
-			right_front_shoulder += wheel_offset;
-			right_rear_shoulder += wheel_offset;
-			left_front_shoulder += wheel_offset;
-			left_rear_shoulder += wheel_offset;
+			right_front_shoulder += this->_wheel_offset;
+			right_rear_shoulder += this->_wheel_offset;
+			left_front_shoulder += this->_wheel_offset;
+			left_rear_shoulder += this->_wheel_offset;
 		}
 		
 	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
@@ -132,12 +140,10 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 		double left_rear_vel = left_rear_shoulder*ang_vel;
 		double right_rear_vel = right_rear_shoulder*ang_vel;
 		
-		double wheel_radius = 0.11;
-		
-		left_front = left_front_vel/wheel_radius;
-		right_front = right_front_vel/wheel_radius;
-		left_rear = left_rear_vel/wheel_radius;
-		right_rear = right_rear_vel/wheel_radius;
+		left_front = left_front_vel/this->_wheel_radius;
+		right_front = right_front_vel/this->_wheel_radius;
+		left_rear = left_rear_vel/this->_wheel_radius;
+		right_rear = right_rear_vel/this->_wheel_radius;
 		
 		if (!ICROnLeft && !ICROnRight) {
 			if (ICR.x > 0) {
@@ -154,7 +160,7 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 	//		ROS_INFO("INF or NAN");
 			left_front = right_front = left_rear = right_rear = 0;	
 		}
-		
+				
 	//	ROS_INFO("Calculated velocities are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
 	}
 	return true;
@@ -180,6 +186,16 @@ void geometry::AllWheelGeometry::set_right_rear(point_t new_point)
 	this->rr = new_point;
 }
 
+void geometry::AllWheelGeometry::set_wheel_offset(float new_offset)
+{
+	this->_wheel_offset = new_offset;
+}
+
+void geometry::AllWheelGeometry::set_wheel_radius(float new_radius)
+{
+	this->_wheel_radius = new_radius;
+}
+
 point_t geometry::AllWheelGeometry::left_front()
 {
 	return this->lf;
@@ -195,4 +211,55 @@ point_t geometry::AllWheelGeometry::right_front()
 point_t geometry::AllWheelGeometry::right_rear()
 {
 	return this->rr;
+}
+
+float geometry::AllWheelGeometry::wheel_offset()
+{
+	return this->_wheel_offset;
+}
+
+float geometry::AllWheelGeometry::wheel_radius()
+{
+	return this->_wheel_radius;
+}
+
+bool geometry::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)
+{
+	bool result = true;
+	if (left_front > GEOMETRY_INNER_ANGLE_MAX) {
+		result = false;
+		left_front = GEOMETRY_INNER_ANGLE_MAX;
+	}
+	else if (left_front < -GEOMETRY_OUTER_ANGLE_MAX) {
+		result = false;
+		left_front = -GEOMETRY_OUTER_ANGLE_MAX;
+	}
+	
+	if (right_front > GEOMETRY_OUTER_ANGLE_MAX) {
+		result = false;
+		right_front = GEOMETRY_OUTER_ANGLE_MAX;
+	}
+	else if (right_front < -GEOMETRY_INNER_ANGLE_MAX) {
+		result = false;
+		right_front = -GEOMETRY_INNER_ANGLE_MAX;
+	}
+	
+	if (left_rear > GEOMETRY_OUTER_ANGLE_MAX) {
+		result = false;
+		left_rear = GEOMETRY_OUTER_ANGLE_MAX;
+	}
+	else if (left_rear < -GEOMETRY_INNER_ANGLE_MAX) {
+		result = false;
+		left_rear = -GEOMETRY_INNER_ANGLE_MAX;
+	}
+	
+	if (right_rear > GEOMETRY_INNER_ANGLE_MAX) {
+		result = false;
+		right_rear = GEOMETRY_INNER_ANGLE_MAX;
+	}
+	else if (right_rear < -GEOMETRY_OUTER_ANGLE_MAX) {
+		result = false;
+		right_rear = -GEOMETRY_OUTER_ANGLE_MAX;
+	}
+	return result;
 }

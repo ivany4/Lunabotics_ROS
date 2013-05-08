@@ -6,6 +6,7 @@
 #include "lunabotics/AllWheelStateROS.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/ICRControl.h"
+#include "geometry/allwheel.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
@@ -180,15 +181,23 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					case lunabotics::AllWheelControl::EXPLICIT: {
 						lunabotics::AllWheelState::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
 						lunabotics::AllWheelState::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
+						
+						float left_front = steering.left_front();
+						float right_front = steering.right_front();
+						float left_rear = steering.left_rear();
+						float right_rear = steering.right_rear();
+						geometry::validateAngles(left_front, right_front, left_rear, right_rear);
+						
+						
 						lunabotics::AllWheelStateROS msg;
 						msg.driving.left_front = driving.left_front();
 						msg.driving.right_front = driving.right_front();
 						msg.driving.left_rear = driving.left_rear();
 						msg.driving.right_rear = driving.right_rear();
-						msg.steering.left_front = steering.left_front();
-						msg.steering.right_front = steering.right_front();
-						msg.steering.left_rear = steering.left_rear();
-						msg.steering.right_rear = steering.right_rear();
+						msg.steering.left_front = left_front;
+						msg.steering.right_front = right_front;
+						msg.steering.left_rear = left_rear;
+						msg.steering.right_rear = right_rear;
 						allWheelPublisher.publish(msg);
 					}
 					break;

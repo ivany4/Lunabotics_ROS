@@ -1,1 +1,1 @@
-rosbuild_add_library(control PIDController.cpp)
+rosbuild_add_library(control PIDController.cpp AllWheelPredefinedCmdController.cpp)

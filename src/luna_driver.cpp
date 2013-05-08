@@ -1,5 +1,13 @@
 #include "ros/ros.h"
+#include <numeric>
+
+//Topics
 #include "nav_msgs/Path.h"
+#include "nav_msgs/GetMap.h"
+#include "nav_msgs/Path.h"
+#include "geometry_msgs/Point.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Twist.h"
 #include "lunabotics/Emergency.h"
 #include "lunabotics/Control.h"
 #include "lunabotics/ControlParams.h"
@@ -9,28 +17,27 @@
 #include "lunabotics/PID.h"
 #include "lunabotics/ICRControl.h"
 #include "lunabotics/AllWheelCommon.h"
-#include "nav_msgs/GetMap.h"
-#include "nav_msgs/Path.h"
-#include "geometry_msgs/Point.h"
-#include "lunabotics/JointPositions.h"
+#include "lunabotics/RobotGeometry.h"
 #include "lunabotics/AllWheelStateROS.h"
-#include "geometry_msgs/PoseStamped.h"
-#include <geometry_msgs/Twist.h>
-#include "planning/a_star_graph.h"
-#include "planning/bezier_smooth.h"
-#include "geometry/allwheel.h"
-#include "control/PIDController.h"
+
+//Transforms
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
 #include "message_filters/subscriber.h"
+
+//Protos
 #include "../protos_gen/AllWheelControl.pb.h"
 #include "../protos_gen/Telemetry.pb.h"
-#include "types.h"
+
+//Helpers
+#include "planning/a_star_graph.h"
+#include "planning/bezier_smooth.h"
+#include "control/PIDController.h"
+#include "control/AllWheelPredefinedCmdController.h"
 #include "geometry/geometry.h"
-#include <numeric>
+#include "types.h"
 
 #define ROBOT_DIFF_DRIVE	0
-
 
 using namespace std;
 
@@ -52,6 +59,8 @@ int seq = 0;
 int bezierSegments = 20;
 lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
 lunabotics::Telemetry::PointTurnState skidState = lunabotics::Telemetry::STOPPED;
+lunabotics::control::PredefinedCmdControllerPtr predCtrl;
+lunabotics::control::PIDControllerPtr pidController;
 nav_msgs::GetMap mapService;
 ros::ServiceClient mapClient;
 pose_t currentPose;
@@ -60,7 +69,7 @@ ros::Publisher controlParamsPublisher;
 ros::Publisher pathPublisher;
 ros::Publisher allWheelPublisher;
 ros::Publisher allWheelCommonPublisher;
-ros::Publisher jointPublisher;
+ros::Publisher geometryPublisher;
 geometry::PID pidGeometry;
 ros::Publisher ICRPublisher;
 geometry_msgs::Twist velocities;
@@ -68,7 +77,6 @@ bool autonomyEnabled = false;
 pose_arr waypoints;
 pose_arr::iterator wayIterator;
 float linear_speed_limit = 1;
-lunabotics::control::PIDControllerPtr pidController;
 geometry::AllWheelGeometryPtr allWheelGeometry;
 bool jointStatesAcquired = false;
 
@@ -117,17 +125,6 @@ planning::path *getPath(pose_t startPose, pose_t goalPose, float &res)
 		unsigned int map_size = mapService.response.map.data.size();
 		if (map_size > 0) {
 			ROS_INFO("Got map from service (%d cells)", (int)map_size);
-			ROS_INFO("------------------------------------");
-			for (unsigned int i = 0; i < mapService.response.map.info.height; i++) {
-			    stringstream sstr;
-				for (unsigned int j = 0; j < mapService.response.map.info.width; j++) {
-					int8_t probability = mapService.response.map.data.at(i*mapService.response.map.info.width+j);
-					sstr << setw(3) << static_cast<int>(probability) << " ";
-				}
-				ROS_INFO("%s", sstr.str().c_str());
-			}
-			ROS_INFO("\n");
-			
 			ROS_INFO("Looking for a path...");
 			
 			//Generate a path
@@ -192,7 +189,16 @@ void controlModeCallback(const lunabotics::ControlMode& msg)
 	}
 	
 	ROS_INFO("Switching control mode to %s", controlModeToString(controlMode).c_str());
-					
+}
+
+void allWheelStateCallback(const lunabotics::AllWheelStateROS& msg)
+{
+	predCtrl->giveFeedback(msg);
+}
+
+void allWheelCommonCallback(const lunabotics::AllWheelCommon& msg)
+{
+	predCtrl->setNewCommand((lunabotics::AllWheelControl::PredefinedControlType)msg.predefined_cmd);
 }
 
 void autonomyCallback(const std_msgs::Bool& msg)
@@ -211,10 +217,8 @@ void pidCallback(const lunabotics::PID& msg)
 	pidController->setP(msg.p);
 	pidController->setI(msg.i);
 	pidController->setD(msg.d);
-	#if ROBOT_DIFF_DRIVE
 	pidGeometry.setVelocityMultiplier(msg.velocity_multiplier);
 	pidGeometry.setVelocityOffset(msg.velocity_offset);
-	#endif
 }
 
 void ICRCallback(const lunabotics::ICRControl& msg) 
@@ -227,32 +231,37 @@ void ICRCallback(const lunabotics::ICRControl& msg)
 	float angle_rear_left;
 	float angle_rear_right;
 	if (allWheelGeometry->calculateAngles(msg.ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
-		lunabotics::AllWheelStateROS controlMsg;
-		controlMsg.steering.left_front = angle_front_left;
-		controlMsg.steering.right_front = angle_front_right;
-		controlMsg.steering.left_rear = angle_rear_left;
-		controlMsg.steering.right_rear = angle_rear_right;
-		float vel_front_left;
-		float vel_front_right;
-		float vel_rear_left;
-		float vel_rear_right;
-		if (fabs(msg.ICR.x-currentPose.position.x) < 0.001 && fabs(msg.ICR.y-currentPose.position.y) < 0.001) {
-			//Point turn
-			vel_front_left = vel_rear_right = msg.velocity;
-			vel_front_right = vel_rear_left = -msg.velocity;
+		if (geometry::validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+			lunabotics::AllWheelStateROS controlMsg;
+			controlMsg.steering.left_front = angle_front_left;
+			controlMsg.steering.right_front = angle_front_right;
+			controlMsg.steering.left_rear = angle_rear_left;
+			controlMsg.steering.right_rear = angle_rear_right;
+			float vel_front_left;
+			float vel_front_right;
+			float vel_rear_left;
+			float vel_rear_right;
+			if (fabs(msg.ICR.x-currentPose.position.x) < 0.001 && fabs(msg.ICR.y-currentPose.position.y) < 0.001) {
+				//Point turn
+				vel_front_left = vel_rear_right = msg.velocity;
+				vel_front_right = vel_rear_left = -msg.velocity;
+			}
+			else if (!allWheelGeometry->calculateVelocities(msg.ICR, msg.velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+				vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+			}
+			controlMsg.driving.left_front = vel_front_left;
+			controlMsg.driving.right_front = vel_front_right;
+			controlMsg.driving.left_rear = vel_rear_left;
+			controlMsg.driving.right_rear = vel_rear_right;
+			
+			
+			ROS_INFO("VELOCITY %.2f | %.2f | %.2f | %.2f", vel_front_left, vel_front_right, vel_rear_left, vel_rear_right);
+			
+			allWheelPublisher.publish(controlMsg);
 		}
-		else if (!allWheelGeometry->calculateVelocities(msg.ICR, msg.velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
-			vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+		else {
+			ROS_WARN("ICR position is in the dead zone, this control is not possible!");
 		}
-		controlMsg.driving.left_front = vel_front_left;
-		controlMsg.driving.right_front = vel_front_right;
-		controlMsg.driving.left_rear = vel_rear_left;
-		controlMsg.driving.right_rear = vel_rear_right;
-		
-		
-		ROS_INFO("VELOCITY %.2f | %.2f | %.2f | %.2f", vel_front_left, vel_front_right, vel_rear_left, vel_rear_right);
-		
-		allWheelPublisher.publish(controlMsg);
 	}
 }
 
@@ -770,7 +779,6 @@ void controlAckermannDiffDrive()
 			ROS_WARN("DW %.2f", dw);
 			
 			//The higher angular speed, the lower linear speed is
-			#pragma message("This top w is for diff drive only")
 			double top_w = 1.57;
 			double v = linear_speed_limit * std::max(0.0, (top_w-fabs(dw)))/top_w;
 			v = std::max(0.01, v);
@@ -856,19 +864,24 @@ int main(int argc, char **argv)
 	ros::Subscriber pidSubscriber = nodeHandle.subscribe("pid", sizeof(float)*3, pidCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
 	ros::Subscriber ICRSubscriber = nodeHandle.subscribe("icr", sizeof(float)*3, ICRCallback);
+	ros::Subscriber allWheelCommonSubscriber = nodeHandle.subscribe("all_wheel_common", 256, allWheelCommonCallback);
+	ros::Subscriber allWheelStateSubscriber = nodeHandle.subscribe("all_wheel_feeback", sizeof(float)*8, allWheelStateCallback);
+	ros::Publisher allWheelStateROSPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", 256);
 	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
 	pathPublisher = nodeHandle.advertise<nav_msgs::Path>("path", 256);
 	ICRPublisher = nodeHandle.advertise<geometry_msgs::Point>("icr_state", sizeof(float)*2);
 	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", sizeof(float)*8);
 	controlParamsPublisher = nodeHandle.advertise<lunabotics::ControlParams>("control_params", 256);
 	mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
-	jointPublisher = nodeHandle.advertise<lunabotics::JointPositions>("joints", sizeof(float)*2*4);
+	geometryPublisher = nodeHandle.advertise<lunabotics::RobotGeometry>("geometry", sizeof(float)*2*4);
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(uint32_t));
+	
 	
 	point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
 	allWheelGeometry = new geometry::AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
 		
 	pidController = new lunabotics::control::PIDController(0.05, 0.1, 0.18);
+	predCtrl = new lunabotics::control::PredefinedCmdController();
 	
 	tf::TransformListener listener;
 	
@@ -876,6 +889,7 @@ int main(int argc, char **argv)
 	
 	ros::Rate loop_rate(200);
 	while (ros::ok()) {
+#if !ROBOT_DIFF_DRIVE
 		tf::StampedTransform transform;
 		point_t point;
 		if (!jointStatesAcquired) {
@@ -896,93 +910,30 @@ int main(int argc, char **argv)
 				point.x = transform.getOrigin().x();
 				point.y = transform.getOrigin().y();
 				allWheelGeometry->set_right_rear(point);
+				listener.lookupTransform("left_front_wheel", "left_front_joint", ros::Time(0), transform);
+				allWheelGeometry->set_wheel_offset(fabs(transform.getOrigin().y()));
+				listener.lookupTransform("left_front_wheel_radius", "left_front_wheel", ros::Time(0), transform);
+				allWheelGeometry->set_wheel_radius(fabs(transform.getOrigin().x()));
+				
+				predCtrl->setGeometry(allWheelGeometry);
+				
 				jointStatesAcquired = true;
 			}
 			catch (tf::TransformException e) {
 				ROS_ERROR("%s", e.what());
 			}
 		}
-		else {
-			lunabotics::JointPositions msg;
-			msg.left_front = allWheelGeometry->left_front();
-			msg.left_rear = allWheelGeometry->left_rear();
-			msg.right_front = allWheelGeometry->right_front();
-			msg.right_rear = allWheelGeometry->right_rear();
-			jointPublisher.publish(msg);
+		else {			
+			lunabotics::RobotGeometry msg;
+			msg.left_front_joint = allWheelGeometry->left_front();
+			msg.left_rear_joint = allWheelGeometry->left_rear();
+			msg.right_front_joint = allWheelGeometry->right_front();
+			msg.right_rear_joint = allWheelGeometry->right_rear();
+			msg.wheel_radius = allWheelGeometry->wheel_radius();
+			msg.wheel_offset = allWheelGeometry->wheel_offset();
+			geometryPublisher.publish(msg);
 		}
-		/*
-	/////////////////////////////////////////////////////////////
-	if (!autonomyEnabled) {
-		nav_msgs::Path pathMsg;
-		geometry_msgs::PoseStamped waypoint1;
-		waypoint1.pose.position.x = 3;
-		waypoint1.pose.position.y = 3;
-		waypoint1.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-		geometry_msgs::PoseStamped waypoint2;
-		waypoint2.pose.position.x = 5;
-		waypoint2.pose.position.y = 5;
-		waypoint2.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-		pathMsg.poses.push_back(waypoint1);
-		pathMsg.poses.push_back(waypoint2);
-		pathPublisher.publish(pathMsg);
-		
-		
-		
-		pose_t closestWaypoint1;
-		closestWaypoint1.position.x = 3;
-		closestWaypoint1.position.y = 3;
-		pose_t closestWaypoint2;
-		closestWaypoint2.position.x = 5;
-		closestWaypoint2.position.y = 5;
-		double dist1 = point_distance(currentPose.position, closestWaypoint1.position);
-		double dist2 = point_distance(currentPose.position, closestWaypoint2.position);
-		if (dist2 < dist1) {
-			//Swap values to keep waypoint1 always the closest one
-			double tmp_dist = dist1;
-			dist1 = dist2;
-			dist2 = tmp_dist;
-			pose_t tmp_waypoint = closestWaypoint1;
-			closestWaypoint1 = closestWaypoint2;
-			closestWaypoint2 = tmp_waypoint;
-		}
-		double length = point_distance(closestWaypoint1.position, closestWaypoint2.position);
-		double angle = angle_between_line_and_curr_pos(length, dist1, dist2);
-		double y_err = distance_to_line(dist1, angle);		
-		point_t closestTrajectoryPoint = closest_trajectory_point(length, dist1, angle, closestWaypoint1.position, closestWaypoint2.position);
-		double closestTrajectoryPointAngle = atan2(closestTrajectoryPoint.y-currentPose.position.y, closestTrajectoryPoint.x-currentPose.position.x);
-		//double goalAngle = atan2((*wayIterator).position.y-currentPose.position.y, (*wayIterator).position.x-currentPose.position.x);
-		double angle_diff = closestTrajectoryPointAngle - tf::getYaw(currentPose.orientation);
-		angle_diff = normalize_angle(angle_diff);
-		
-		 //goalAngle - closestTrajectoryPointAngle;
-		if (angle_diff < 0) {
-			y_err *= -1;
-		}
-		
-		ROS_INFO("angle to closest %f, heading %f, diff %f", closestTrajectoryPointAngle, tf::getYaw(currentPose.orientation), angle_diff); 
-		
-		//ROS_INFO("local %f,%f | closest %f,%f | one %f,%f | two %f,%f | Y_err %f", currentPose.position.x,currentPose.position.y, closestTrajectoryPoint.x,closestTrajectoryPoint.y,closestWaypoint1.position.x,closestWaypoint1.position.y,closestWaypoint2.position.x,closestWaypoint2.position.y, y_err);
-		
-		lunabotics::ControlParams controlParamsMsg;
-		controlParamsMsg.trajectory_point = closestTrajectoryPoint;
-		controlParamsMsg.y_err = y_err;
-		controlParamsMsg.driving = true;
-		controlParamsMsg.next_waypoint_idx = wayIterator < waypoints.end() ? wayIterator-waypoints.begin()+1 : 0;
-		controlParamsPublisher.publish(controlParamsMsg);
-		
-		
-		
-		ros::spinOnce();
-		loop_rate.sleep();
-		
-		
-		continue;
-	}
-		
-		
-	/////////////////////////////////////////////////////////////
-		//*/
-		
+#endif
 		
 		//Whenever needed send control message
 		if (autonomyEnabled) {
@@ -1014,6 +965,11 @@ int main(int argc, char **argv)
 			}
 		}
 		
+		if (predCtrl->needsMoreControl()) {
+			lunabotics::AllWheelStateROS msg;
+			predCtrl->control(msg);
+			allWheelStateROSPublisher.publish(msg);
+		}
 		//ROS_INFO("beat");
 		
 		
@@ -1023,6 +979,7 @@ int main(int argc, char **argv)
 	
 	delete pidController;
 	delete allWheelGeometry;
+	delete predCtrl;
 	
 	return 0;
 }

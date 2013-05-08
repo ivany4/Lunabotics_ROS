@@ -56,11 +56,13 @@ message Telemetry {
 
     optional AllWheelState all_wheel_state = 6;
     
-    message JointPositions {
-		required Point left_front = 1;
-		required Point left_rear = 2;
-		required Point right_front = 3;
-		required Point right_rear = 4;
+    message Geometry {
+		required Point left_front_joint = 1;
+		required Point left_rear_joint = 2;
+		required Point right_front_joint = 3;
+		required Point right_rear_joint = 4;
+		required float wheel_offset = 5;
+		required float wheel_radius = 6;
     }
-    optional JointPositions joints_data = 7;
+    optional Geometry geometry_data = 7;
 }

@@ -36,7 +36,44 @@ namespace gazebo
 	bool TransformServerPlugin::LoadParams(sdf::ElementPtr _sdf) {
 		bool success = false;
 		
-		if (this->FindLinkByName(_sdf, this->lidarLink, "hokuyo::link") && this->FindLinkByName(_sdf, this->leftFrontConnectorLink, "left_front_connector") && this->FindLinkByName(_sdf, this->rightFrontConnectorLink, "right_front_connector") && this->FindLinkByName(_sdf, this->leftRearConnectorLink, "left_rear_connector") && this->FindLinkByName(_sdf, this->rightRearConnectorLink, "right_rear_connector")) {
+		if (this->FindLinkByName(_sdf, this->lidarLink, "hokuyo::link") &&
+		    this->FindLinkByName(_sdf, this->leftFrontConnectorLink, "left_front_connector") &&
+		    this->FindLinkByName(_sdf, this->rightFrontConnectorLink, "right_front_connector") &&
+		    this->FindLinkByName(_sdf, this->leftRearConnectorLink, "left_rear_connector") &&
+		    this->FindLinkByName(_sdf, this->rightRearConnectorLink, "right_rear_connector") &&
+		    this->FindLinkByName(_sdf, this->leftFrontWheelLink, "left_front_wheel")) {
+			
+			tf::Transform t;
+			math::Pose pose = this->lidarLink->GetRelativePose();
+			t.setOrigin(tf::Vector3(pose.pos.x, pose.pos.y, pose.pos.z));
+			t.setRotation(tf::Quaternion(pose.rot.x, pose.rot.y, pose.rot.z, pose.rot.w));
+			this->lidarT = t;
+			
+			tf::Transform t2;
+			t2.setRotation(tf::Quaternion(0,0,0,1));
+			pose = this->rightFrontConnectorLink->GetRelativePose();
+			t2.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->rightFrontT = t2;
+			
+			pose = this->leftRearConnectorLink->GetRelativePose();
+			t2.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->leftRearT = t2;
+			
+			pose = this->rightRearConnectorLink->GetRelativePose();
+			t2.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->rightRearT = t2;
+			
+			pose = this->leftFrontConnectorLink->GetRelativePose();
+			t2.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
+			this->leftFrontT = t2;
+			
+			math::Pose wheelPose = this->leftFrontWheelLink->GetRelativePose();
+			t2.setOrigin(tf::Vector3(0, sqrt(pow(pose.pos.x-wheelPose.pos.x,2)+pow(pose.pos.y-wheelPose.pos.y,2)), 0));
+			this->wheelOffsetT = t2;
+			
+			math::Box bb = this->leftFrontWheelLink->GetBoundingBox();
+			t2.setOrigin(tf::Vector3(bb.GetSize().GetMax()*0.5,0,0));
+			this->wheelRadiusT = t2;		
 			
 			success = true;
 		}
@@ -57,28 +94,13 @@ namespace gazebo
 	{		
 		if (this->node->ok()) {
 			ros::Time now = ros::Time::now();
-			tf::Transform transform;
-			
-			math::Pose pose = this->lidarLink->GetRelativePose();
-			transform.setOrigin(tf::Vector3(pose.pos.x, pose.pos.y, pose.pos.z));
-			transform.setRotation(tf::Quaternion(pose.rot.x, pose.rot.y, pose.rot.z, pose.rot.w));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "lidar", "base_link"));
-			
-			pose = this->leftFrontConnectorLink->GetRelativePose();
-			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "left_front_joint"));
-			
-			pose = this->rightFrontConnectorLink->GetRelativePose();
-			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "right_front_joint"));
-			
-			pose = this->leftRearConnectorLink->GetRelativePose();
-			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "left_rear_joint"));
-			
-			pose = this->rightRearConnectorLink->GetRelativePose();
-			transform.setOrigin(tf::Vector3(-pose.pos.x, -pose.pos.y, -pose.pos.z));
-			this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "right_rear_joint"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->lidarT, now, "lidar", "base_link"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->leftFrontT, now, "base_link", "left_front_joint"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->rightFrontT, now, "base_link", "right_front_joint"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->leftRearT, now, "base_link", "left_rear_joint"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->rightRearT, now, "base_link", "right_rear_joint"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->wheelOffsetT, now, "left_front_joint", "left_front_wheel"));
+			this->tfBroadcaster.sendTransform(tf::StampedTransform(this->wheelRadiusT, now, "left_front_wheel", "left_front_wheel_radius"));
 		}
 		
 		ros::spinOnce();

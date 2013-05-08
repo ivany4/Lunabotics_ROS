@@ -20,6 +20,14 @@ namespace gazebo
 		bool FindLinkByName(sdf::ElementPtr _sdf, physics::LinkPtr &_link, const std::string _name);
 		void OnUpdate();
 		
+		tf::Transform leftFrontT;
+		tf::Transform rightFrontT;
+		tf::Transform leftRearT;
+		tf::Transform rightRearT;
+		tf::Transform wheelOffsetT;
+		tf::Transform wheelRadiusT;
+		tf::Transform lidarT;
+		
 		// Pointer to the model
 		physics::ModelPtr model;
 	
@@ -31,6 +39,7 @@ namespace gazebo
 		physics::LinkPtr leftRearConnectorLink;
 		physics::LinkPtr rightFrontConnectorLink;
 		physics::LinkPtr rightRearConnectorLink;
+		physics::LinkPtr leftFrontWheelLink;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;
