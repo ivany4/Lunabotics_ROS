@@ -5,13 +5,14 @@
 
 #define OCC_THRESHOLD	80
 
+namespace lunabotics {
 namespace planning
 {
 	
 	class node;
 	
-	typedef std::vector<planning::node> node_arr;
-	typedef std::list<planning::node> node_list;
+	typedef std::vector<lunabotics::planning::node> node_arr;
+	typedef std::list<lunabotics::planning::node> node_list;
 	
 		
 	class node
@@ -38,7 +39,7 @@ namespace planning
 	      node_list neighbours(int grid_width, int grid_height, map_grid grid);
 	      node parent(node_list parents);
 	};
-
+}
 }
 
 #endif //_PLANNING_NODE_H_

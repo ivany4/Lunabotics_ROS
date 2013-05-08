@@ -23,6 +23,14 @@ enum ROTATION_DIRECTION {
 	CCW = -1
 };
 
-std::string controlModeToString(lunabotics::SteeringModeType type);
+inline std::string controlModeToString(lunabotics::proto::SteeringModeType type)
+{
+	switch (type) {
+		case lunabotics::proto::ACKERMANN: return "Ackermann";
+		case lunabotics::proto::TURN_IN_SPOT: return "'Turn in spot'";
+		case lunabotics::proto::CRAB: return "Crab";
+	}
+	return "Undefined";
+}
 
 #endif //_TYPES_H_

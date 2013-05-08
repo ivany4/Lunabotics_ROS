@@ -1,4 +1,4 @@
-package lunabotics;
+package lunabotics.proto;
 
 message AllWheelState {
         message Wheels {

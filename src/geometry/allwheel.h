@@ -6,6 +6,7 @@
 #define GEOMETRY_OUTER_ANGLE_MAX	M_PI_2		
 #define GEOMETRY_INNER_ANGLE_MAX	M_PI/180*70
 
+namespace lunabotics {
 namespace geometry {
 	class AllWheelGeometry {
 		private:
@@ -39,6 +40,7 @@ namespace geometry {
 	
 	typedef AllWheelGeometry *AllWheelGeometryPtr;
 	bool validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear);
+}
 }
 
 

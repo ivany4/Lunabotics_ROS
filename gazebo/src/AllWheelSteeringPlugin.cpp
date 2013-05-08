@@ -57,21 +57,21 @@ namespace gazebo
 			this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&AllWheelSteeringPlugin::OnUpdate, this));
 	
 			// ROS Listener
-			this->sub = this->node->subscribe<lunabotics::AllWheelStateROS>("all_wheel", 100, &AllWheelSteeringPlugin::ROSCallback, this);
+			this->sub = this->node->subscribe<lunabotics::AllWheelState>("all_wheel", 100, &AllWheelSteeringPlugin::ROSCallback, this);
 			
 			if (!this->sub) {
 				ROS_ERROR("Could not instantiate subscriber for /lunabotics/all_wheel!");
 			}
 			
 			// ROS Publisher
-			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelStateROS>("all_wheel_feeback", sizeof(float)*8);
+			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelState>("all_wheel_feeback", sizeof(float)*8);
 		}
 		else {
 			ROS_WARN("Could not load the model!");
 		}
 	}
 	
-	void AllWheelSteeringPlugin::ROSCallback(const lunabotics::AllWheelStateROS::ConstPtr& msg) {		
+	void AllWheelSteeringPlugin::ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg) {		
 		this->leftFrontSteeringAngle = msg->steering.left_front;
 		this->rightFrontSteeringAngle = msg->steering.right_front;
 		this->leftRearSteeringAngle = msg->steering.left_rear;
@@ -141,7 +141,7 @@ namespace gazebo
 		double actualRightRearSteeringAngle = this->rightRearWheelSteeringJoint->GetAngle(2).Radian();
 		
 		
-		lunabotics::AllWheelStateROS msg;	
+		lunabotics::AllWheelState msg;	
 		msg.steering.left_front = actualLeftFrontSteeringAngle;
 		msg.steering.right_front = actualRightFrontSteeringAngle;
 		msg.steering.left_rear = actualLeftRearSteeringAngle;

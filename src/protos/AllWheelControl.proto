@@ -1,7 +1,7 @@
 import "AllWheelState.proto";
 import "Point.proto";
 
-package lunabotics;
+package lunabotics.proto;
 
 message AllWheelControl {
         enum AllWheelControlType {

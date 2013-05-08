@@ -2,10 +2,10 @@
 #include "ros/ros.h"
 #include "basic.h"
 
-geometry::AllWheelGeometry::AllWheelGeometry(point_t left_front, point_t left_rear, point_t right_front, point_t right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
+lunabotics::geometry::AllWheelGeometry::AllWheelGeometry(point_t left_front, point_t left_rear, point_t right_front, point_t right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
 }
 
-geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
+lunabotics::geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
 {
 	this->lf = copy->left_front();
 	this->lr = copy->left_rear();
@@ -15,11 +15,11 @@ geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy)
 	this->_wheel_radius = copy->wheel_radius();
 }
 
-geometry::AllWheelGeometry::~AllWheelGeometry()
+lunabotics::geometry::AllWheelGeometry::~AllWheelGeometry()
 {
 }
 
-bool geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 //	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
 	
@@ -78,7 +78,7 @@ bool geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front,
 	return true;
 }
 
-bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_velocity, float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_velocity, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 	//Coordinate frames are different
 	point_t ICRPoint;
@@ -166,64 +166,64 @@ bool geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_v
 	return true;
 }
 
-void geometry::AllWheelGeometry::set_left_front(point_t new_point)
+void lunabotics::geometry::AllWheelGeometry::set_left_front(point_t new_point)
 {
 	this->lf = new_point;
 }
 
-void geometry::AllWheelGeometry::set_left_rear(point_t new_point)
+void lunabotics::geometry::AllWheelGeometry::set_left_rear(point_t new_point)
 {
 	this->lr = new_point;
 }
 
-void geometry::AllWheelGeometry::set_right_front(point_t new_point)
+void lunabotics::geometry::AllWheelGeometry::set_right_front(point_t new_point)
 {
 	this->rf = new_point;
 }
 
-void geometry::AllWheelGeometry::set_right_rear(point_t new_point)
+void lunabotics::geometry::AllWheelGeometry::set_right_rear(point_t new_point)
 {
 	this->rr = new_point;
 }
 
-void geometry::AllWheelGeometry::set_wheel_offset(float new_offset)
+void lunabotics::geometry::AllWheelGeometry::set_wheel_offset(float new_offset)
 {
 	this->_wheel_offset = new_offset;
 }
 
-void geometry::AllWheelGeometry::set_wheel_radius(float new_radius)
+void lunabotics::geometry::AllWheelGeometry::set_wheel_radius(float new_radius)
 {
 	this->_wheel_radius = new_radius;
 }
 
-point_t geometry::AllWheelGeometry::left_front()
+point_t lunabotics::geometry::AllWheelGeometry::left_front()
 {
 	return this->lf;
 }
-point_t geometry::AllWheelGeometry::left_rear()
+point_t lunabotics::geometry::AllWheelGeometry::left_rear()
 {
 	return this->lr;
 }
-point_t geometry::AllWheelGeometry::right_front()
+point_t lunabotics::geometry::AllWheelGeometry::right_front()
 {
 	return this->rf;
 }
-point_t geometry::AllWheelGeometry::right_rear()
+point_t lunabotics::geometry::AllWheelGeometry::right_rear()
 {
 	return this->rr;
 }
 
-float geometry::AllWheelGeometry::wheel_offset()
+float lunabotics::geometry::AllWheelGeometry::wheel_offset()
 {
 	return this->_wheel_offset;
 }
 
-float geometry::AllWheelGeometry::wheel_radius()
+float lunabotics::geometry::AllWheelGeometry::wheel_radius()
 {
 	return this->_wheel_radius;
 }
 
-bool geometry::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool lunabotics::geometry::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 	bool result = true;
 	if (left_front > GEOMETRY_INNER_ANGLE_MAX) {

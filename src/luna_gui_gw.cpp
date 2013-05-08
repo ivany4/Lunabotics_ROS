@@ -4,7 +4,7 @@
 #include "lunabotics/Vision.h"
 #include "lunabotics/ControlParams.h"
 #include "lunabotics/ControlMode.h"
-#include "lunabotics/AllWheelStateROS.h"
+#include "lunabotics/AllWheelState.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/RobotGeometry.h"
 #include "nav_msgs/GetMap.h"
@@ -31,10 +31,10 @@ lunabotics::State stateMsg;
 lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
 lunabotics::RobotGeometry geometry;
-lunabotics::AllWheelStateROS allWheelStateMsg;
+lunabotics::AllWheelState allWheelStateMsg;
 nav_msgs::Path path;
 point_t ICR;
-lunabotics::SteeringModeType controlMode = lunabotics::ACKERMANN;
+lunabotics::proto::SteeringModeType controlMode = lunabotics::proto::ACKERMANN;
 
 bool tryConnect(boost::asio::ip::tcp::resolver::query tcp_query)
 {
@@ -71,7 +71,7 @@ void mapUpdateCallback(const std_msgs::Empty& msg)
 
 void controlModeCallback(const lunabotics::ControlMode& msg)
 {
-	controlMode = (lunabotics::SteeringModeType)msg.mode;					
+	controlMode = (lunabotics::proto::SteeringModeType)msg.mode;					
 }
 
 void controlParamsCallback(const lunabotics::ControlParams& msg)
@@ -98,7 +98,7 @@ void geometryCallback(const lunabotics::RobotGeometry& msg)
 	geometry = msg;
 }
 
-void AllWheelStateCallback(const lunabotics::AllWheelStateROS& msg)
+void AllWheelStateCallback(const lunabotics::AllWheelState& msg)
 {
 	allWheelStateMsg = msg;
 	sendAllWheel = true;
@@ -146,9 +146,9 @@ int main(int argc, char **argv)
 			}
 			else if (sendMap || sendPath || sendState || sendVision || sendAllWheel || sendGeometry) {
 				
-				lunabotics::Telemetry tm;		
+				lunabotics::proto::Telemetry tm;		
 				if (sendState) {
-					lunabotics::Telemetry::State *state = tm.mutable_state_data();
+					lunabotics::proto::Telemetry::State *state = tm.mutable_state_data();
 					state->mutable_position()->set_x(stateMsg.odometry.pose.pose.position.x);
 					state->mutable_position()->set_y(stateMsg.odometry.pose.pose.position.y);
 					state->set_heading(tf::getYaw(stateMsg.odometry.pose.pose.orientation));
@@ -162,8 +162,8 @@ int main(int argc, char **argv)
 					if (controlParams.driving) {
 						if (controlParams.has_trajectory_data) {
 							state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
-							if (controlMode == lunabotics::ACKERMANN) {
-								lunabotics::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
+							if (controlMode == lunabotics::proto::ACKERMANN) {
+								lunabotics::proto::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
 								ackermannData->set_pid_error(controlParams.y_err);
 								ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
 								ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 							}
 						}
 						if (controlParams.has_point_turn_state) {
-							lunabotics::Telemetry::PointTurnState st = (lunabotics::Telemetry::PointTurnState)controlParams.point_turn_state;
+							lunabotics::proto::Telemetry::PointTurnState st = (lunabotics::proto::Telemetry::PointTurnState)controlParams.point_turn_state;
 							ROS_ERROR("STATE %d", st);
 							state->mutable_point_turn_telemetry()->set_state(st);
 						}
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 					}
 					
 					if (include_map) {
-						lunabotics::Telemetry::World *world = tm.mutable_world_data();
+						lunabotics::proto::Telemetry::World *world = tm.mutable_world_data();
 						world->set_width(map.info.width);
 						world->set_height(map.info.height);
 						world->set_resolution(map.info.resolution);
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 				if (sendPath) {
 				    for (unsigned int i = 0; i < path.poses.size(); i++) {
 						geometry_msgs::PoseStamped pose = path.poses.at(i);
-						lunabotics::Point *point = tm.mutable_path_data()->add_position();
+						lunabotics::proto::Point *point = tm.mutable_path_data()->add_position();
 						point->set_x(pose.pose.position.x);
 						point->set_y(pose.pose.position.y);
 					}
@@ -227,9 +227,9 @@ int main(int argc, char **argv)
 				    sendVision = false;
 				}
 				if (sendAllWheel) {
-					lunabotics::AllWheelState *state = tm.mutable_all_wheel_state();
-					lunabotics::AllWheelState::Wheels *steering = state->mutable_steering();
-					lunabotics::AllWheelState::Wheels *driving = state->mutable_driving();
+					lunabotics::proto::AllWheelState *state = tm.mutable_all_wheel_state();
+					lunabotics::proto::AllWheelState::Wheels *steering = state->mutable_steering();
+					lunabotics::proto::AllWheelState::Wheels *driving = state->mutable_driving();
 					steering->set_left_front(allWheelStateMsg.steering.left_front);
 					steering->set_right_front(allWheelStateMsg.steering.right_front);
 					steering->set_left_rear(allWheelStateMsg.steering.left_rear);
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 				}
 				
 				if (sendGeometry) {
-					lunabotics::Telemetry::Geometry *positions = tm.mutable_geometry_data();
+					lunabotics::proto::Telemetry::Geometry *positions = tm.mutable_geometry_data();
 					positions->mutable_left_front_joint()->set_x(geometry.left_front_joint.x);
 					positions->mutable_left_front_joint()->set_y(geometry.left_front_joint.y);
 					positions->mutable_left_rear_joint()->set_x(geometry.left_rear_joint.x);

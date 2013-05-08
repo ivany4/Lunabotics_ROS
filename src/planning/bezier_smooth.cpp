@@ -24,7 +24,7 @@ bool point_is_within_triangle(point_t p, double alpha_bar, double beta_bar, doub
 	return condition_1 && condition_2 && condition_3;
 }
 
-point_arr planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int segments)
+point_arr lunabotics::planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int segments)
 {
 	point_arr points;
 	for (int i = 0; i <= segments; i++) {
@@ -40,7 +40,7 @@ point_arr planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int seg
 	return points;
 }
 
-point_arr planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p, int segments)
+point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p, int segments)
 {		
 	//Constant values
 	const float ALPHA_STEP = 0.1;

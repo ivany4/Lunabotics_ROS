@@ -5,7 +5,8 @@
 #include <list>
 #include <sstream>
 #include "float.h"
-using namespace planning;
+using namespace lunabotics;
+using namespace lunabotics::planning;
 
 //---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
 path::path(): width(0), height(0), initialized(false), map(), nodes(), corner_nodes()

@@ -3,6 +3,7 @@
 
 #include "../types.h"
 
+namespace lunabotics {
 namespace geometry {
 	
 	class PID {
@@ -39,6 +40,7 @@ namespace geometry {
 			void setVelocityOffset(float velocityOffset);
 			void setVelocityMultiplier(float velocityMultiplier);
 	};
+}
 }
 
 #endif //_PID_H_

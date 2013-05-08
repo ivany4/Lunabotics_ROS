@@ -4,7 +4,8 @@
 #include <list>
 #include <vector>
 using namespace std;
-using namespace planning;
+using namespace lunabotics;
+using namespace lunabotics::planning;
 
 #define USE_8_DIRECTIONS	1
 
@@ -20,11 +21,13 @@ node::node(const node &copyin): x(copyin.x), y(copyin.y), parent_x(copyin.parent
 								H(copyin.H)
 {
 }
+namespace lunabotics {
 namespace planning {
 std::ostream &operator<<(std::ostream &output, const node &aaa)
 {
    output << "(" << aaa.x << "," << aaa.y << ")";// [parent (" << aaa.parent_x << "," << aaa.parent_y << "), F:" << aaa.F << " G:" << aaa.G << " H:" << aaa.H << "]" << endl;
    return output;
+}
 }
 }
 

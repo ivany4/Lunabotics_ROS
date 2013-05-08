@@ -3,7 +3,7 @@ import "Point.proto";
 import "Twist.proto";
 import "AllWheelState.proto";
 
-package lunabotics;
+package lunabotics.proto;
 
 message Telemetry {
 	enum PointTurnState {

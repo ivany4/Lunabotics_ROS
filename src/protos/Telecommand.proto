@@ -2,7 +2,7 @@ import "SteeringModeType.proto";
 import "Point.proto";
 import "AllWheelControl.proto";
 
-package lunabotics;
+package lunabotics.proto;
 
 message Telecommand {
     enum Type {

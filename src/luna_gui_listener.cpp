@@ -3,7 +3,7 @@
 #include "lunabotics/ControlMode.h"
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
-#include "lunabotics/AllWheelStateROS.h"
+#include "lunabotics/AllWheelState.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/ICRControl.h"
 #include "geometry/allwheel.h"
@@ -54,7 +54,7 @@ void emergency_stop()
 	controlMsg.motion.angular.z = 0;
 	controlPublisher.publish(controlMsg);
 	
-	lunabotics::AllWheelStateROS msg;
+	lunabotics::AllWheelState msg;
 	msg.driving.left_front = 0;
 	msg.driving.right_front = 0;
 	msg.driving.left_rear = 0;
@@ -69,7 +69,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 	if (!ec) {
 		ROS_INFO("Received %d bytes", (int)bytes_transferred);
 		
-		lunabotics::Telecommand tc;
+		lunabotics::proto::Telecommand tc;
 		
 		if (!tc.ParseFromArray(buffer.data(), bytes_transferred)) {
 			ROS_ERROR("Failed to parse Telecommand object");
@@ -78,7 +78,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 		}
 		
 		switch(tc.type()) {
-			case lunabotics::Telecommand::SET_AUTONOMY: {
+			case lunabotics::proto::Telecommand::SET_AUTONOMY: {
 				
 				ROS_INFO("%s autonomy", tc.autonomy_data().enabled() ? "Enabling" : "Disabling");
 				
@@ -88,15 +88,15 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			}
 			break;
 			
-			case lunabotics::Telecommand::STEERING_MODE: {
+			case lunabotics::proto::Telecommand::STEERING_MODE: {
 				
-				lunabotics::SteeringModeType type = tc.steering_mode_data().type();
+				lunabotics::proto::SteeringModeType type = tc.steering_mode_data().type();
 				
 				ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
 				
 				lunabotics::ControlMode controlModeMsg;
 				controlModeMsg.mode = type;
-				if (type == lunabotics::ACKERMANN) {
+				if (type == lunabotics::proto::ACKERMANN) {
 					controlModeMsg.linear_speed_limit = tc.steering_mode_data().ackermann_steering_data().max_linear_velocity();
 					controlModeMsg.smth_else = tc.steering_mode_data().ackermann_steering_data().bezier_curve_segments();
 				}
@@ -104,7 +104,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			}
 			break;
 			
-			case lunabotics::Telecommand::TELEOPERATION: {
+			case lunabotics::proto::Telecommand::TELEOPERATION: {
 				lunabotics::Control controlMsg;
 				
 			    bool driveForward 	= tc.teleoperation_data().forward();
@@ -141,7 +141,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			}
 			break;
 			
-			case lunabotics::Telecommand::DEFINE_ROUTE: {
+			case lunabotics::proto::Telecommand::DEFINE_ROUTE: {
 				float goalX = tc.define_route_data().goal().x();
 				float goalY = tc.define_route_data().goal().y();
 				float toleranceAngle = tc.define_route_data().heading_accuracy();
@@ -158,14 +158,14 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			}
 			break;
 			
-			case lunabotics::Telecommand::REQUEST_MAP: {
+			case lunabotics::proto::Telecommand::REQUEST_MAP: {
 				ROS_INFO("Receiving map request");
 				std_msgs::Empty emptyMsg;
 				mapRequestPublisher.publish(emptyMsg);
 			}
 			break;
 			
-			case lunabotics::Telecommand::ADJUST_PID: {
+			case lunabotics::proto::Telecommand::ADJUST_PID: {
 				lunabotics::PID pidMsg;
 				pidMsg.p = tc.adjust_pid_data().p();
 				pidMsg.i = tc.adjust_pid_data().i();
@@ -176,20 +176,20 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			}
 			break;
 			
-			case lunabotics::Telecommand::ADJUST_WHEELS: {
+			case lunabotics::proto::Telecommand::ADJUST_WHEELS: {
 				switch (tc.all_wheel_control_data().all_wheel_type()) {
-					case lunabotics::AllWheelControl::EXPLICIT: {
-						lunabotics::AllWheelState::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
-						lunabotics::AllWheelState::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
+					case lunabotics::proto::AllWheelControl::EXPLICIT: {
+						lunabotics::proto::AllWheelState::Wheels driving = tc.all_wheel_control_data().explicit_data().driving();
+						lunabotics::proto::AllWheelState::Wheels steering = tc.all_wheel_control_data().explicit_data().steering();
 						
 						float left_front = steering.left_front();
 						float right_front = steering.right_front();
 						float left_rear = steering.left_rear();
 						float right_rear = steering.right_rear();
-						geometry::validateAngles(left_front, right_front, left_rear, right_rear);
+						lunabotics::geometry::validateAngles(left_front, right_front, left_rear, right_rear);
 						
 						
-						lunabotics::AllWheelStateROS msg;
+						lunabotics::AllWheelState msg;
 						msg.driving.left_front = driving.left_front();
 						msg.driving.right_front = driving.right_front();
 						msg.driving.left_rear = driving.left_rear();
@@ -202,14 +202,14 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					}
 					break;
 					
-					case lunabotics::AllWheelControl::PREDEFINED: {
+					case lunabotics::proto::AllWheelControl::PREDEFINED: {
 						lunabotics::AllWheelCommon msg;
 						msg.predefined_cmd = tc.all_wheel_control_data().predefined_data().command();
 						allWheelCommonPublisher.publish(msg);
 					}
 					break;
 					
-					case lunabotics::AllWheelControl::ICR: {
+					case lunabotics::proto::AllWheelControl::ICR: {
 						lunabotics::ICRControl msg;
 						msg.ICR.x = tc.all_wheel_control_data().icr_data().icr().x();
 						msg.ICR.y = tc.all_wheel_control_data().icr_data().icr().y();
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 	autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
 	controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
 	goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
-	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelStateROS>("all_wheel", sizeof(float)*8);
+	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);

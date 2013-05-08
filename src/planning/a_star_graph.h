@@ -3,10 +3,11 @@
 
 #include "a_star_node.h"
 
+namespace lunabotics {
 namespace planning
 {
 	struct node_indexed {
-		planning::node node;
+		lunabotics::planning::node node;
 		int index;
 	};
 	
@@ -43,6 +44,7 @@ namespace planning
 		bool is_initialized();
 		int8_t mapAt(int x, int y);
 	};
+}
 }
 
 #endif

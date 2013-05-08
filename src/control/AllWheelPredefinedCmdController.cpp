@@ -21,9 +21,9 @@ bool lunabotics::control::PredefinedCmdController::needsMoreControl()
 	return this->_state_updated;
 }
 
-void lunabotics::control::PredefinedCmdController::setNewCommand(lunabotics::AllWheelControl::PredefinedControlType cmd)
+void lunabotics::control::PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
 {
-	if ((cmd == lunabotics::AllWheelControl::TURN_CCW || cmd == lunabotics::AllWheelControl::TURN_CW) && !this->_geometry) {
+	if ((cmd == lunabotics::proto::AllWheelControl::TURN_CCW || cmd == lunabotics::proto::AllWheelControl::TURN_CW) && !this->_geometry) {
 		ROS_WARN("Can't perform turning command since robot geometry is undefined");
 	}
 	else {
@@ -47,7 +47,7 @@ void lunabotics::control::PredefinedCmdController::incrementCnt()
 	}
 }
 
-void lunabotics::control::PredefinedCmdController::giveFeedback(lunabotics::AllWheelStateROS state)
+void lunabotics::control::PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 {
 	if (this->_expecting_result) {
 		ROS_INFO("Expecting %.2f, %.2f, %.2f, %.2f", state.steering.left_front, state.steering.right_front, state.steering.left_rear, state.steering.right_rear);
@@ -71,12 +71,12 @@ void lunabotics::control::PredefinedCmdController::setGeometry(geometry::AllWhee
 	this->_geometry = new geometry::AllWheelGeometry(geometry);
 }
 
-bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelStateROS &signal)
+bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 {
 	if (this->needsMoreControl()) {	
 		this->_state_updated = false;
 		switch (this->_current_cmd) {
-			case lunabotics::AllWheelControl::CRAB_LEFT: {
+			case lunabotics::proto::AllWheelControl::CRAB_LEFT: {
 				signal.steering.left_front = -M_PI_2;
 				signal.steering.right_front = M_PI_2;
 				signal.steering.left_rear = M_PI_2;
@@ -103,7 +103,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::CRAB_RIGHT: {
+			case lunabotics::proto::AllWheelControl::CRAB_RIGHT: {
 				signal.steering.left_front = -M_PI_2;
 				signal.steering.right_front = M_PI_2;
 				signal.steering.left_rear = M_PI_2;
@@ -130,7 +130,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::TURN_CCW: {
+			case lunabotics::proto::AllWheelControl::TURN_CCW: {
 				float lf, rf, lr, rr;
 				point_t ICR; ICR.x = 0; ICR.y = 0;
 				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
@@ -161,7 +161,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::TURN_CW: {
+			case lunabotics::proto::AllWheelControl::TURN_CW: {
 				float lf, rf, lr, rr;
 				point_t ICR; ICR.x = 0; ICR.y = 0;
 				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
@@ -192,7 +192,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::DRIVE_FORWARD: {
+			case lunabotics::proto::AllWheelControl::DRIVE_FORWARD: {
 				signal.steering.left_front = 0;
 				signal.steering.right_front = 0;
 				signal.steering.left_rear = 0;
@@ -219,7 +219,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::DRIVE_BACKWARD: {
+			case lunabotics::proto::AllWheelControl::DRIVE_BACKWARD: {
 				signal.steering.left_front = 0;
 				signal.steering.right_front = 0;
 				signal.steering.left_rear = 0;
@@ -246,7 +246,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			}
 			break;
 			
-			case lunabotics::AllWheelControl::STOP: {
+			case lunabotics::proto::AllWheelControl::STOP: {
 				signal.driving.left_front = 0;
 				signal.driving.right_front = 0;
 				signal.driving.left_rear = 0;
