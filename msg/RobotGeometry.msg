@@ -4,3 +4,4 @@ geometry_msgs/Point left_rear_joint
 geometry_msgs/Point right_rear_joint
 float32 wheel_offset
 float32 wheel_radius
+float32 wheel_width

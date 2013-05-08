@@ -72,7 +72,7 @@ namespace gazebo
 			this->wheelOffsetT = t2;
 			
 			math::Box bb = this->leftFrontWheelLink->GetBoundingBox();
-			t2.setOrigin(tf::Vector3(bb.GetSize().GetMax()*0.5,0,0));
+			t2.setOrigin(tf::Vector3(bb.GetSize().GetMax()*0.5,bb.GetSize().GetMin(),0));
 			this->wheelRadiusT = t2;		
 			
 			success = true;

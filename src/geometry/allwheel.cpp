@@ -196,6 +196,11 @@ void lunabotics::geometry::AllWheelGeometry::set_wheel_radius(float new_radius)
 	this->_wheel_radius = new_radius;
 }
 
+void lunabotics::geometry::AllWheelGeometry::set_wheel_width(float new_width)
+{
+	this->_wheel_width = new_width;
+}
+
 point_t lunabotics::geometry::AllWheelGeometry::left_front()
 {
 	return this->lf;
@@ -221,6 +226,11 @@ float lunabotics::geometry::AllWheelGeometry::wheel_offset()
 float lunabotics::geometry::AllWheelGeometry::wheel_radius()
 {
 	return this->_wheel_radius;
+}
+
+float lunabotics::geometry::AllWheelGeometry::wheel_width()
+{
+	return this->_wheel_width;
 }
 
 bool lunabotics::geometry::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)

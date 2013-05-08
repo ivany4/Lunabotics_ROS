@@ -4,7 +4,7 @@
 #include "../types.h"
 
 #define GEOMETRY_OUTER_ANGLE_MAX	M_PI_2		
-#define GEOMETRY_INNER_ANGLE_MAX	M_PI/180*70
+#define GEOMETRY_INNER_ANGLE_MAX	M_PI/180*65
 
 namespace lunabotics {
 namespace geometry {
@@ -16,6 +16,7 @@ namespace geometry {
 			point_t rr;
 			float _wheel_offset;
 			float _wheel_radius;
+			float _wheel_width;
 		
 		public:
 			AllWheelGeometry(point_t left_front, point_t left_rear, point_t right_front, point_t right_rear);
@@ -29,12 +30,14 @@ namespace geometry {
 			void set_right_rear(point_t new_point);
 			void set_wheel_offset(float new_offset);
 			void set_wheel_radius(float new_radius);
+			void set_wheel_width(float new_width);
 			point_t left_front();
 			point_t left_rear();
 			point_t right_front();
 			point_t right_rear();
 			float wheel_offset();
 			float wheel_radius();
+			float wheel_width();
 			
 	};
 	

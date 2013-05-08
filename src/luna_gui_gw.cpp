@@ -253,6 +253,7 @@ int main(int argc, char **argv)
 					positions->mutable_right_rear_joint()->set_y(geometry.right_rear_joint.y);
 					positions->set_wheel_radius(geometry.wheel_radius);
 					positions->set_wheel_offset(geometry.wheel_offset);
+					positions->set_wheel_width(geometry.wheel_width);
 					sendGeometry = false;
 				}
 				

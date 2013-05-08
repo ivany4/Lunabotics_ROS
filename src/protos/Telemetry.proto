@@ -63,6 +63,7 @@ message Telemetry {
 		required Point right_rear_joint = 4;
 		required float wheel_offset = 5;
 		required float wheel_radius = 6;
+		required float wheel_width = 7;
     }
     optional Geometry geometry_data = 7;
 }

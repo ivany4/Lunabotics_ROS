@@ -914,6 +914,7 @@ int main(int argc, char **argv)
 				allWheelGeometry->set_wheel_offset(fabs(transform.getOrigin().y()));
 				listener.lookupTransform("left_front_wheel_radius", "left_front_wheel", ros::Time(0), transform);
 				allWheelGeometry->set_wheel_radius(fabs(transform.getOrigin().x()));
+				allWheelGeometry->set_wheel_width(fabs(transform.getOrigin().y()));
 				
 				predCtrl->setGeometry(allWheelGeometry);
 				
@@ -931,6 +932,7 @@ int main(int argc, char **argv)
 			msg.right_rear_joint = allWheelGeometry->right_rear();
 			msg.wheel_radius = allWheelGeometry->wheel_radius();
 			msg.wheel_offset = allWheelGeometry->wheel_offset();
+			msg.wheel_width = allWheelGeometry->wheel_width();
 			geometryPublisher.publish(msg);
 		}
 #endif
