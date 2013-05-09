@@ -35,6 +35,7 @@ namespace geometry {
 			point_t left_rear();
 			point_t right_front();
 			point_t right_rear();
+			point_t point_outside_base_link(point_t ICR);
 			float wheel_offset();
 			float wheel_radius();
 			float wheel_width();

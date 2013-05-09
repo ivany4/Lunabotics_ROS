@@ -23,10 +23,10 @@ bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float 
 {
 //	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
 	
-	bool ICROnRight = -this->rf.y < ICR.x;
-	bool ICROnLeft = ICR.x < -this->lf.y;
-	bool ICROnTop = ICR.y > this->lf.x;
-	bool ICROnBottom = ICR.y < this->lr.x;
+	bool ICROnRight = ICR.y < this->rf.y;
+	bool ICROnLeft = ICR.y > this->lf.y;
+	bool ICROnTop = ICR.x > this->lf.x;
+	bool ICROnBottom = ICR.x < this->lr.x;
 	
 	if ((ICROnTop || ICROnBottom) && !(ICROnRight || ICROnLeft)) {
 		ROS_ERROR("Unhandled ICR position");
@@ -37,39 +37,39 @@ bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float 
 			//ICR is on the right from the robot
 		//	ROS_INFO("ICR on the right");
 			
-			double offset = ICR.x+this->rf.y;
+			double offset = -ICR.y+this->rf.y;
 		//	ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
-			right_front = -atan2(this->rf.x-ICR.y, offset);
-			right_rear = atan2(-this->rr.x+ICR.y, offset);
+			right_front = -atan2(this->rf.x-ICR.x, offset);
+			right_rear = atan2(-this->rr.x+ICR.x, offset);
 			offset += (this->lf.y-this->rf.y);
 		//	ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
-			left_front = -atan2(this->lf.x-ICR.y, offset);
-			left_rear = atan2(-this->lr.x+ICR.y, offset);
+			left_front = -atan2(this->lf.x-ICR.x, offset);
+			left_rear = atan2(-this->lr.x+ICR.x, offset);
 		}
 		else if (ICROnLeft) {
 			//ICR is on the left from the robot
 		//	ROS_INFO("ICR on the left");
 			
-			double offset = -this->lf.y-ICR.x;
-			left_front = atan2(this->lf.x-ICR.y, offset);
-			left_rear = -atan2(-this->lr.x+ICR.y, offset);
+			double offset = ICR.y-this->lf.y;
+			left_front = atan2(this->lf.x-ICR.x, offset);
+			left_rear = -atan2(-this->lr.x+ICR.x, offset);
 		//	ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
 			offset += (this->lf.y-this->rf.y);
-			right_front = atan2(this->rf.x-ICR.y, offset);
-			right_rear = -atan2(-this->rr.x+ICR.y, offset);
+			right_front = atan2(this->rf.x-ICR.x, offset);
+			right_rear = -atan2(-this->rr.x+ICR.x, offset);
 	//		ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 		}
 		else {
 			//ICR is underneath the robot
 		//	ROS_INFO("ICR in between");
 			
-			double offset = this->lf.y+ICR.x;
-			left_front = -atan2(this->lf.x-ICR.y, offset);
-			left_rear = atan2(-this->lr.x+ICR.y, offset);
+			double offset = this->lf.y-ICR.y;
+			left_front = -atan2(this->lf.x-ICR.x, offset);
+			left_rear = atan2(-this->lr.x+ICR.x, offset);
 	//		ROS_INFO("Left offset %f top %f bottom %f", offset, this->lf.x-ICR.y, -this->lr.x+ICR.y);
-			offset = -this->rf.y-ICR.x;
-			right_front = atan2(this->rf.x-ICR.y, offset);
-			right_rear = -atan2(-this->rr.x+ICR.y, offset);
+			offset = -this->rf.y+ICR.y;
+			right_front = atan2(this->rf.x-ICR.x, offset);
+			right_rear = -atan2(-this->rr.x+ICR.x, offset);
 	//		ROS_INFO("Right offset %f top %f bottom %f", offset, this->rf.x-ICR.y, -this->rr.x+ICR.y);
 		}
 	//	ROS_INFO("Calculated angles are %.2f | %.2f | %.2f | %.2f", left_front, right_front, left_rear, right_rear);
@@ -81,32 +81,27 @@ bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float 
 bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_velocity, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 	//Coordinate frames are different
-	point_t ICRPoint;
-	ICRPoint.x = ICR.y;
-	ICRPoint.y = -ICR.x;
 	
 //	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
-	bool ICROnRight = -this->rf.y < ICRPoint.y;
-	bool ICROnLeft = ICRPoint.y < -this->lf.y;
-	bool ICROnTop = ICRPoint.x > this->lf.x;
-	bool ICROnBottom = ICRPoint.x < this->lr.x;
+	bool ICROnRight = ICR.y < this->rf.y;
+	bool ICROnLeft = ICR.y > this->lf.y;
+	bool ICROnTop = ICR.x > this->lf.x;
+	bool ICROnBottom = ICR.x < this->lr.x;
 	
 	if ((ICROnTop || ICROnBottom) && !(ICROnRight || ICROnLeft)) {
 		ROS_ERROR("Unhandled ICR position");
 		return false;
 	}
-	else {
-		#pragma message("Note; Fixed wheel radius and offset");
-		
-		double left_front_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->lf);
-		double right_front_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->rf);
-		double left_rear_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->lr);
-		double right_rear_shoulder = geometry::distanceBetweenPoints(ICRPoint, this->rr);
+	else {		
+		double left_front_shoulder = geometry::distanceBetweenPoints(ICR, this->lf);
+		double right_front_shoulder = geometry::distanceBetweenPoints(ICR, this->rf);
+		double left_rear_shoulder = geometry::distanceBetweenPoints(ICR, this->lr);
+		double right_rear_shoulder = geometry::distanceBetweenPoints(ICR, this->rr);
 		
 	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
 		if (ICROnRight) {
-	//		ROS_INFO("ICR on the right");
+			//ROS_INFO("ICR on the right");
 			right_front_shoulder -= this->_wheel_offset;
 			right_rear_shoulder -= this->_wheel_offset;
 			left_front_shoulder += this->_wheel_offset;
@@ -114,7 +109,7 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 		}
 		else if (ICROnLeft) {
 			//ICR is on the left from the robot
-	//		ROS_INFO("ICR on the left");
+			//ROS_INFO("ICR on the left");
 			right_front_shoulder += this->_wheel_offset;
 			right_rear_shoulder += this->_wheel_offset;
 			left_front_shoulder -= this->_wheel_offset;
@@ -122,17 +117,17 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 		}
 		else {
 			//ICR is underneath the robot
-	//		ROS_INFO("ICR in between");
+			//ROS_INFO("ICR in between");
 			right_front_shoulder += this->_wheel_offset;
 			right_rear_shoulder += this->_wheel_offset;
 			left_front_shoulder += this->_wheel_offset;
 			left_rear_shoulder += this->_wheel_offset;
 		}
 		
-	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
+		//ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
 		point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
-		double center_shoulder = geometry::distanceBetweenPoints(ICRPoint, zeroPoint);
+		double center_shoulder = geometry::distanceBetweenPoints(ICR, zeroPoint);
 		double ang_vel = center_velocity/center_shoulder;
 		
 		double left_front_vel = left_front_shoulder*ang_vel;
@@ -146,7 +141,7 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 		right_rear = right_rear_vel/this->_wheel_radius;
 		
 		if (!ICROnLeft && !ICROnRight) {
-			if (ICR.x > 0) {
+			if (ICR.y < 0) {
 				right_front *= -1;
 				right_rear *= -1;
 			}
@@ -272,4 +267,14 @@ bool lunabotics::geometry::validateAngles(float &left_front, float &right_front,
 		right_rear = -GEOMETRY_OUTER_ANGLE_MAX;
 	}
 	return result;
+}
+
+point_t lunabotics::geometry::AllWheelGeometry::point_outside_base_link(point_t ICR)
+{
+	if (ICR.y < 0 && ICR.y > this->rf.y) {
+		ICR.y = this->rf.y;
+	}
+	else if (ICR.y >= 0 && ICR.y < this->lf.y) {
+		ICR.y = this->lf.y;
+	}
 }

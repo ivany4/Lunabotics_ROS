@@ -241,7 +241,7 @@ void ICRCallback(const lunabotics::ICRControl& msg)
 			float vel_front_right;
 			float vel_rear_left;
 			float vel_rear_right;
-			if (fabs(msg.ICR.x-currentPose.position.x) < 0.001 && fabs(msg.ICR.y-currentPose.position.y) < 0.001) {
+			if (fabs(msg.ICR.x) < 0.001 && fabs(msg.ICR.y) < 0.001) {
 				//Point turn
 				vel_front_left = vel_rear_right = msg.velocity;
 				vel_front_right = vel_rear_left = -msg.velocity;
@@ -629,8 +629,8 @@ void controlAckermannAllWheel()
 			double angle = lunabotics::geometry::normalizedAngle(atan2(dy, dx)-tf::getYaw(currentPose.orientation));
 			if (fabs(angle) > angleAccuracy) {
 				//ROS_WARN("Facing away from the trajectory. Turning in place");
-				controlSkid();
-				return;
+			//	controlSkid();
+			//	return;
 			}
 		}
 		
@@ -662,21 +662,26 @@ void controlAckermannAllWheel()
 			
 			point_t ICR;
 			double alpha = M_PI_2-gamma1;
-			double offset_y = allWheelGeometry->left_front().x;
-			double offset_x = tan(alpha)*offset_y;
-			ICR.x = offset_x;
-			ICR.y = 0;
+			double offset_x = allWheelGeometry->left_front().x;
+			double offset_y = tan(alpha)*offset_x;
+			ICR.x = 0;
+			ICR.y = offset_y;
+			ICR = allWheelGeometry->point_outside_base_link(ICR);
 			ICRPublisher.publish(ICR);
 			
-			ROS_INFO("Alpha %f offset %f,%f", alpha, offset_x, offset_y);
+			ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
 			
-			float velocity = 0.1;
+			float velocity = 0.1+0.5/signal;
 			
 			float angle_front_left;
 			float angle_front_right;
 			float angle_rear_left;
 			float angle_rear_right;
 			if (allWheelGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+				
+				//Set angles to the ones outside dead zone
+				lunabotics::geometry::validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right);
+				
 				lunabotics::AllWheelState controlMsg;
 				controlMsg.steering.left_front = angle_front_left;
 				controlMsg.steering.right_front = angle_front_right;
@@ -686,12 +691,7 @@ void controlAckermannAllWheel()
 				float vel_front_right;
 				float vel_rear_left;
 				float vel_rear_right;
-				if (fabs(ICR.x-currentPose.position.x) < 0.001 && fabs(ICR.y-currentPose.position.y) < 0.001) {
-					//Point turn
-					vel_front_left = vel_rear_right = velocity;
-					vel_front_right = vel_rear_left = -velocity;
-				}
-				else if (!allWheelGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+				if (!allWheelGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
 					vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
 				}
 				controlMsg.driving.left_front = vel_front_left;
