@@ -272,9 +272,10 @@ bool lunabotics::geometry::validateAngles(float &left_front, float &right_front,
 point_t lunabotics::geometry::AllWheelGeometry::point_outside_base_link(point_t ICR)
 {
 	if (ICR.y < 0 && ICR.y > this->rf.y) {
-		ICR.y = this->rf.y;
+		ICR.y = this->rf.y-this->_wheel_offset/2;
 	}
 	else if (ICR.y >= 0 && ICR.y < this->lf.y) {
-		ICR.y = this->lf.y;
+		ICR.y = this->lf.y+this->_wheel_offset/2;
 	}
+	return ICR;
 }
