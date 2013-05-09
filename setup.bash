@@ -15,6 +15,10 @@ lunagazebo() {
 	gazebo `rospack find lunabotics`/gazebo/worlds/cubic.sdf
 }
 
+lunamoon() {
+	gazebo `rospack find lunabotics`/gazebo/worlds/moon.sdf
+}
+
 lunactrl() {
 	rosrun teleop_base teleop_base_keyboard base_controller/command:=$1
 }
