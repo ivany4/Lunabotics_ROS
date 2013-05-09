@@ -15,3 +15,34 @@ material Lunabotics/Wheel
     }
   }
 }
+
+material Lunabotics/Steel
+{
+  receive_shadows on
+
+  technique
+  {
+    pass
+    {
+			ambient 1 1 1 1.000000
+
+      texture_unit
+      {
+        texture steel.jpg
+      }
+    }
+  }
+}
+
+material Lunabotics/Orange
+{
+	technique
+	{
+		pass
+		{
+			ambient 1 0 1 1.0
+			diffuse 1 0 1 1.0
+			specular 1 1 1 1 1
+		}
+	}
+}
