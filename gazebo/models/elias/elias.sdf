@@ -15,7 +15,7 @@
                     <izz>1.0</izz>
                 </inertia>
             </inertial>
-            <collision name="base">
+            <collision name="main_frame">
                 <pose>0 0 0 0 0 0</pose>
                 <geometry>
                     <box>
@@ -39,7 +39,15 @@
                     </box>
                 </geometry>
             </collision>
-            <visual name="base">
+            <collision name="bucket">
+				<pose>0.53 0 0.15 1.57 0 3.14</pose>
+                <geometry>
+                    <mesh>
+                        <uri>model://elias/meshes/bucket.dae</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name="main_frame">
                 <pose>0 0 0 0 0 0</pose>
                 <geometry>
                     <box>
@@ -49,7 +57,7 @@
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Wood</name>
+                        <name>Gazebo/Red</name>
                     </script>
                 </material>
             </visual>
@@ -63,7 +71,7 @@
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Wood</name>
+                        <name>Gazebo/Red</name>
                     </script>
                 </material>
             </visual>
@@ -77,29 +85,21 @@
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Wood</name>
+                        <name>Gazebo/Red</name>
                     </script>
                 </material>
             </visual>
-            <visual name="monkey">
-                <pose>0 0 0.5 0 0 1.57</pose>
+            <visual name="bucket">
+				<pose>0.53 0 0.15 1.57 0 3.14</pose>
                 <geometry>
                     <mesh>
-                        <uri>model://elias/meshes/monkey.dae</uri>
+                        <uri>model://elias/meshes/bucket.dae</uri>
                     </mesh>
-                </geometry>
-            </visual>
-            <visual name="support">
-                <pose>0 0 0.275 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.1 0.1 0.45</size>
-                    </box>
                 </geometry>
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Red</name>
+                        <name>Gazebo/Grey</name>
                     </script>
                 </material>
             </visual>
@@ -133,16 +133,14 @@
             </collision>
             <visual name="visual">
                 <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
+                    <mesh>
+                        <uri>model://elias/meshes/wheel.dae</uri>
+                    </mesh>
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/materials/scripts</uri>
-                        <uri>model://elias/materials/textures</uri>
-                        <name>Lunabotics/Wheel</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Yellow</name>
                     </script>
                 </material>
             </visual>
@@ -176,16 +174,14 @@
             </collision>
             <visual name="visual">
                 <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
+                    <mesh>
+                        <uri>model://elias/meshes/wheel.dae</uri>
+                    </mesh>
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/materials/scripts</uri>
-                        <uri>model://elias/materials/textures</uri>
-                        <name>Lunabotics/Wheel</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Yellow</name>
                     </script>
                 </material>
             </visual>
@@ -219,16 +215,14 @@
             </collision>
             <visual name="visual">
                 <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
+                    <mesh>
+                        <uri>model://elias/meshes/wheel.dae</uri>
+                    </mesh>
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/materials/scripts</uri>
-                        <uri>model://elias/materials/textures</uri>
-                        <name>Lunabotics/Wheel</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Yellow</name>
                     </script>
                 </material>
             </visual>
@@ -262,16 +256,14 @@
             </collision>
             <visual name="visual">
                 <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
+                    <mesh>
+                        <uri>model://elias/meshes/wheel.dae</uri>
+                    </mesh>
                 </geometry>
                 <material>
                     <script>
-                        <uri>model://elias/materials/scripts</uri>
-                        <uri>model://elias/materials/textures</uri>
-                        <name>Lunabotics/Wheel</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Yellow</name>
                     </script>
                 </material>
             </visual>
@@ -626,7 +618,7 @@
         </joint>
         <include>
             <uri>model://hokuyo</uri>
-            <pose>0.53 0 0.085 0 0 0</pose> 
+            <pose>0.56 0 0.085 0 0 0</pose> 
         </include>
         <joint name="hokuyo_joint" type="revolute">
             <child>
