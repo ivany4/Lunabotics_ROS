@@ -1,11 +1,13 @@
 #include "allwheel.h"
 #include "ros/ros.h"
 #include "basic.h"
+using namespace lunabotics;
 
-lunabotics::geometry::AllWheelGeometry::AllWheelGeometry(point_t left_front, point_t left_rear, point_t right_front, point_t right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
+
+AllWheelGeometry::AllWheelGeometry(Point left_front, Point left_rear, Point right_front, Point right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
 }
 
-lunabotics::geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
+AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
 {
 	this->lf = copy->left_front();
 	this->lr = copy->left_rear();
@@ -15,11 +17,11 @@ lunabotics::geometry::AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy)
 	this->_wheel_radius = copy->wheel_radius();
 }
 
-lunabotics::geometry::AllWheelGeometry::~AllWheelGeometry()
+AllWheelGeometry::~AllWheelGeometry()
 {
 }
 
-bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool AllWheelGeometry::calculateAngles(Point ICR, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 //	ROS_INFO("Joint positions (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)", this->lf.x, this->lf.y, this->rf.x, this->rf.y, this->lr.x, this->lr.y, this->rr.x, this->rr.y);
 	
@@ -78,7 +80,7 @@ bool lunabotics::geometry::AllWheelGeometry::calculateAngles(point_t ICR, float 
 	return true;
 }
 
-bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, float center_velocity, float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool AllWheelGeometry::calculateVelocities(Point ICR, float center_velocity, float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 	//Coordinate frames are different
 	
@@ -93,10 +95,10 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 		return false;
 	}
 	else {		
-		double left_front_shoulder = geometry::distanceBetweenPoints(ICR, this->lf);
-		double right_front_shoulder = geometry::distanceBetweenPoints(ICR, this->rf);
-		double left_rear_shoulder = geometry::distanceBetweenPoints(ICR, this->lr);
-		double right_rear_shoulder = geometry::distanceBetweenPoints(ICR, this->rr);
+		double left_front_shoulder = distance(ICR, this->lf);
+		double right_front_shoulder = distance(ICR, this->rf);
+		double left_rear_shoulder = distance(ICR, this->lr);
+		double right_rear_shoulder = distance(ICR, this->rr);
 		
 	//	ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
@@ -126,8 +128,8 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 		
 		//ROS_INFO("Shoulders are are %.2f | %.2f | %.2f | %.2f", left_front_shoulder, right_front_shoulder, left_rear_shoulder, right_rear_shoulder);
 		
-		point_t zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
-		double center_shoulder = geometry::distanceBetweenPoints(ICR, zeroPoint);
+		Point zeroPoint; zeroPoint.x = 0; zeroPoint.y = 0;
+		double center_shoulder = distance(ICR, zeroPoint);
 		double ang_vel = center_velocity/center_shoulder;
 		
 		double left_front_vel = left_front_shoulder*ang_vel;
@@ -161,74 +163,74 @@ bool lunabotics::geometry::AllWheelGeometry::calculateVelocities(point_t ICR, fl
 	return true;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_left_front(point_t new_point)
+void AllWheelGeometry::set_left_front(Point new_point)
 {
 	this->lf = new_point;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_left_rear(point_t new_point)
+void AllWheelGeometry::set_left_rear(Point new_point)
 {
 	this->lr = new_point;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_right_front(point_t new_point)
+void AllWheelGeometry::set_right_front(Point new_point)
 {
 	this->rf = new_point;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_right_rear(point_t new_point)
+void AllWheelGeometry::set_right_rear(Point new_point)
 {
 	this->rr = new_point;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_wheel_offset(float new_offset)
+void AllWheelGeometry::set_wheel_offset(float new_offset)
 {
 	this->_wheel_offset = new_offset;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_wheel_radius(float new_radius)
+void AllWheelGeometry::set_wheel_radius(float new_radius)
 {
 	this->_wheel_radius = new_radius;
 }
 
-void lunabotics::geometry::AllWheelGeometry::set_wheel_width(float new_width)
+void AllWheelGeometry::set_wheel_width(float new_width)
 {
 	this->_wheel_width = new_width;
 }
 
-point_t lunabotics::geometry::AllWheelGeometry::left_front()
+Point AllWheelGeometry::left_front()
 {
 	return this->lf;
 }
-point_t lunabotics::geometry::AllWheelGeometry::left_rear()
+Point AllWheelGeometry::left_rear()
 {
 	return this->lr;
 }
-point_t lunabotics::geometry::AllWheelGeometry::right_front()
+Point AllWheelGeometry::right_front()
 {
 	return this->rf;
 }
-point_t lunabotics::geometry::AllWheelGeometry::right_rear()
+Point AllWheelGeometry::right_rear()
 {
 	return this->rr;
 }
 
-float lunabotics::geometry::AllWheelGeometry::wheel_offset()
+float AllWheelGeometry::wheel_offset()
 {
 	return this->_wheel_offset;
 }
 
-float lunabotics::geometry::AllWheelGeometry::wheel_radius()
+float AllWheelGeometry::wheel_radius()
 {
 	return this->_wheel_radius;
 }
 
-float lunabotics::geometry::AllWheelGeometry::wheel_width()
+float AllWheelGeometry::wheel_width()
 {
 	return this->_wheel_width;
 }
 
-bool lunabotics::geometry::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)
+bool lunabotics::validateAngles(float &left_front, float &right_front, float &left_rear, float &right_rear)
 {
 	bool result = true;
 	if (left_front > GEOMETRY_INNER_ANGLE_MAX) {
@@ -269,7 +271,7 @@ bool lunabotics::geometry::validateAngles(float &left_front, float &right_front,
 	return result;
 }
 
-point_t lunabotics::geometry::AllWheelGeometry::point_outside_base_link(point_t ICR)
+Point AllWheelGeometry::point_outside_base_link(Point ICR)
 {
 	if (ICR.y < 0 && ICR.y > this->rf.y) {
 		ICR.y = this->rf.y-this->_wheel_offset/2;

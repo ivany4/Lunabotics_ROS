@@ -1,5 +1,6 @@
 rosbuild_add_library(geometry 
 	basic.cpp
-	PID.cpp
+	PIDGeometry.cpp
 	allwheel.cpp
+	BezierCurve.cpp
 )

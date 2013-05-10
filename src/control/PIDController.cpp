@@ -1,16 +1,18 @@
 #include "PIDController.h"
 #include <numeric>
 
-lunabotics::control::PIDController::PIDController(): Kp(0), Ki(0), Kd(0), integralBufferSize(10), integral(), prev_error(0), prev_time(ros::Time::now()) {
+using namespace lunabotics;
+
+PIDController::PIDController(): Kp(0), Ki(0), Kd(0), integralBufferSize(10), integral(), prev_error(0), prev_time(ros::Time::now()) {
 }
 
-lunabotics::control::PIDController::PIDController(double Kp, double Ki, double Kd): Kp(Kp), Ki(Ki), Kd(Kd), integralBufferSize(10), integral(), prev_error(0), prev_time(ros::Time::now()) {
+PIDController::PIDController(double Kp, double Ki, double Kd): Kp(Kp), Ki(Ki), Kd(Kd), integralBufferSize(10), integral(), prev_error(0), prev_time(ros::Time::now()) {
 }
 
-lunabotics::control::PIDController::~PIDController() {
+PIDController::~PIDController() {
 }
 
-bool lunabotics::control::PIDController::control(double error, double &signal) {
+bool PIDController::control(double error, double &signal) {
 	ros::Time now = ros::Time::now();		
 	ros::Duration duration = now - this->prev_time;
 	
@@ -41,17 +43,17 @@ bool lunabotics::control::PIDController::control(double error, double &signal) {
 }
 		
 
-void lunabotics::control::PIDController::setP(double p)
+void PIDController::setP(double p)
 {
 	this->Kp = p;
 }
 
-void lunabotics::control::PIDController::setI(double i)
+void PIDController::setI(double i)
 {
 	this->Ki = i;
 }
 
-void lunabotics::control::PIDController::setD(double d)
+void PIDController::setD(double d)
 {
 	this->Kd = d;
 }

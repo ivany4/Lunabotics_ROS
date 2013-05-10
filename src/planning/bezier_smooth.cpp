@@ -3,8 +3,7 @@
 #include "float.h"
 #include "../geometry/basic.h"
 
-using namespace std;
-
+using namespace lunabotics;
 
 double alpha_p(double beta, double K_alpha, double K_beta)
 {
@@ -16,7 +15,7 @@ double beta_p(double alpha, double K_alpha, double K_beta)
 	return K_beta/pow(1-sqrt(K_alpha/alpha), 2);
 }
 
-bool point_is_within_triangle(point_t p, double alpha_bar, double beta_bar, double theta)
+bool point_is_within_triangle(Point p, double alpha_bar, double beta_bar, double theta)
 {
 	bool condition_1 = p.y > 0 && p.y < beta_bar*sin(theta);
 	bool condition_2 = p.y*cos(theta) + p.x*sin(theta) > 0;
@@ -24,23 +23,20 @@ bool point_is_within_triangle(point_t p, double alpha_bar, double beta_bar, doub
 	return condition_1 && condition_2 && condition_3;
 }
 
-point_arr lunabotics::planning::quadratic_bezier(point_t q0, point_t q1, point_t q2, int segments)
+PointArr lunabotics::quadratic_bezier(Point q0, Point q1, Point q2, int segments)
 {
-	point_arr points;
+	PointArr points;
 	for (int i = 0; i <= segments; i++) {
 		float lambda = i/(float)segments;
-		point_t point;
 		double a = pow(1-lambda, 2);
 		double b = 2*lambda*(1-lambda);
 		double c = pow(lambda, 2);
-		point.x = a*q0.x + b*q1.x + c*q2.x;
-		point.y = a*q0.y + b*q1.y + c*q2.y;
-		points.push_back(point);
+		points.push_back(CreatePoint(a*q0.x + b*q1.x + c*q2.x, a*q0.y + b*q1.y + c*q2.y));
 	}
 	return points;
 }
 
-point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_t q2, point_t p, int segments)
+PointArr lunabotics::trajectory_bezier(Point q0, Point q1, Point q2, Point p, int segments)
 {		
 	//Constant values
 	const float ALPHA_STEP = 0.1;
@@ -49,7 +45,7 @@ point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_
 	//Preserve transformation parameters to reconstruct global coordinates for the curve
 	double tx = -q1.x;
 	double ty = -q1.y;
-	point_t w1 = q1;
+	Point w1 = q1;
 	
 	//Translate to make the origin at q1
 	q0.x += tx;
@@ -72,7 +68,7 @@ point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_
 	double rotate_by = theta1;
 	if (residual_angle >= 0 && residual_angle <= M_PI) {
 		//Swap points
-		point_t c = q2;
+		Point c = q2;
 		q2 = q0;
 		q0 = c;
 		flipped = true;
@@ -81,9 +77,9 @@ point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_
 		rotate_by = -(M_PI+theta2);
 	}
 	
-	q0 = geometry::rotatePoint(q0, rotate_by, CW);
-	q2 = geometry::rotatePoint(q2, rotate_by, CW);
-	p = geometry::rotatePoint(p, rotate_by, CW);
+	q0 = lunabotics::rotatePoint(q0, rotate_by, CW);
+	q2 = lunabotics::rotatePoint(q2, rotate_by, CW);
+	p = lunabotics::rotatePoint(p, rotate_by, CW);
 	
 	ROS_INFO("rotate_by=%f, q0=%f,%f, q2=%f,%f, p=%f,%f", rotate_by, q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
@@ -134,8 +130,8 @@ point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_
 	q1 = w1;
 	
 	//Rotate
-	q0 = geometry::rotatePoint(q0, rotate_by, CCW);
-	q2 = geometry::rotatePoint(q2, rotate_by, CCW);
+	q0 = lunabotics::rotatePoint(q0, rotate_by, CCW);
+	q2 = lunabotics::rotatePoint(q2, rotate_by, CCW);
 	
 	//Translate
 	q0.x -= tx;
@@ -144,10 +140,10 @@ point_arr lunabotics::planning::trajectory_bezier(point_t q0, point_t q1, point_
 	q2.y -= ty;
 	
 	if (flipped) {
-		point_t c = q0;
+		Point c = q0;
 		q0 = q2;
 		q2 = c;
 	}
 	
-	return planning::quadratic_bezier(q0, q1, q2, segments);
+	return quadratic_bezier(q0, q1, q2, segments);
 }

@@ -33,7 +33,7 @@ lunabotics::Vision vision;
 lunabotics::RobotGeometry geometry;
 lunabotics::AllWheelState allWheelStateMsg;
 nav_msgs::Path path;
-point_t ICR;
+geometry_msgs::Point ICR;
 lunabotics::proto::SteeringModeType controlMode = lunabotics::proto::ACKERMANN;
 
 bool tryConnect(boost::asio::ip::tcp::resolver::query tcp_query)

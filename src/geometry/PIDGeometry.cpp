@@ -1,28 +1,30 @@
-#include "PID.h"
+#include "PIDGeometry.h"
 #include "basic.h"
 #include "tf/tf.h"
 
+using namespace lunabotics;
+
 //---------------- Contructors / Destructor ---------------------//
 
-lunabotics::geometry::PID::PID(): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(false), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(0.05), _velocityMultiplier(0.25)
+PIDGeometry::PIDGeometry(): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(false), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(0.05), _velocityMultiplier(0.25)
 {
 }
 
-lunabotics::geometry::PID::PID(float velocityOffset, float velocityMultiplier): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(true), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(velocityOffset), _velocityMultiplier(velocityMultiplier)
+PIDGeometry::PIDGeometry(float velocityOffset, float velocityMultiplier): _currentPose(), _referencePoint(), _referencePointIsValid(false), _trajectory(), _closestTrajectoryPointIsValid(true), _closestTrajectoryPoint(), _closestTrajectoryPointInLocalFrame(), _referencePointInLocalFrame(), _referenceDistance(0), _localFrameIsValid(false), _linearVelocity(0), _velocityOffset(velocityOffset), _velocityMultiplier(velocityMultiplier)
 {
 }
 
-lunabotics::geometry::PID::~PID()
+PIDGeometry::~PIDGeometry()
 {
 }
 
 
 //---------------- Getters / Setters ----------------------------//
 
-point_t lunabotics::geometry::PID::getReferencePoint()
+Point PIDGeometry::getReferencePoint()
 {
 	if (!_referencePointIsValid) {
-		double theta = tf::getYaw(_currentPose.orientation);
+		double theta = _currentPose.orientation;
 		double velocityVector = _velocityOffset + _linearVelocity * _velocityMultiplier;
 		_referencePoint.x = _currentPose.position.x + velocityVector*cos(theta);
 		_referencePoint.y = _currentPose.position.y + velocityVector*sin(theta);
@@ -30,7 +32,7 @@ point_t lunabotics::geometry::PID::getReferencePoint()
 	return _referencePoint;
 }
 
-point_t lunabotics::geometry::PID::getReferencePointInLocalFrame()
+Point PIDGeometry::getReferencePointInLocalFrame()
 {
 	if (!_localFrameIsValid) {
 		this->updateLocalFrame();
@@ -38,7 +40,7 @@ point_t lunabotics::geometry::PID::getReferencePointInLocalFrame()
 	return _referencePointInLocalFrame;
 }
 
-point_t lunabotics::geometry::PID::getClosestTrajectoryPointInLocalFrame()
+Point PIDGeometry::getClosestTrajectoryPointInLocalFrame()
 {
 	if (!_localFrameIsValid) {
 		this->updateLocalFrame();
@@ -46,7 +48,7 @@ point_t lunabotics::geometry::PID::getClosestTrajectoryPointInLocalFrame()
 	return _closestTrajectoryPointInLocalFrame;
 }
 
-double lunabotics::geometry::PID::getReferenceDistance()
+double PIDGeometry::getReferenceDistance()
 {
 	if (!_localFrameIsValid) {
 		this->updateLocalFrame();
@@ -54,26 +56,26 @@ double lunabotics::geometry::PID::getReferenceDistance()
 	return _referenceDistance;
 }
 
-point_t lunabotics::geometry::PID::getClosestTrajectoryPoint()
+Point PIDGeometry::getClosestTrajectoryPoint()
 {
 	if (!_closestTrajectoryPointIsValid) {
 		_closestTrajectoryPoint = this->getReferencePoint();
 		if (_trajectory.size() >= 2) {
-			point_arr::iterator closestWaypointIterator = _trajectory.begin();
-			point_arr::iterator secondClosestWaypointIterator = _trajectory.begin()+1;
-			double closestDistance = geometry::distanceBetweenPoints(this->getReferencePoint(), *closestWaypointIterator);
-			double secondClosestDistance = geometry::distanceBetweenPoints(this->getReferencePoint(), *secondClosestWaypointIterator);
+			PointArr::iterator closestWaypointIterator = _trajectory.begin();
+			PointArr::iterator secondClosestWaypointIterator = _trajectory.begin()+1;
+			double closestDistance = distance(this->getReferencePoint(), *closestWaypointIterator);
+			double secondClosestDistance = distance(this->getReferencePoint(), *secondClosestWaypointIterator);
 			if (secondClosestDistance < closestDistance) {
 				//Swap values to keep closestWaypoint always the closest one
 				double tmp_dist = closestDistance;
 				closestDistance = secondClosestDistance;
 				secondClosestDistance = tmp_dist;
-				point_arr::iterator tmp_waypoint = closestWaypointIterator;
+				PointArr::iterator tmp_waypoint = closestWaypointIterator;
 				closestWaypointIterator = secondClosestWaypointIterator;
 				secondClosestWaypointIterator = tmp_waypoint;
 			}
-			for (point_arr::iterator it = _trajectory.begin()+2; it < _trajectory.end(); it++) {
-				double dist = geometry::distanceBetweenPoints(this->getReferencePoint(), *it);
+			for (PointArr::iterator it = _trajectory.begin()+2; it < _trajectory.end(); it++) {
+				double dist = distance(this->getReferencePoint(), *it);
 				if (dist < closestDistance) {
 					secondClosestDistance = closestDistance, secondClosestWaypointIterator = closestWaypointIterator;
 					closestDistance = dist, closestWaypointIterator = it;
@@ -82,10 +84,10 @@ point_t lunabotics::geometry::PID::getClosestTrajectoryPoint()
 					secondClosestDistance = dist, secondClosestWaypointIterator = it;
 				}
 			}
-			point_t closestPoint = *closestWaypointIterator;
-			point_t secondClosestPoint = *secondClosestWaypointIterator;
+			Point closestPoint = *closestWaypointIterator;
+			Point secondClosestPoint = *secondClosestWaypointIterator;
 			
-			double lengthBetweenWaypoints = geometry::distanceBetweenPoints(closestPoint, secondClosestPoint);
+			double lengthBetweenWaypoints = distance(closestPoint, secondClosestPoint);
 			double angle = this->getReferenceAngle(lengthBetweenWaypoints, closestDistance, secondClosestDistance);
 			
 			//Reference point lies not between waypoints 1 and 2 but beyond
@@ -105,31 +107,31 @@ point_t lunabotics::geometry::PID::getClosestTrajectoryPoint()
 	return _closestTrajectoryPoint;
 }
 
-void lunabotics::geometry::PID::setCurrentPose(pose_t currentPose)
+void PIDGeometry::setCurrentPose(Pose currentPose)
 {
 	this->invalidateCache();
 	_currentPose = currentPose;
 }
 
-void lunabotics::geometry::PID::setLinearVelocity(double velocity)
+void PIDGeometry::setLinearVelocity(double velocity)
 {
 	this->invalidateCache();
 	_linearVelocity = velocity;
 }
 
-void lunabotics::geometry::PID::setTrajectory(point_arr trajectory)
+void PIDGeometry::setTrajectory(PointArr trajectory)
 {
 	this->invalidateCache();
 	_trajectory = trajectory;
 }
 
-void lunabotics::geometry::PID::setVelocityMultiplier(float velocityMultiplier)
+void PIDGeometry::setVelocityMultiplier(float velocityMultiplier)
 {
 	this->invalidateCache();
 	_velocityMultiplier = velocityMultiplier;
 }
 
-void lunabotics::geometry::PID::setVelocityOffset(float velocityOffset)
+void PIDGeometry::setVelocityOffset(float velocityOffset)
 {
 	this->invalidateCache();
 	_velocityOffset = velocityOffset;
@@ -138,29 +140,29 @@ void lunabotics::geometry::PID::setVelocityOffset(float velocityOffset)
 //---------------- Private methods ------------------------------//
 
 //Angle at point1 
-double lunabotics::geometry::PID::getReferenceAngle(point_t point1, point_t point2, point_t point3)
+double PIDGeometry::getReferenceAngle(Point point1, Point point2, Point point3)
 {
-	double edge1 = geometry::distanceBetweenPoints(point1, point3);
-	double edge2 = geometry::distanceBetweenPoints(point1, point2);
-	double edge3 = geometry::distanceBetweenPoints(point2, point3);
+	double edge1 = distance(point1, point3);
+	double edge2 = distance(point1, point2);
+	double edge3 = distance(point2, point3);
 	return this->getReferenceAngle(edge1, edge2, edge3);
 }
 
 //Angle between edge1 and edge2
-double lunabotics::geometry::PID::getReferenceAngle(double edge1, double edge2, double edge3)
+double PIDGeometry::getReferenceAngle(double edge1, double edge2, double edge3)
 {
 	//Cosine rule
 	return acos((pow(edge2,2)+pow(edge1,2)-pow(edge3,2))/(2*edge2*edge1));
 }
 
-void lunabotics::geometry::PID::invalidateCache()
+void PIDGeometry::invalidateCache()
 {
 	_referencePointIsValid = false;
 	_closestTrajectoryPointIsValid = false;
 	_localFrameIsValid = false;
 }
 
-void lunabotics::geometry::PID::updateLocalFrame()
+void PIDGeometry::updateLocalFrame()
 {
 	//Transform points to robot-centered coordinate frame
 	//Depending on where (left or right) closest trajectory point is
@@ -170,16 +172,16 @@ void lunabotics::geometry::PID::updateLocalFrame()
 	_closestTrajectoryPointInLocalFrame = this->getClosestTrajectoryPoint();
 	_closestTrajectoryPointInLocalFrame.x -= _currentPose.position.x;
 	_closestTrajectoryPointInLocalFrame.y -= _currentPose.position.y;
-	_closestTrajectoryPointInLocalFrame = geometry::rotatePoint(_closestTrajectoryPointInLocalFrame, tf::getYaw(_currentPose.orientation), CW);
+	_closestTrajectoryPointInLocalFrame = rotatePoint(_closestTrajectoryPointInLocalFrame, _currentPose.orientation, CW);
 	
 	_referencePointInLocalFrame = this->getReferencePoint();
 	_referencePointInLocalFrame.x -= _currentPose.position.x;
 	_referencePointInLocalFrame.y -= _currentPose.position.y;
-	_referencePointInLocalFrame = geometry::rotatePoint(_referencePointInLocalFrame, tf::getYaw(_currentPose.orientation), CW);
+	_referencePointInLocalFrame = rotatePoint(_referencePointInLocalFrame, _currentPose.orientation, CW);
 	
 	int multiplier = _closestTrajectoryPointInLocalFrame.y >= 0 ? -1 : 1;
 	
-	_referenceDistance = geometry::distanceBetweenPoints(_closestTrajectoryPointInLocalFrame, _referencePointInLocalFrame) * multiplier;
+	_referenceDistance = distance(_closestTrajectoryPointInLocalFrame, _referencePointInLocalFrame) * multiplier;
 	
 	_localFrameIsValid = true;
 }

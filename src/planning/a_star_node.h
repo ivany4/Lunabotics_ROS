@@ -6,40 +6,35 @@
 #define OCC_THRESHOLD	80
 
 namespace lunabotics {
-namespace planning
-{
 	
-	class node;
+class Node;
 	
-	typedef std::vector<lunabotics::planning::node> node_arr;
-	typedef std::list<lunabotics::planning::node> node_list;
+typedef std::vector<Node> NodeArr;
+typedef std::list<Node> NodeList;
 	
-		
-	class node
-	{
+class Node {
+public:
+	int x;
+	int y;
+	int parent_x;
+	int parent_y;
+	double F;
+	double G;
+	double H;
 	
-	   public:
-	      int x;
-	      int y;
-	      int parent_x;
-	      int parent_y;
-	      double F;
-	      double G;
-	      double H;
-	
-	      node();
-	      node(const node &);
-	      node(int nx, int ny);
-	      ~node(){};
-	      node &operator=(const node &rhs);
-	      int operator==(const node &rhs) const;
-	      int operator!=(const node &rhs) const;
-	      int operator<(const node &rhs) const;
-		friend std::ostream &operator<<(std::ostream &, const node &);
-	      node_list neighbours(int grid_width, int grid_height, map_grid grid);
-	      node parent(node_list parents);
-	};
-}
+	Node();
+	Node(const Node &);
+	Node(int nx, int ny);
+	~Node(){};
+	Node &operator=(const Node &rhs);
+	int operator==(const Node &rhs) const;
+	int operator!=(const Node &rhs) const;
+	int operator<(const Node &rhs) const;
+	friend std::ostream &operator<<(std::ostream &, const Node &);
+	NodeList neighbours(int grid_width, int grid_height, OccupancyArr grid);
+	Node parent(NodeList parents);
+};
+
 }
 
 #endif //_PLANNING_NODE_H_

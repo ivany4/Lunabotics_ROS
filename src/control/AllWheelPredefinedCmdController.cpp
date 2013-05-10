@@ -1,9 +1,11 @@
 #include "AllWheelPredefinedCmdController.h"
 #include "ros/ros.h"
+using namespace lunabotics;
+
 
 #define STEERING_ACCURACY	0.01
 
-lunabotics::control::PredefinedCmdController::PredefinedCmdController()
+PredefinedCmdController::PredefinedCmdController()
 {
 	this->_cnt = -1;
 	this->_expecting_result = false;
@@ -11,17 +13,17 @@ lunabotics::control::PredefinedCmdController::PredefinedCmdController()
 	this->_geometry = NULL;
 }
 
-lunabotics::control::PredefinedCmdController::~PredefinedCmdController()
+PredefinedCmdController::~PredefinedCmdController()
 {
 	delete this->_geometry;
 }
 
-bool lunabotics::control::PredefinedCmdController::needsMoreControl()
+bool PredefinedCmdController::needsMoreControl()
 {
 	return this->_state_updated;
 }
 
-void lunabotics::control::PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
+void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
 {
 	if ((cmd == lunabotics::proto::AllWheelControl::TURN_CCW || cmd == lunabotics::proto::AllWheelControl::TURN_CW) && !this->_geometry) {
 		ROS_WARN("Can't perform turning command since robot geometry is undefined");
@@ -34,7 +36,7 @@ void lunabotics::control::PredefinedCmdController::setNewCommand(lunabotics::pro
 	}
 }
 
-void lunabotics::control::PredefinedCmdController::incrementCnt()
+void PredefinedCmdController::incrementCnt()
 {
 	this->_cnt++;
 	if (this->_cnt > 1) {
@@ -47,7 +49,7 @@ void lunabotics::control::PredefinedCmdController::incrementCnt()
 	}
 }
 
-void lunabotics::control::PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
+void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 {
 	if (this->_expecting_result) {
 		//ROS_INFO("Expecting %.2f, %.2f, %.2f, %.2f", state.steering.left_front, state.steering.right_front, state.steering.left_rear, state.steering.right_rear);
@@ -63,15 +65,15 @@ void lunabotics::control::PredefinedCmdController::giveFeedback(lunabotics::AllW
 	}
 }
 
-void lunabotics::control::PredefinedCmdController::setGeometry(geometry::AllWheelGeometryPtr geometry)
+void PredefinedCmdController::setGeometry(AllWheelGeometryPtr geometry)
 {
 	if (this->_geometry) {
 		delete this->_geometry;
 	}
-	this->_geometry = new geometry::AllWheelGeometry(geometry);
+	this->_geometry = new AllWheelGeometry(geometry);
 }
 
-bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelState &signal)
+bool PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 {
 	if (this->needsMoreControl()) {	
 		this->_state_updated = false;
@@ -132,7 +134,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			
 			case lunabotics::proto::AllWheelControl::TURN_CCW: {
 				float lf, rf, lr, rr;
-				point_t ICR; ICR.x = 0; ICR.y = 0;
+				Point ICR; ICR.x = 0; ICR.y = 0;
 				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
 					signal.steering.left_front = lf;
 					signal.steering.right_front = rf;
@@ -163,7 +165,7 @@ bool lunabotics::control::PredefinedCmdController::control(lunabotics::AllWheelS
 			
 			case lunabotics::proto::AllWheelControl::TURN_CW: {
 				float lf, rf, lr, rr;
-				point_t ICR; ICR.x = 0; ICR.y = 0;
+				Point ICR; ICR.x = 0; ICR.y = 0;
 				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
 					signal.steering.left_front = lf;
 					signal.steering.right_front = rf;

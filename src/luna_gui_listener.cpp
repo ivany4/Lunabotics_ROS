@@ -186,7 +186,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 						float right_front = steering.right_front();
 						float left_rear = steering.left_rear();
 						float right_rear = steering.right_rear();
-						lunabotics::geometry::validateAngles(left_front, right_front, left_rear, right_rear);
+						lunabotics::validateAngles(left_front, right_front, left_rear, right_rear);
 						
 						
 						lunabotics::AllWheelState msg;

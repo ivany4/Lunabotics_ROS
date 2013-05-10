@@ -1,6 +1,8 @@
 #include "basic.h"
+using namespace lunabotics;
 
-double lunabotics::geometry::normalizedAngle(double angle)
+
+double lunabotics::normalizedAngle(double angle)
 {
 	double res = fmod(angle, M_PI*2);
 	if (res < -M_PI) {
@@ -12,23 +14,27 @@ double lunabotics::geometry::normalizedAngle(double angle)
 	return res;
 }
 
-double lunabotics::geometry::distanceBetweenPoints(point_t p1, point_t p2)
+double lunabotics::distance(Point p1, Point p2)
 {
 	return sqrt(pow(p2.x-p1.x, 2)+pow(p2.y-p1.y, 2));
 }
 
-point_t lunabotics::geometry::rotatePoint(point_t point, double angle, ROTATION_DIRECTION dir)
+Point lunabotics::rotatePoint(Point point, double angle, ROTATION_DIRECTION dir)
 {
-	point_t result;
-	result.x = point.x*cos(angle)+point.y*sin(angle)*dir;
-	result.y = -point.x*sin(angle)*dir+point.y*cos(angle);
-	return result;
+	return CreatePoint(point.x*cos(angle)+point.y*sin(angle)*dir, -point.x*sin(angle)*dir+point.y*cos(angle));
 }
 
-point_t lunabotics::geometry::midPoint(point_t p1, point_t p2)
+Point lunabotics::midPoint(Point p1, Point p2)
 {
-	point_t p;
-	p.x = (p1.x+p2.x)/2;
-	p.y = (p1.y+p2.y)/2;
-	return p;
+	return CreatePoint((p1.x+p2.x)/2, (p1.y+p2.y)/2);
+}
+
+double lunabotics::areaOfTriangle(Point A, Point B, Point C)
+{
+	return fabs((A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2);
+}
+
+bool lunabotics::in_circle(Point p, Point center, double radius)
+{
+	return distance(p, center) <= radius;
 }
