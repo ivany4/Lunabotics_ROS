@@ -651,7 +651,7 @@ void controlAckermannAllWheel()
 		
 		double signal;
 		if (pidController->control(y_err, signal)) {
-			signal *= -10.0;
+			signal *= 10.0;
 			ROS_WARN("DW %.2f", signal);
 			
 			double gamma1 = -signal/2;
@@ -671,7 +671,7 @@ void controlAckermannAllWheel()
 			
 			ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
 			
-			float velocity = 0.1+0.5/std::max(fabs(signal), 0.5);
+			float velocity = linear_speed_limit;
 			
 			float angle_front_left;
 			float angle_front_right;
