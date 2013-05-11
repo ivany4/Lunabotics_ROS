@@ -23,11 +23,12 @@ using namespace lunabotics;
 
 
 MotionControlNode::MotionControlNode(int argc, char **argv, std::string name, int frequency):
- NodeAssistant(argc, argv, name, frequency),
+ ROSNode(argc, argv, name, frequency),
 _sequence(0), _autonomyEnabled(false), _steeringMode(lunabotics::proto::ACKERMANN), 
 _pointTurnMotionState( lunabotics::proto::Telemetry::STOPPED), _currentPose(), _waypointsIt(),
 _waypoints(), _motionConstraints()
 {
+	
 	Point zeroPoint = CreatePoint(0, 0);
 	this->_currentPose.position = zeroPoint;
 	this->_currentPose.orientation = 0.0f;
@@ -88,6 +89,7 @@ MotionControlNode::~MotionControlNode()
 	delete this->_PIDHelper;
 }
 
+//---------------------- CALLBACK METHODS ------------------------------
 
 void MotionControlNode::callbackEmergency(const lunabotics::Emergency::ConstPtr &msg)
 {
@@ -347,7 +349,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 
 //------------------- INHERITED METHODS --------------------------------
 
-void MotionControlNode::exec()
+void MotionControlNode::runOnce()
 {
 	if (!this->_isDiffDriveRobot) {
 		tf::StampedTransform transform;
@@ -911,15 +913,15 @@ PathPtr MotionControlNode::findPath(Pose startPose, Point goalPoint, float &res)
 void MotionControlNode::run()
 {
 	//Let the parent to the trick
-	NodeAssistant::run();
+	ROSNode::run();
 }
 
 //----------------------- MAIN METHOD ----------------------------------
 
 int main(int argc, char **argv)
 {
-	lunabotics::MotionControlNode *assistant = new lunabotics::MotionControlNode(argc, argv, "luna_driver", 200);
-	assistant->run();
-	delete assistant;
+	lunabotics::MotionControlNode *node = new lunabotics::MotionControlNode(argc, argv, "luna_driver", 200);
+	node->run();
+	delete node;
 	return 0;
 }

@@ -5,9 +5,9 @@
 	<remap from="cmd_vel" to="$(arg cmd_vel)" />
 	<remap from="odom" to="$(arg odom)" />
   </node>
-  <node name="luna_driver" pkg="lunabotics" type="luna_driver" />
+  <node name="luna_driver" pkg="lunabotics" type="luna_driver" args="$(arg diffdrive)" />
   <node name="luna_fear" pkg="lunabotics" type="luna_fear" />
   <node name="luna_planner" pkg="lunabotics" type="luna_planner" />
-  <node name="luna_slam" pkg="lunabotics" type="luna_slam" />
+  <node name="luna_slam" pkg="lunabotics" type="luna_slam" args="$(arg fileprefix filename)" />
   <node name="luna_aut_gw" pkg="lunabotics" type="luna_aut_gw" />
 </launch>

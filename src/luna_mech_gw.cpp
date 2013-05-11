@@ -22,9 +22,6 @@ void odoCallback(const nav_msgs::Odometry& msg)
 
 int main(int argc, char **argv)
 {
-	#ifdef FOO
-		ROS_INFO("FOOOOOOOOOOOOOOOOOOOOOOOOOO");
-	#endif
 	ros::init(argc, argv, "luna_mech_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber controlSubscriber = nodeHandle.subscribe("control", 256, controlCallback);

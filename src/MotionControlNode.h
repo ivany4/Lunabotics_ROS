@@ -1,7 +1,7 @@
 #ifndef _MOTION_CONTROL_NODE_H_
 #define _MOTION_CONTROL_NODE_H_
 
-#include "NodeAssistant.h"
+#include "ROSNode.h"
 #include "types.h"
 #include "planning/planning.h"
 #include "control/control.h"
@@ -37,7 +37,7 @@ struct MotionConstraints {
 };
 
 
-class MotionControlNode : NodeAssistant {
+class MotionControlNode : ROSNode {
 private:
 	ros::Publisher _publisherDiffDriveMotion;
 	ros::Publisher _publisherAllWheelMotion;
@@ -106,11 +106,11 @@ private:
 	PathPtr findPath(Pose startPose, Point goalPoint, float &res);
 	
 	
+	void runOnce();
 public:
 	MotionControlNode(int argc, char **argv, std::string name, int frequency);
 	~MotionControlNode();
 	
-	void exec();
 	void run();
 };
 

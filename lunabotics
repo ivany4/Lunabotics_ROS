@@ -8,8 +8,11 @@ rebuild=1
 build=0
 compile_gazebo=0
 compile_protos=0
+diffdrive=""
 out_addr="192.168.218.1"
 profile="VMWare"
+mapfile=""
+use_map_file=0
 
 
 ################################### Functions ##########################
@@ -65,12 +68,15 @@ clean_target() {
 
 cd $PACKAGE_PATH
 
-while getopts "a:cdnbr:goO" opt; 
+while getopts "a:cdDnbr:goOfF" opt; 
 do	
 	case $opt in
 	a)	out_addr="$OPTARG";;
 	c)	close=1;;
 	d)  clean=1;;
+	D) 	diffdrive="-D";;
+	f)  mapfile="-f `rospack find lunabotics`/world.txt"; use_map_file=1;;
+	F)  mapfile="-f `rospack find lunabotics`/openworld.txt"; use_map_file=1;;
 	g)  compile_gazebo=1;;
 	b)	build=1;;
 	n)  rebuild=0;;
@@ -82,6 +88,9 @@ do
 		echo "Options:"
 		echo -e "$(tput bold)-b		$(tput sgr0)\n	Build without running. Omitted when using -O"
 		echo -e "$(tput bold)-d		$(tput sgr0)\n	Delete build target before compiling"
+		echo -e "$(tput bold)-D		$(tput sgr0)\n	Indicates that should use Differential Drive robot behavior"
+		echo -e "$(tput bold)-f		$(tput sgr0)\n	Takes 'world.txt' filename for the map file"
+		echo -e "$(tput bold)-F		$(tput sgr0)\n	Takes 'openworld.txt' filename for the map file"
 		echo -e "$(tput bold)-c		$(tput sgr0)\n	Close running nodes. All other options are ignored when using -c"
 		echo -e "$(tput bold)-g		$(tput sgr0)\n	Recompile Gazebo plugins. Omitted with -n or -O"
 		echo -e "$(tput bold)-n		$(tput sgr0)\n	Do not recompile"
@@ -156,15 +165,21 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 			clrecho 3 "Launching nodes..."
 			echo "Using remote IP $out_addr"
 			echo "Local IP address is $in_addr"
+			if [ $use_map_file -eq 1 ]; then
+				echo "Using map with command $mapfile"
+			fi
 			if [ $profile = "Pioneer" ]; then
-				roslaunch lunabotics.launch oip:=$out_addr cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose
+				roslaunch lunabotics.launch oip:=$out_addr cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose diffdrive:=$diffdrive filename:=$mapfile
 			elif [ $profile = "Elias1" ]; then
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"
 			elif [ $profile = "Elias2" ]; then
 				roslaunch comm.launch oip:=$out_addr
 			else
 				gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener"
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver" #--tab -t "Gmapping" -e "bash rosrun gmapping slam_gmapping scan:=base_scan"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+				if [ $use_map_file -eq 0 ]; then
+					 gnome-terminal --tab -t "Gmapping" -e "bash rosrun gmapping slam_gmapping scan:=base_scan"
+				fi
 			fi
 			clrecho 2 "Nodes are up and running. Enjoy! :)"
 		fi
