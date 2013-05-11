@@ -4,5 +4,6 @@
 #include "a_star_node.h"
 #include "a_star_graph.h"
 #include "bezier_smooth.h"
+#include "Trajectory.h"
 
 #endif //_PLANNING_H_

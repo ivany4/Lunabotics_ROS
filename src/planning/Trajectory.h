@@ -19,20 +19,20 @@ private:
 	PointArr _cached_points;
 	TrajectorySegmentArr _segments;
 	float _cached_max_curvature;
-	int _segments_per_curve;
+	
+	void freeSegments();
 public:
 	Trajectory();
-	Trajectory(int num_segments);
 	~Trajectory();
 	
 	TrajectorySegmentArr segments();
 	void setSegments(TrajectorySegmentArr segments);
 	void appendSegment(TrajectorySegment s);
-	PointArr points();
+	PointArr getPoints();
 	float maxCurvature();
 };
 
-typedef Trajectory *TrajectoryPtr;
+typedef Trajectory * TrajectoryPtr;
 
 }
 

@@ -29,10 +29,8 @@
 #include "../protos_gen/Telemetry.pb.h"
 
 //Helpers
-#include "planning/a_star_graph.h"
-#include "planning/bezier_smooth.h"
-#include "control/PIDController.h"
-#include "control/AllWheelPredefinedCmdController.h"
+#include "planning/planning.h"
+#include "control/control.h"
 #include "geometry/geometry.h"
 #include "types.h"
 
@@ -292,9 +290,11 @@ void goalCallback(const lunabotics::Goal& msg)
 		lunabotics::PointArr corner_points = path->cornerPoints(resolution);
 		lunabotics::PointArr pts;
 		
+		
 		if (controlMode == lunabotics::proto::ACKERMANN) {
 			unsigned int size = corner_points.size();
 			if (size > 2) {
+				lunabotics::TrajectoryPtr traj = new lunabotics::Trajectory();
 				lunabotics::Point startPoint = corner_points.at(0);
 				lunabotics::Point endPoint = corner_points.at(size-1);
 				lunabotics::IndexedPointArr closest_obstacles = path->closestObstaclePoints(resolution);
@@ -339,21 +339,24 @@ void goalCallback(const lunabotics::Goal& msg)
 						q2 = lunabotics::midPoint(next, curr);
 					}
 					
-					lunabotics::PointArr curve;
+					lunabotics::TrajectorySegment s;
 					if (hasObstacle) {
 						lunabotics::Point p = lunabotics::midPoint(obstaclePoint, curr);
-						curve = lunabotics::trajectory_bezier(q0, curr, q2, p, bezierSegments);
+						s.curve = lunabotics::CreateConstrainedBezierCurve(q0, curr, q2, p, bezierSegments);
 						//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
 					}
 					else {
-						curve = lunabotics::quadratic_bezier(q0, curr, q2, bezierSegments);
+						s.curve = new lunabotics::BezierCurve(q0, curr, q2, bezierSegments);
 						//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
 					}
-					
-					//Append curve points
-					pts.insert(pts.end(), curve.begin(), curve.end());
+					traj->appendSegment(s);
 				}	
-				pts.push_back(endPoint);	
+				pts = traj->getPoints();
+				pts.push_back(endPoint);
+				
+				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", traj->maxCurvature(), 1/traj->maxCurvature());
+				
+				delete traj;	
 			}
 			else {
 				pts = corner_points;
@@ -646,7 +649,7 @@ void controlAckermannAllWheel()
 		double signal;
 		if (pidController->control(y_err, signal)) {
 			signal *= 10.0;
-			ROS_WARN("DW %.2f", signal);
+			//ROS_WARN("DW %.2f", signal);
 			
 			double gamma1 = -signal/2;
 			
@@ -662,7 +665,7 @@ void controlAckermannAllWheel()
 			ICR = allWheelGeometry->point_outside_base_link(ICR);
 			ICRPublisher.publish(lunabotics::geometry_msgs_Point_from_Point(ICR));
 			
-			ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
+			//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
 			
 			float velocity = linear_speed_limit;
 			
@@ -769,7 +772,7 @@ void controlAckermannDiffDrive()
 		double dw;
 		if (pidController->control(y_err, dw)) {
 			dw *= -3;
-			ROS_WARN("DW %.2f", dw);
+			//ROS_WARN("DW %.2f", dw);
 			
 			//The higher angular speed, the lower linear speed is
 			double top_w = 1.57;

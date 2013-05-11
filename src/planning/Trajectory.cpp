@@ -1,16 +1,24 @@
 #include "Trajectory.h"
+#include "ros/ros.h"
+
 using namespace lunabotics;
 
-Trajectory::Trajectory():_cached_points(), _segments(), _cached_max_curvature(-1), _segments_per_curve(20)
-{
-}
-
-Trajectory::Trajectory(int num_segments):_cached_points(), _segments(), _cached_max_curvature(-1), _segments_per_curve(num_segments)
+Trajectory::Trajectory():_cached_points(), _segments(), _cached_max_curvature(-1)
 {
 }
 
 Trajectory::~Trajectory()
 {
+	this->freeSegments();
+}
+
+void Trajectory::freeSegments()
+{
+	for (TrajectorySegmentArr::iterator it = this->_segments.begin(); it < this->_segments.end(); it++) {
+		TrajectorySegment segment = *it;
+		delete segment.curve;
+	}
+	this->_segments.clear();
 }
 
 TrajectorySegmentArr Trajectory::segments()
@@ -20,6 +28,7 @@ TrajectorySegmentArr Trajectory::segments()
 
 void Trajectory::setSegments(TrajectorySegmentArr segments)
 {
+	this->freeSegments();
 	this->_segments = segments;
 }
 
@@ -28,9 +37,10 @@ void Trajectory::appendSegment(TrajectorySegment s)
 	this->_segments.push_back(s);
 }
 	
-PointArr Trajectory::points()
+PointArr Trajectory::getPoints()
 {
 	if (this->_cached_points.empty()) {
+		int i = 0;
 		for (TrajectorySegmentArr::iterator it = _segments.begin(); it < _segments.end(); it++) {
 			TrajectorySegment s = *it;
 			PointArr arr = s.curve->getPoints();

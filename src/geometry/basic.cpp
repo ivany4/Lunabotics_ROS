@@ -38,3 +38,11 @@ bool lunabotics::in_circle(Point p, Point center, double radius)
 {
 	return distance(p, center) <= radius;
 }
+
+bool lunabotics::in_triangle(Point p, double edge1, double edge2, double theta)
+{
+	bool condition_1 = p.y > 0 && p.y < edge2*sin(theta);
+	bool condition_2 = p.y*cos(theta) + p.x*sin(theta) > 0;
+	bool condition_3 = p.y*(edge1 + edge2*cos(theta)) + p.x*edge2*sin(theta) - edge1*edge2*sin(theta) < 0;
+	return condition_1 && condition_2 && condition_3;
+}

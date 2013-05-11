@@ -23,6 +23,8 @@ public:
 
 typedef BezierCurve *BezierCurvePtr;
 
+BezierCurvePtr CreateConstrainedBezierCurve(Point q0, Point q1, Point q2, Point p, int num_segments);
+
 }
 
 
