@@ -11,7 +11,7 @@ enum ROTATION_DIRECTION {
 	CCW = -1
 };
 
-inline std::string controlModeToString(lunabotics::proto::SteeringModeType type)
+inline std::string steeringModeToString(lunabotics::proto::SteeringModeType type)
 {
 	switch (type) {
 		case lunabotics::proto::ACKERMANN: return "Ackermann";
@@ -103,6 +103,12 @@ typedef std::vector<Point> PointArr;
 typedef std::vector<Pose> PoseArr;
 typedef std::vector<int8_t> OccupancyArr;
 typedef std::vector<IndexedPoint> IndexedPointArr;
+
+inline int sign(double value, double accuracy) {
+	if (value > accuracy) return 1;
+	if (value < -accuracy) return -1;
+	return 0;
+}
 
 }
 

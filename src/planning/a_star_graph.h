@@ -45,6 +45,8 @@ public:
 	bool is_initialized();
 	int8_t mapAt(int x, int y);
 };
+
+typedef Path * PathPtr;
 }
 
 #endif

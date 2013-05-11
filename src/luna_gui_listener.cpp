@@ -92,7 +92,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				
 				lunabotics::proto::SteeringModeType type = tc.steering_mode_data().type();
 				
-				ROS_INFO("Switching control mode to %s", controlModeToString(type).c_str());
+				ROS_INFO("Switching control mode to %s", steeringModeToString(type).c_str());
 				
 				lunabotics::ControlMode controlModeMsg;
 				controlModeMsg.mode = type;

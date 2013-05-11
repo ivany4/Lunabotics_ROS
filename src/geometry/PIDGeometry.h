@@ -39,6 +39,8 @@ class PIDGeometry {
 		void setVelocityOffset(float velocityOffset);
 		void setVelocityMultiplier(float velocityMultiplier);
 };
+
+typedef PIDGeometry * PIDGeometryPtr;
 }
 
 #endif //_PIDGeometry_H_

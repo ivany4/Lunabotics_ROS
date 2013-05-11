@@ -16,8 +16,10 @@ namespace lunabotics {
 			float _wheel_offset;
 			float _wheel_radius;
 			float _wheel_width;
+			
 		
 		public:
+			bool geometryAcquired;
 			AllWheelGeometry(Point left_front, Point left_rear, Point right_front, Point right_rear);
 			AllWheelGeometry(AllWheelGeometry *copy);
 			~AllWheelGeometry();

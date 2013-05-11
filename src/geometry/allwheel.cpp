@@ -4,7 +4,7 @@
 using namespace lunabotics;
 
 
-AllWheelGeometry::AllWheelGeometry(Point left_front, Point left_rear, Point right_front, Point right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear) {
+AllWheelGeometry::AllWheelGeometry(Point left_front, Point left_rear, Point right_front, Point right_rear): lf(left_front), lr(left_rear), rf(right_front), rr(right_rear), geometryAcquired(false) {
 }
 
 AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy) 
@@ -15,6 +15,7 @@ AllWheelGeometry::AllWheelGeometry(AllWheelGeometry *copy)
 	this->rr = copy->right_rear();
 	this->_wheel_offset = copy->wheel_offset();
 	this->_wheel_radius = copy->wheel_radius();
+	this->geometryAcquired = copy->geometryAcquired;
 }
 
 AllWheelGeometry::~AllWheelGeometry()

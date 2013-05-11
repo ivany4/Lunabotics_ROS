@@ -40,7 +40,6 @@ void Trajectory::appendSegment(TrajectorySegment s)
 PointArr Trajectory::getPoints()
 {
 	if (this->_cached_points.empty()) {
-		int i = 0;
 		for (TrajectorySegmentArr::iterator it = _segments.begin(); it < _segments.end(); it++) {
 			TrajectorySegment s = *it;
 			PointArr arr = s.curve->getPoints();
