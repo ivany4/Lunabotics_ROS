@@ -1,5 +1,5 @@
 #include "MotionControlNode.h"
-#include "nav_msgs/Path.h"
+#include "lunabotics/PathTopic.h"
 #include "nav_msgs/GetMap.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
@@ -26,7 +26,7 @@ MotionControlNode::MotionControlNode(int argc, char **argv, std::string name, in
  ROSNode(argc, argv, name, frequency),
 _sequence(0), _autonomyEnabled(false), _steeringMode(lunabotics::proto::ACKERMANN), 
 _pointTurnMotionState( lunabotics::proto::Telemetry::STOPPED), _currentPose(), _waypointsIt(),
-_waypoints(), _motionConstraints()
+_waypoints(), _motionConstraints(), _minICRRadius(0.0f)
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -66,7 +66,7 @@ _waypoints(), _motionConstraints()
 	
 	//Create publishers
 	this->_publisherDiffDriveMotion = this->_nodeHandle->advertise<geometry_msgs::Twist>("/cmd_vel", 256);
-	this->_publisherPath = this->_nodeHandle->advertise<nav_msgs::Path>("path", 256);
+	this->_publisherPath = this->_nodeHandle->advertise<lunabotics::PathTopic>("path", 256);
 	this->_publisherICR = this->_nodeHandle->advertise<geometry_msgs::Point>("icr_state", sizeof(float)*2);
 	this->_publisherAllWheelMotion = this->_nodeHandle->advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
 	this->_publisherControlParams = this->_nodeHandle->advertise<lunabotics::ControlParams>("control_params", 256);
@@ -202,7 +202,7 @@ void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
 void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 {
 	this->_waypoints.clear();
-	
+	this->_minICRRadius = 0;
 	this->_motionConstraints.point_turn_angle_accuracy = msg->angleAccuracy;
 	this->_motionConstraints.point_turn_distance_accuracy = msg->distanceAccuracy;
 	
@@ -217,10 +217,10 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	if (path->is_initialized()) {
 		std::stringstream sstr;
 		
-		nav_msgs::Path pathMsg;
-		pathMsg.header.stamp = ros::Time::now();
-		pathMsg.header.seq = this->_sequence++;
-		pathMsg.header.frame_id = "map";
+		lunabotics::PathTopic pathMsg;
+		pathMsg.path.header.stamp = ros::Time::now();
+		pathMsg.path.header.seq = this->_sequence++;
+		pathMsg.path.header.frame_id = "map";
 		
 		
 		PointArr corner_points = path->cornerPoints(resolution);
@@ -287,6 +287,11 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 						//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
 					}
 					this->_trajectory->appendSegment(s);
+					lunabotics::CurveTopic curveMsg;
+					curveMsg.start_idx = s.start_idx;
+					curveMsg.end_idx = s.finish_idx;
+					curveMsg.curvature = s.curve->maxCurvature();
+					pathMsg.curves.push_back(curveMsg);
 				}	
 				pts = this->_trajectory->getPoints();
 				pts.push_back(endPoint);
@@ -321,7 +326,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			pose.header.frame_id = "map";
 			pose.pose.position = geometry_msgs_Point_from_Point(pt);
 			pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-			pathMsg.poses.push_back(pose);
+			pathMsg.path.poses.push_back(pose);
 		}
 		this->_PIDHelper->setTrajectory(pts);
 		
@@ -335,6 +340,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 		this->_autonomyEnabled = true;
 		lunabotics::ControlParams controlParamsMsg;
 		controlParamsMsg.driving = this->_autonomyEnabled;
+		controlParamsMsg.has_min_icr_radius = false;
 		controlParamsMsg.next_waypoint_idx =  this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt-this->_waypoints.begin()+1 : 0;
 		this->_publisherControlParams.publish(controlParamsMsg);
 	}
@@ -438,10 +444,10 @@ void MotionControlNode::finalizeRoute()
 	this->controlStop();
 	
 	//Send empty path to clear map in GUI
-	nav_msgs::Path pathMsg;
-	pathMsg.header.stamp = ros::Time::now();
-	pathMsg.header.seq = this->_sequence++;
-	pathMsg.header.frame_id = "map";
+	lunabotics::PathTopic pathMsg;
+	pathMsg.path.header.stamp = ros::Time::now();
+	pathMsg.path.header.seq = this->_sequence++;
+	pathMsg.path.header.frame_id = "map";
 	this->_publisherPath.publish(pathMsg);
 }
 
@@ -502,6 +508,7 @@ void MotionControlNode::controlStop()
 	}
 	lunabotics::ControlParams msg;
 	msg.driving = this->_autonomyEnabled;
+	msg.has_min_icr_radius = false;
 	msg.next_waypoint_idx =  this->_waypointsIt <  this->_waypoints.end() ?  this->_waypointsIt- this->_waypoints.begin()+1 : 0;
 	this->_publisherControlParams.publish(msg);
 	this->_waypoints.clear();
@@ -561,7 +568,8 @@ void MotionControlNode::controlAckermannAllWheel()
 		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getReferencePointInLocalFrame());
 		controlParamsMsg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ? this->_waypointsIt-this->_waypoints.begin()+1 : 0;
 		controlParamsMsg.has_trajectory_data = true;
-		this->_publisherControlParams.publish(controlParamsMsg);
+		controlParamsMsg.has_min_icr_radius = true;
+		controlParamsMsg.min_icr_radius = this->_minICRRadius;
 		
 		//Control law
 		
@@ -570,18 +578,36 @@ void MotionControlNode::controlAckermannAllWheel()
 			signal *= 10.0;
 			//ROS_WARN("DW %.2f", signal);
 			
-			double gamma1 = -signal/2;
+			double gamma = -signal/2;
+			float gamma_abs = fabs(gamma);
 			
-			if (fabs(gamma1) < 0.00001) {
-				gamma1 = 0.01;
+			if (gamma_abs < 0.00001) {
+				gamma = 0.01;
+			}
+			else if (gamma_abs > M_PI_2) {
+				gamma = M_PI_2 * sign(gamma, 0.00001);
 			}
 			
-			double alpha = M_PI_2-gamma1;
+			double alpha = M_PI_2-gamma;
 			double offset_x = this->_geometryHelper->left_front().x;
 			double offset_y = tan(alpha)*offset_x;
 			
 			Point ICR = CreatePoint(0, offset_y);
+			
+			float abs_offset_y = fabs(offset_y);
+			
+			
 			ICR = this->_geometryHelper->point_outside_base_link(ICR);
+			
+			
+			if (abs_offset_y > 0.0001 && (abs_offset_y < this->_minICRRadius || this->_minICRRadius < 0.0001)) {
+				this->_minICRRadius = abs_offset_y;
+				ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
+				controlParamsMsg.min_icr_radius = abs_offset_y;
+				controlParamsMsg.has_min_icr_radius = true;
+			}
+			
+			
 			this->_publisherICR.publish(geometry_msgs_Point_from_Point(ICR));
 			
 			//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
@@ -617,6 +643,7 @@ void MotionControlNode::controlAckermannAllWheel()
 				this->_publisherAllWheelMotion.publish(controlMsg);
 			}
 		}
+		this->_publisherControlParams.publish(controlParamsMsg);
 	}
 	else {
 		//No need for curvature, just straight driving
@@ -678,6 +705,7 @@ void MotionControlNode::controlAckermannDiffDrive()
 		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getReferencePointInLocalFrame());
 		controlParamsMsg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ? this->_waypointsIt-this->_waypoints.begin()+1 : 0;
 		controlParamsMsg.has_trajectory_data = true;
+		controlParamsMsg.has_min_icr_radius = false;
 		this->_publisherControlParams.publish(controlParamsMsg);
 		
 		//Control law
@@ -778,6 +806,7 @@ void MotionControlNode::controlPointTurnAllWheel(double dx, double dy, double th
 	
 	controlParamsMsg.point_turn_state = this->_pointTurnMotionState;
 	controlParamsMsg.has_point_turn_state = true;
+	controlParamsMsg.has_min_icr_radius = false;
 	this->_publisherControlParams.publish(controlParamsMsg);
 	this->_publisherAllWheelCommon.publish(msg);
 }
@@ -857,6 +886,7 @@ void MotionControlNode::controlPointTurnDiffDrive(double dx, double dy, double t
 	}
 	
 	controlParamsMsg.point_turn_state = this->_pointTurnMotionState;
+	controlParamsMsg.has_min_icr_radius = false;
 	this->_publisherControlParams.publish(controlParamsMsg);
 	this->_publisherDiffDriveMotion.publish(twistMsg);
 }

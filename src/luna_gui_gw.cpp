@@ -7,8 +7,8 @@
 #include "lunabotics/AllWheelState.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/RobotGeometry.h"
+#include "lunabotics/PathTopic.h"
 #include "nav_msgs/GetMap.h"
-#include "nav_msgs/Path.h"
 #include "std_msgs/Empty.h"
 #include "tf/tf.h"
 #include "types.h"
@@ -32,7 +32,7 @@ lunabotics::ControlParams controlParams;
 lunabotics::Vision vision;
 lunabotics::RobotGeometry geometry;
 lunabotics::AllWheelState allWheelStateMsg;
-nav_msgs::Path path;
+lunabotics::PathTopic path;
 geometry_msgs::Point ICR;
 lunabotics::proto::SteeringModeType controlMode = lunabotics::proto::ACKERMANN;
 
@@ -79,7 +79,7 @@ void controlParamsCallback(const lunabotics::ControlParams& msg)
 	controlParams = msg;		
 }
 
-void pathCallback(const nav_msgs::Path& msg)
+void pathCallback(const lunabotics::PathTopic& msg)
 {    
 	path = msg;
 	sendPath = true;
@@ -160,6 +160,10 @@ int main(int argc, char **argv)
 					state->mutable_icr()->set_y(ICR.y);
 					
 					if (controlParams.driving) {
+						if (controlParams.has_min_icr_radius) {
+							ROS_INFO("Setting %f", controlParams.min_icr_radius);
+							state->set_min_icr_offset(controlParams.min_icr_radius);
+						}
 						if (controlParams.has_trajectory_data) {
 							state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
 							if (controlMode == lunabotics::proto::ACKERMANN) {
@@ -212,11 +216,18 @@ int main(int argc, char **argv)
 					sendMap = false;
 				}
 				if (sendPath) {
-				    for (unsigned int i = 0; i < path.poses.size(); i++) {
-						geometry_msgs::PoseStamped pose = path.poses.at(i);
+				    for (unsigned int i = 0; i < path.path.poses.size(); i++) {
+						geometry_msgs::PoseStamped pose = path.path.poses.at(i);
 						lunabotics::proto::Point *point = tm.mutable_path_data()->add_position();
 						point->set_x(pose.pose.position.x);
 						point->set_y(pose.pose.position.y);
+					}
+					for (unsigned int i = 0; i < path.curves.size(); i++) {
+						lunabotics::CurveTopic curve = path.curves.at(i);
+						lunabotics::proto::Telemetry::Path::Curve *protoCurve = tm.mutable_path_data()->add_curves();
+						protoCurve->set_start_idx(curve.start_idx);
+						protoCurve->set_end_idx(curve.end_idx);
+						protoCurve->set_curvature(curve.curvature);
 					}
 				    
 				    sendPath = false;

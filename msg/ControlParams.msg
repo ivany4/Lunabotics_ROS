@@ -9,3 +9,5 @@ int32 next_waypoint_idx
 bool has_trajectory_data
 uint8 point_turn_state
 bool has_point_turn_state
+float32 min_icr_radius
+bool has_min_icr_radius

@@ -6,11 +6,11 @@ import "AllWheelState.proto";
 package lunabotics.proto;
 
 message Telemetry {
-	enum PointTurnState {
-		STOPPED = 1;
-		DRIVING = 2;
-		TURNING = 3;
-	}
+        enum PointTurnState {
+                STOPPED = 1;
+                DRIVING = 2;
+                TURNING = 3;
+        }
 
     message State {
                 required Point position = 1;
@@ -20,6 +20,7 @@ message Telemetry {
                 required bool autonomy_enabled = 5;
                 optional int32 next_waypoint_idx = 6;
                 optional Point icr = 7;
+                optional float min_icr_offset = 8;
 
                 message AckermannTelemetry {
                         required float pid_error = 1;
@@ -28,12 +29,12 @@ message Telemetry {
                         required Point closest_trajectory_local_point = 4;
                         required Point velocity_vector_local_point = 5;
                 }
-                optional AckermannTelemetry ackermann_telemetry = 8;
-                
+                optional AckermannTelemetry ackermann_telemetry = 9;
+
                 message PointTurnTelemetry {
-					required PointTurnState state = 1;
-				}
-				optional PointTurnTelemetry point_turn_telemetry = 9;
+                                        required PointTurnState state = 1;
+                                }
+                                optional PointTurnTelemetry point_turn_telemetry = 10;
     }
     optional State state_data = 2;
 
@@ -46,7 +47,13 @@ message Telemetry {
     optional World world_data = 3;
 
     message Path {
+                message Curve {
+                            required int32 start_idx = 1;
+                            required int32 end_idx = 2;
+                            required float curvature = 3;
+                }
                 repeated Point position = 1;
+                repeated Curve curves = 2;
     }
     optional Path path_data = 4;
 
@@ -55,15 +62,15 @@ message Telemetry {
     optional LaserScan laser_scan_data = 5;
 
     optional AllWheelState all_wheel_state = 6;
-    
+
     message Geometry {
-		required Point left_front_joint = 1;
-		required Point left_rear_joint = 2;
-		required Point right_front_joint = 3;
-		required Point right_rear_joint = 4;
-		required float wheel_offset = 5;
-		required float wheel_radius = 6;
-		required float wheel_width = 7;
+                required Point left_front_joint = 1;
+                required Point left_rear_joint = 2;
+                required Point right_front_joint = 3;
+                required Point right_rear_joint = 4;
+                required float wheel_offset = 5;
+                required float wheel_radius = 6;
+                required float wheel_width = 7;
     }
     optional Geometry geometry_data = 7;
 }

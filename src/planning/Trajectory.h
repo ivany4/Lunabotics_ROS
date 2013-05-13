@@ -27,7 +27,7 @@ public:
 	
 	TrajectorySegmentArr segments();
 	void setSegments(TrajectorySegmentArr segments);
-	void appendSegment(TrajectorySegment s);
+	void appendSegment(TrajectorySegment &s);
 	PointArr getPoints();
 	float maxCurvature();
 };

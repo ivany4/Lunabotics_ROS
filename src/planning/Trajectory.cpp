@@ -19,6 +19,7 @@ void Trajectory::freeSegments()
 		delete segment.curve;
 	}
 	this->_segments.clear();
+	this->_cached_points.clear();
 }
 
 TrajectorySegmentArr Trajectory::segments()
@@ -29,11 +30,17 @@ TrajectorySegmentArr Trajectory::segments()
 void Trajectory::setSegments(TrajectorySegmentArr segments)
 {
 	this->freeSegments();
-	this->_segments = segments;
+	for (TrajectorySegmentArr::iterator it = segments.begin(); it < segments.end(); it++) {
+		this->appendSegment(*it);
+	}
 }
 
-void Trajectory::appendSegment(TrajectorySegment s)
+void Trajectory::appendSegment(TrajectorySegment &s)
 {
+	s.start_idx = this->_cached_points.size();
+	PointArr arr = s.curve->getPoints();
+	s.finish_idx = s.start_idx+arr.size();
+	this->_cached_points.insert(this->_cached_points.end(), arr.begin(), arr.end());
 	this->_segments.push_back(s);
 }
 	

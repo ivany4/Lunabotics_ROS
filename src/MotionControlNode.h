@@ -69,6 +69,7 @@ private:
 	lunabotics::PointArr::iterator _waypointsIt;
 	lunabotics::PointArr _waypoints;
 	MotionConstraints _motionConstraints;
+	double _minICRRadius;
 	
 	lunabotics::PredefinedCmdControllerPtr _predefinedControl;
 	lunabotics::PIDControllerPtr _PID;
