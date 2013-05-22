@@ -9,6 +9,7 @@ namespace lunabotics {
 struct TrajectorySegment {
 	int start_idx;
 	int finish_idx;
+	lunabotics::proto::SteeringModeType steering_type;
 	BezierCurvePtr curve;
 };
 
@@ -29,6 +30,8 @@ public:
 	void setSegments(TrajectorySegmentArr segments);
 	void appendSegment(TrajectorySegment &s);
 	PointArr getPoints();
+	void updateSegmentsMetaInfo(float max_curvature);
+	void updateSegmentsMetaInfo();
 	float maxCurvature();
 };
 

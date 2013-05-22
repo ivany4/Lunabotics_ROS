@@ -72,6 +72,8 @@ private:
 	lunabotics::proto::SteeringModeType _steeringMode;
 	lunabotics::proto::Telemetry::PointTurnState _pointTurnMotionState;
 	lunabotics::Pose _currentPose;
+	lunabotics::TrajectorySegmentArr::iterator _segmentsIt;
+	lunabotics::TrajectorySegmentArr _segments;
 	lunabotics::PointArr::iterator _waypointsIt;
 	lunabotics::PointArr _waypoints;
 	lunabotics::PointArr _desiredWaypoints;
@@ -102,6 +104,7 @@ private:
 	//Control techniques
 	void controlAckermann();
 	void controlPointTurn();
+	void controlAutomatic();
 	void controlStop();
 	
 	void controlAckermannAllWheel();

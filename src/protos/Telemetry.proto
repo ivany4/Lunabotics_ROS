@@ -19,8 +19,9 @@ message Telemetry {
                 required SteeringModeType steering_mode = 4;
                 required bool autonomy_enabled = 5;
                 optional int32 next_waypoint_idx = 6;
-                optional Point icr = 7;
-                optional float min_icr_offset = 8;
+                optional int32 segment_idx = 7;
+                optional Point icr = 8;
+                optional float min_icr_offset = 9;
 
                 message AckermannTelemetry {
                         required float pid_error = 1;
@@ -29,12 +30,12 @@ message Telemetry {
                         required Point closest_trajectory_local_point = 4;
                         required Point velocity_vector_local_point = 5;
                 }
-                optional AckermannTelemetry ackermann_telemetry = 9;
+                optional AckermannTelemetry ackermann_telemetry = 10;
 
                 message PointTurnTelemetry {
-                                        required PointTurnState state = 1;
-                                }
-                                optional PointTurnTelemetry point_turn_telemetry = 10;
+					required PointTurnState state = 1;
+				}
+				optional PointTurnTelemetry point_turn_telemetry = 11;
     }
     optional State state_data = 2;
 

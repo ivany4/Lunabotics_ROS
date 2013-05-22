@@ -15,7 +15,8 @@ inline std::string steeringModeToString(lunabotics::proto::SteeringModeType type
 {
 	switch (type) {
 		case lunabotics::proto::ACKERMANN: return "Ackermann";
-		case lunabotics::proto::POINT_TURN: return "'Turn in spot'";
+		case lunabotics::proto::POINT_TURN: return "Point-turn";
+		case lunabotics::proto::AUTO: return "Automatic";
 	}
 	return "Undefined";
 }

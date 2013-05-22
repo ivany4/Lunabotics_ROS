@@ -18,6 +18,9 @@ public:
 	BezierCurve(Point p0, Point p1, Point p2, int num_segments);
 	~BezierCurve();
 	float maxCurvature();
+	Point p0();
+	Point p1();
+	Point p2();
 	PointArr getPoints();
 };
 

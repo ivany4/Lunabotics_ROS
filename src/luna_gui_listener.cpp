@@ -104,6 +104,10 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					controlModeMsg.linear_speed_limit = tc.steering_mode_data().ackermann_steering_data().max_linear_velocity();
 					controlModeMsg.smth_else = tc.steering_mode_data().ackermann_steering_data().bezier_curve_segments();
 				}
+				else if (type == lunabotics::proto::AUTO) {
+					controlModeMsg.linear_speed_limit = tc.steering_mode_data().auto_steering_data().max_linear_velocity();
+					controlModeMsg.smth_else = tc.steering_mode_data().auto_steering_data().bezier_curve_segments();
+				}
 				controlModePublisher.publish(controlModeMsg);
 			}
 			break;

@@ -166,6 +166,7 @@ int main(int argc, char **argv)
 						}
 						if (controlParams.has_trajectory_data) {
 							state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
+							state->set_segment_idx(controlParams.segment_idx);
 							if (controlMode == lunabotics::proto::ACKERMANN) {
 								lunabotics::proto::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
 								ackermannData->set_pid_error(controlParams.y_err);

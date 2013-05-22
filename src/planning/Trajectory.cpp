@@ -37,23 +37,45 @@ void Trajectory::setSegments(TrajectorySegmentArr segments)
 
 void Trajectory::appendSegment(TrajectorySegment &s)
 {
-	s.start_idx = this->_cached_points.size();
-	PointArr arr = s.curve->getPoints();
-	s.finish_idx = s.start_idx+arr.size();
-	this->_cached_points.insert(this->_cached_points.end(), arr.begin(), arr.end());
 	this->_segments.push_back(s);
+	this->_cached_points.clear();
 }
 	
 PointArr Trajectory::getPoints()
 {
 	if (this->_cached_points.empty()) {
-		for (TrajectorySegmentArr::iterator it = _segments.begin(); it < _segments.end(); it++) {
-			TrajectorySegment s = *it;
-			PointArr arr = s.curve->getPoints();
-			this->_cached_points.insert(this->_cached_points.end(), arr.begin(), arr.end());
-		}
+		this->updateSegmentsMetaInfo(FLT_MAX);
 	}
 	return this->_cached_points;
+}
+
+void Trajectory::updateSegmentsMetaInfo(float max_curvature)
+{
+	this->_cached_points.clear();
+	unsigned int i = 0;
+	for (TrajectorySegmentArr::iterator it = _segments.begin(); it < _segments.end(); it++) {
+		TrajectorySegment s = *it;
+		PointArr arr;
+		if (s.curve->maxCurvature() > max_curvature) {
+			arr.push_back(s.curve->p0());
+			arr.push_back(s.curve->p1());
+			arr.push_back(s.curve->p2());
+		}
+		else {
+			arr = s.curve->getPoints();
+		}
+		ROS_INFO("Setting start idx %d", s.start_idx);
+		s.start_idx = this->_cached_points.size();
+		s.finish_idx = s.start_idx+arr.size();
+		this->_segments.at(i) = s;
+		this->_cached_points.insert(this->_cached_points.end(), arr.begin(), arr.end());
+		i++;
+	}
+}
+
+void Trajectory::updateSegmentsMetaInfo()
+{
+	this->updateSegmentsMetaInfo(FLT_MAX);
 }
 
 float Trajectory::maxCurvature()

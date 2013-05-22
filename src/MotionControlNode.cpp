@@ -26,8 +26,9 @@ MotionControlNode::MotionControlNode(int argc, char **argv, std::string name, in
  ROSNode(argc, argv, name, frequency), _cached_map(),
 _cached_map_up_to_date(false), 
 _sequence(0), _autonomyEnabled(false), _steeringMode(lunabotics::proto::ACKERMANN), 
-_pointTurnMotionState( lunabotics::proto::Telemetry::STOPPED), _currentPose(), _waypointsIt(),
-_waypoints(), _desiredWaypoints(), _motionConstraints(), _minICRRadius(0.0f), _ackermannJustStarted(false)
+_pointTurnMotionState( lunabotics::proto::Telemetry::STOPPED), _currentPose(), _segmentsIt(), _segments(),
+_waypointsIt(), _waypoints(), _desiredWaypoints(), _motionConstraints(), _minICRRadius(0.0f),
+_ackermannJustStarted(false)
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -240,7 +241,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	pathMsg.path.header.seq = this->_sequence++;
 	pathMsg.path.header.frame_id = "map";
 	
-	if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
+	if (this->_steeringMode == lunabotics::proto::ACKERMANN || this->_steeringMode == lunabotics::proto::AUTO) {
 		delete this->_trajectory;
 		this->_trajectory = new Trajectory();
 	}
@@ -281,7 +282,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			ROS_INFO("Called corner Pts");
 
 			//Transform into bezier curves
-			if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
+			if (this->_steeringMode == lunabotics::proto::ACKERMANN || this->_steeringMode == lunabotics::proto::AUTO) {
 				unsigned int size = corner_points.size();
 				if (size > 2) {
 					Point startPoint = corner_points.at(0);
@@ -339,14 +340,24 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 							//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
 						}
 						this->_trajectory->appendSegment(s);
+					}
+					if (this->_steeringMode == lunabotics::proto::AUTO) {
+						this->_trajectory->updateSegmentsMetaInfo(this->_geometryHelper->maxAvailableCurvature());
+					}
+					
+					TrajectorySegmentArr segments = this->_trajectory->segments();
+					for (unsigned int i = 0; i < segments.size(); i++) {
+						TrajectorySegment s = segments.at(i);
 						lunabotics::CurveTopic curveMsg;
 						curveMsg.start_idx = s.start_idx;
 						curveMsg.end_idx = s.finish_idx;
 						curveMsg.curvature = s.curve->maxCurvature();
 						pathMsg.curves.push_back(curveMsg);
-					}	
+					}
 					pts = this->_trajectory->getPoints();
 					pts.push_back(endPoint);
+					this->_segments = this->_trajectory->segments();
+					this->_segmentsIt = this->_segments.begin();
 				}
 				else {
 					pts = corner_points;
@@ -386,6 +397,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			controlParamsMsg.driving = this->_autonomyEnabled;
 			controlParamsMsg.has_min_icr_radius = false;
 			controlParamsMsg.next_waypoint_idx =  this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt-this->_waypoints.begin()+1 : 0;
+			controlParamsMsg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 			this->_publisherControlParams.publish(controlParamsMsg);
 		}
 		else {
@@ -447,8 +459,8 @@ void MotionControlNode::runOnce()
 	}
 		
 	//Whenever needed send control message
-	if (this->_autonomyEnabled) {
-		if ( this->_waypointsIt <  this->_waypoints.end()) {
+	if (this->_autonomyEnabled) {		
+		if (this->_waypointsIt < this->_waypoints.end()) {
 		
 			if (isnan((* this->_waypointsIt).x) || isnan((* this->_waypointsIt).y)) {
 				ROS_WARN("Waypoint undetermined");
@@ -457,9 +469,17 @@ void MotionControlNode::runOnce()
 				ROS_WARN("Current position undetermined");
 			}
 			else {
+				if (this->_segmentsIt < this->_segments.end()) {
+					unsigned int waypointIdx = std::distance(this->_waypoints.begin(), this->_waypointsIt);
+					unsigned int idx = (*this->_segmentsIt).finish_idx;
+					if (waypointIdx > idx) {
+						this->_segmentsIt++;
+					}							
+				}
 				switch (this->_steeringMode) {
 					case lunabotics::proto::ACKERMANN: this->controlAckermann(); break;
 					case lunabotics::proto::POINT_TURN: this->controlPointTurn(); break;
+					case lunabotics::proto::AUTO: this->controlAutomatic(); break;			
 					default: ROS_WARN("Unrecognized steering mode"); break;
 				}
 			}
@@ -519,7 +539,7 @@ void MotionControlNode::controlAckermann()
 
 void MotionControlNode::controlPointTurn()
 {
-	if ( this->_waypointsIt >=  this->_waypoints.end()) {
+	if (this->_waypointsIt >= this->_waypoints.end()) {
 		this->finalizeRoute();
 		return;
 	}
@@ -534,6 +554,23 @@ void MotionControlNode::controlPointTurn()
 	}
 	else {
 		this->controlPointTurnAllWheel(distance, angle);
+	}
+}
+
+void MotionControlNode::controlAutomatic()
+{
+	if (this->_segmentsIt < this->_segments.end()) {
+		TrajectorySegment s = *this->_segmentsIt;
+		if (this->_steeringMode == lunabotics::proto::AUTO && 
+		    this->_geometryHelper->maxAvailableCurvature() < s.curve->maxCurvature()) {
+			this->controlPointTurn();
+		}
+		else {
+			this->controlAckermann();
+		}
+	}
+	else {
+		this->controlStop();
 	}
 }
 
@@ -559,7 +596,8 @@ void MotionControlNode::controlStop()
 	lunabotics::ControlParams msg;
 	msg.driving = this->_autonomyEnabled;
 	msg.has_min_icr_radius = false;
-	msg.next_waypoint_idx =  this->_waypointsIt <  this->_waypoints.end() ?  this->_waypointsIt- this->_waypoints.begin()+1 : 0;
+	msg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt- this->_waypoints.begin()+1 : 0;
+	msg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 	this->_publisherControlParams.publish(msg);
 	this->_waypoints.clear();
 }
@@ -617,6 +655,7 @@ void MotionControlNode::controlAckermannAllWheel()
 		controlParamsMsg.t_trajectory_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getClosestTrajectoryPointInLocalFrame());
 		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getReferencePointInLocalFrame());
 		controlParamsMsg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ? this->_waypointsIt-this->_waypoints.begin()+1 : 0;
+		controlParamsMsg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 		controlParamsMsg.has_trajectory_data = true;
 		controlParamsMsg.has_min_icr_radius = true;
 		controlParamsMsg.min_icr_radius = this->_minICRRadius;
@@ -754,6 +793,7 @@ void MotionControlNode::controlAckermannDiffDrive()
 		controlParamsMsg.t_trajectory_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getClosestTrajectoryPointInLocalFrame());
 		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->_PIDHelper->getReferencePointInLocalFrame());
 		controlParamsMsg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ? this->_waypointsIt-this->_waypoints.begin()+1 : 0;
+		controlParamsMsg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 		controlParamsMsg.has_trajectory_data = true;
 		controlParamsMsg.has_min_icr_radius = false;
 		this->_publisherControlParams.publish(controlParamsMsg);
@@ -805,6 +845,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				else {
 					controlParamsMsg.has_trajectory_data = true;
 					controlParamsMsg.next_waypoint_idx = this->_waypointsIt < this->_waypoints.end() ? this->_waypointsIt-this->_waypoints.begin()+1 : 0;	
+					controlParamsMsg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 					//lunabotics::Point nextWaypoint = *this->_waypointsIt;
 					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypoint.position.x, nextWaypoint.position.y);
 				}
@@ -885,6 +926,7 @@ void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 				else {
 					controlParamsMsg.has_trajectory_data = true;
 					controlParamsMsg.next_waypoint_idx =  this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt-this->_waypoints.begin()+1 : 0;
+					controlParamsMsg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 					//lunabotics::Point nextWaypoint = * this->_waypointsIt;
 					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypoint.position.x, nextWaypoint.position.y);
 				}

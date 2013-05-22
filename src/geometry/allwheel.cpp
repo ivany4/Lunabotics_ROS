@@ -282,3 +282,8 @@ Point AllWheelGeometry::point_outside_base_link(Point ICR)
 	}
 	return ICR;
 }
+
+float AllWheelGeometry::maxAvailableCurvature()
+{
+	return 1/(tan(GEOMETRY_INNER_ANGLE_MAX)*this->rf.x);
+}

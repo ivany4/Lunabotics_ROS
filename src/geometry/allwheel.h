@@ -40,6 +40,7 @@ namespace lunabotics {
 			float wheel_offset();
 			float wheel_radius();
 			float wheel_width();
+			float maxAvailableCurvature();
 			
 	};
 	

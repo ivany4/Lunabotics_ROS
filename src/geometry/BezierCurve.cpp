@@ -47,6 +47,20 @@ PointArr BezierCurve::getPoints()
 	return this->_cached_points;
 }
 
+Point BezierCurve::p0()
+{
+	return this->_p0;
+}
+
+Point BezierCurve::p1()
+{
+	return this->_p1;
+}
+
+Point BezierCurve::p2()
+{
+	return this->_p2;
+}
 
 //Non-class methods
 
