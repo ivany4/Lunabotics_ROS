@@ -22,10 +22,12 @@
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/AllWheelState.h"
 #include "lunabotics/ControlMode.h"
+#include "lunabotics/CrabControl.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/State.h"
 #include "std_msgs/Bool.h"
 #include "nav_msgs/GetMap.h"
+#include "nav_msgs/OccupancyGrid.h"
 
 namespace lunabotics {
 
@@ -54,12 +56,16 @@ private:
 	ros::Subscriber _subscriberPID;
 	ros::Subscriber _subscriberSteeringMode;
 	ros::Subscriber _subscriberICR;
+	ros::Subscriber _subscriberCrab;
 	ros::Subscriber _subscriberAllWheelCommon;
 	ros::Subscriber _subscriberAllWheelFeedback;
 	
 	ros::ServiceClient _clientMap;
 
 	nav_msgs::GetMap _serviceMap;
+	
+	nav_msgs::OccupancyGrid _cached_map;
+	bool _cached_map_up_to_date;
 	
 	int _sequence;
 	bool _autonomyEnabled;
@@ -68,8 +74,10 @@ private:
 	lunabotics::Pose _currentPose;
 	lunabotics::PointArr::iterator _waypointsIt;
 	lunabotics::PointArr _waypoints;
+	lunabotics::PointArr _desiredWaypoints;
 	MotionConstraints _motionConstraints;
 	double _minICRRadius;
+	bool _ackermannJustStarted;
 	
 	lunabotics::PredefinedCmdControllerPtr _predefinedControl;
 	lunabotics::PIDControllerPtr _PID;
@@ -87,24 +95,24 @@ private:
 	void callbackAllWheelFeedback(const lunabotics::AllWheelState::ConstPtr &msg);
 	void callbackSteeringMode(const lunabotics::ControlMode::ConstPtr &msg);
 	void callbackPID(const lunabotics::PID::ConstPtr &msg);
+	void callbackCrab(const lunabotics::CrabControl::ConstPtr &msg);
 	void callbackState(const lunabotics::State::ConstPtr &msg);
 	void callbackEmergency(const lunabotics::Emergency::ConstPtr &msg);
 	
 	//Control techniques
 	void controlAckermann();
 	void controlPointTurn();
-	void controlCrab();
 	void controlStop();
 	
 	void controlAckermannAllWheel();
 	void controlAckermannDiffDrive();
-	void controlPointTurnAllWheel(double dx, double dy, double theta);
-	void controlPointTurnDiffDrive(double dx, double dy, double theta);
+	void controlPointTurnAllWheel(double distance, double theta);
+	void controlPointTurnDiffDrive(double distance, double theta);
 	
 	void finalizeRoute();
 	
 	//Path planning
-	PathPtr findPath(Pose startPose, Point goalPoint, float &res);
+	bool getMapIfNeeded();
 	
 	
 	void runOnce();

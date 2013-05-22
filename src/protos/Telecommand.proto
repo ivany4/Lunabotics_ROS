@@ -18,10 +18,10 @@ message Telecommand {
     required Type type = 1;
 
     message Teleoperation {
-		required bool forward = 1;
-		required bool backward = 2;
-		required bool left = 3;
-		required bool right = 4;
+                required bool forward = 1;
+                required bool backward = 2;
+                required bool left = 3;
+                required bool right = 4;
     }
     optional Teleoperation teleoperation_data = 2;
 
@@ -31,28 +31,24 @@ message Telecommand {
     optional Autonomy autonomy_data = 3;
 
     message SteeringMode {
-		required SteeringModeType type = 1;
-		
-		message AckermannSteeringData {
-				optional float max_linear_velocity = 1 [default = 0.33];
-				optional int32 bezier_curve_segments = 2 [default = 20];
-		}
-		optional AckermannSteeringData ackermann_steering_data = 2;
-		
-		message TurnInSpotSteeringData {
-		}
-		optional TurnInSpotSteeringData turn_in_spot_steering_data = 3;
-		
-		message CrabSteeringData {
-		}
-		optional CrabSteeringData crab_steering_data = 4;
+                required SteeringModeType type = 1;
+                required float heading_accuracy = 2;
+                required float position_accuracy = 3;
+
+                message AckermannSteeringData {
+                                optional float max_linear_velocity = 1 [default = 0.33];
+                                optional int32 bezier_curve_segments = 2 [default = 20];
+                }
+                optional AckermannSteeringData ackermann_steering_data = 4;
+
+                message TurnInSpotSteeringData {
+                }
+                optional TurnInSpotSteeringData turn_in_spot_steering_data = 5;
     }
     optional SteeringMode steering_mode_data = 4;
 
     message DefineRoute {
-		required Point goal = 1;
-		optional float heading_accuracy = 2 [default = 0.4];
-		optional float position_accuracy = 3 [default = 0.2];
+                repeated Point waypoints = 1;
     }
     optional DefineRoute define_route_data = 5;
 
@@ -61,14 +57,14 @@ message Telecommand {
     optional RequestMap request_map_data = 6;
 
     message AdjustPID {
-		required float p = 1;
-		required float i = 2;
-		required float d = 3;
-		required float velocity_offset = 4;
-		required float velocity_multiplier = 5;
+                required float p = 1;
+                required float i = 2;
+                required float d = 3;
+                required float velocity_offset = 4;
+                required float velocity_multiplier = 5;
     }
     optional AdjustPID adjust_pid_data = 7;
-    
+
     optional AllWheelControl all_wheel_control_data = 8;
 }
 

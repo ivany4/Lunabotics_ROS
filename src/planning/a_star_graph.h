@@ -30,14 +30,16 @@ private:
 	double distance(Node node1, Node node2);
 	NodeArr reconstruct_path(NodeList came_from, Node current);
 	bool isObstacleBetweenNodes(Node node1, Node node2);
+	bool isEssentialNodeInBetween(int node1_idx, int node2_idx, NodeArr arr);
 	PointArr pointRepresentation(NodeArr graph, float resolution);
 	IndexedPointArr pointRepresentation(IndexedNodeArr graph, float resolution);	
 	NodeArr removeStraightPathWaypoints(NodeArr originalGraph);
 public:
 	Path();
-	Path(OccupancyArr map, int width, int height, int start_x, int start_y, int goal_x, int goal_y);
+	Path(OccupancyArr map, int width, int height, Point start);
 	NodeArr cornerNodes();
 	NodeArr allNodes();
+	void appendGoal(Point goal);
 	IndexedNodeArr closestObstacleNodes();
 	PointArr cornerPoints(float resolution);
 	PointArr allPoints(float resolution);
@@ -47,6 +49,7 @@ public:
 };
 
 typedef Path * PathPtr;
+void PrintNodes(NodeArr arr, std::string label);
 }
 
 #endif

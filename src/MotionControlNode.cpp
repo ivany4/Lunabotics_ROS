@@ -23,10 +23,11 @@ using namespace lunabotics;
 
 
 MotionControlNode::MotionControlNode(int argc, char **argv, std::string name, int frequency):
- ROSNode(argc, argv, name, frequency),
+ ROSNode(argc, argv, name, frequency), _cached_map(),
+_cached_map_up_to_date(false), 
 _sequence(0), _autonomyEnabled(false), _steeringMode(lunabotics::proto::ACKERMANN), 
 _pointTurnMotionState( lunabotics::proto::Telemetry::STOPPED), _currentPose(), _waypointsIt(),
-_waypoints(), _motionConstraints(), _minICRRadius(0.0f)
+_waypoints(), _desiredWaypoints(), _motionConstraints(), _minICRRadius(0.0f), _ackermannJustStarted(false)
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -61,6 +62,7 @@ _waypoints(), _motionConstraints(), _minICRRadius(0.0f)
 	this->_subscriberPID = this->_nodeHandle->subscribe("pid", sizeof(float)*3, &MotionControlNode::callbackPID, this);
 	this->_subscriberSteeringMode = this->_nodeHandle->subscribe("control_mode", 1, &MotionControlNode::callbackSteeringMode, this);
 	this->_subscriberICR = this->_nodeHandle->subscribe("icr", sizeof(float)*3, &MotionControlNode::callbackICR, this);
+	this->_subscriberCrab = this->_nodeHandle->subscribe("crab", sizeof(float)*2, &MotionControlNode::callbackCrab, this);
 	this->_subscriberAllWheelCommon = this->_nodeHandle->subscribe("all_wheel_common", 256, &MotionControlNode::callbackAllWheelCommon, this);
 	this->_subscriberAllWheelFeedback = this->_nodeHandle->subscribe("all_wheel_feeback", sizeof(float)*8, &MotionControlNode::callbackAllWheelFeedback, this);
 	
@@ -119,6 +121,8 @@ void MotionControlNode::callbackSteeringMode(const lunabotics::ControlMode::Cons
 {
 	
 	this->_steeringMode = (lunabotics::proto::SteeringModeType)msg->mode;
+	this->_motionConstraints.point_turn_angle_accuracy = msg->angle_accuracy;
+	this->_motionConstraints.point_turn_distance_accuracy = msg->distance_accuracy;
 	if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
 		this->_motionConstraints.lin_velocity_limit = msg->linear_speed_limit;
 		this->_motionConstraints.bezier_segments_num = (int)msg->smth_else;
@@ -149,6 +153,31 @@ void MotionControlNode::callbackAutonomy(const std_msgs::Bool::ConstPtr &msg)
 		this->controlStop();
 	}
 	
+}
+
+void MotionControlNode::callbackCrab(const lunabotics::CrabControl::ConstPtr &msg)
+{
+	float angle_front_left = msg->heading;
+	float angle_front_right = msg->heading;
+	float angle_rear_left = msg->heading;
+	float angle_rear_right = msg->heading;
+	if (validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+		double min_angle = std::min(fabs(angle_front_left), fabs(angle_front_right));
+		min_angle = std::min(min_angle, fabs(angle_rear_left));
+		min_angle = std::min(min_angle, fabs(angle_rear_right));
+		min_angle *= sign(angle_front_right, 0.0001);
+	
+		lunabotics::AllWheelState controlMsg;
+		controlMsg.steering.left_front = min_angle;
+		controlMsg.steering.right_front = min_angle;
+		controlMsg.steering.left_rear = min_angle;
+		controlMsg.steering.right_rear = min_angle;
+		controlMsg.driving.left_front = msg->velocity;
+		controlMsg.driving.right_front = msg->velocity;
+		controlMsg.driving.left_rear = msg->velocity;
+		controlMsg.driving.right_rear = msg->velocity;
+		this->_publisherAllWheelMotion.publish(controlMsg);
+	}
 }
 
 void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
@@ -201,156 +230,169 @@ void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
 
 void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 {
+	this->controlStop();
+	this->_ackermannJustStarted = true;
 	this->_waypoints.clear();
 	this->_minICRRadius = 0;
-	this->_motionConstraints.point_turn_angle_accuracy = msg->angleAccuracy;
-	this->_motionConstraints.point_turn_distance_accuracy = msg->distanceAccuracy;
 	
-	//Specify params
-	Point goal = Point_from_geometry_msgs_Point(msg->point);
+	lunabotics::PathTopic pathMsg;
+	pathMsg.path.header.stamp = ros::Time::now();
+	pathMsg.path.header.seq = this->_sequence++;
+	pathMsg.path.header.frame_id = "map";
+	
+	if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
+		delete this->_trajectory;
+		this->_trajectory = new Trajectory();
+	}
+	
+	ROS_INFO("Getting %d waypoints cmd", (int)msg->waypoints.size());
+	this->getMapIfNeeded();
+	float resolution = this->_cached_map.info.resolution;
+	Point start = CreatePoint(round(this->_currentPose.position.x/resolution),
+							round(this->_currentPose.position.y/resolution));
+	
+	PathPtr path = new Path(this->_cached_map.data, this->_cached_map.info.width,
+							this->_cached_map.info.height, start);
+	
+	for (unsigned int k = 0; k < msg->waypoints.size(); k++) {
+		Point goal = Point_from_geometry_msgs_Point(msg->waypoints.at(k));
 		//ROS_INFO("Requesting path between (%.1f,%.1f) and (%.1f,%.1f)",
 		//	  this->_currentPose.position.x, this->_currentPose.position.y,
 		//	  goal.x, goal.y);
-	float resolution;
-	PathPtr path = this->findPath(this->_currentPose, goal, resolution);
-	
-	if (path->is_initialized()) {
-		std::stringstream sstr;
 		
-		lunabotics::PathTopic pathMsg;
-		pathMsg.path.header.stamp = ros::Time::now();
-		pathMsg.path.header.seq = this->_sequence++;
-		pathMsg.path.header.frame_id = "map";
+		ROS_INFO("Getting path of %d segment between (%.1f,%.1f) and (%.1f,%.1f)", k, start.x, start.y, goal.x, goal.y);
 		
+		path->appendGoal(goal);
 		
-		PointArr corner_points = path->cornerPoints(resolution);
-		PointArr pts;
+		start = goal;
+	}
+	if (path->allNodes().size() == 0) {
+		ROS_INFO("Path is not found");
+	}
+	else {
+		ROS_INFO("Path got");
 		
-		
-		if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
-			unsigned int size = corner_points.size();
-			if (size > 2) {
-				delete this->_trajectory;
-				this->_trajectory = new Trajectory();
-				Point startPoint = corner_points.at(0);
-				Point endPoint = corner_points.at(size-1);
-				IndexedPointArr closest_obstacles = path->closestObstaclePoints(resolution);
-				unsigned int obst_size = closest_obstacles.size();
-				
-				pts.push_back(startPoint);
+		if (path->is_initialized()) {
+			ROS_INFO("Path correct");
+			std::stringstream sstr;
 			
-				//Get bezier quadratic curves for each point-turn
-				for (unsigned int i = 1; i < size-1; i++) {
-					Point q0, q2;
-					Point prev = corner_points.at(i-1);
-					Point curr = corner_points.at(i);
-					Point next = corner_points.at(i+1);
+			PointArr pts;
+			PointArr corner_points = path->cornerPoints(resolution);
+			ROS_INFO("Called corner Pts");
+
+			//Transform into bezier curves
+			if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
+				unsigned int size = corner_points.size();
+				if (size > 2) {
+					Point startPoint = corner_points.at(0);
+					Point endPoint = corner_points.at(size-1);
+					IndexedPointArr closest_obstacles = path->closestObstaclePoints(resolution);
+					unsigned int obst_size = closest_obstacles.size();
 					
-					bool hasObstacle = false;
-					Point obstaclePoint;
-					
-					//Since obstacle is the center of occupied cell, we want p to be at its edge
-					if (obst_size > 0) {
-						int start = std::min(obst_size-1, i-1);
-						for (int j = start; j >= 0; j--) {
-							IndexedPoint indexedObstacle = closest_obstacles.at(j);
-							if (indexedObstacle.index == (int)i) {
-								hasObstacle = true;
-								obstaclePoint = indexedObstacle.point;
-								break;
+					pts.push_back(startPoint);
+				
+					//Get bezier quadratic curves for each point-turn
+					for (unsigned int i = 1; i < size-1; i++) {
+						Point q0, q2;
+						Point prev = corner_points.at(i-1);
+						Point curr = corner_points.at(i);
+						Point next = corner_points.at(i+1);
+						
+						bool hasObstacle = false;
+						Point obstaclePoint;
+						
+						//Since obstacle is the center of occupied cell, we want p to be at its edge
+						if (obst_size > 0) {
+							int start = std::min(obst_size-1, i-1);
+							for (int j = start; j >= 0; j--) {
+								IndexedPoint indexedObstacle = closest_obstacles.at(j);
+								if (indexedObstacle.index == (int)i) {
+									hasObstacle = true;
+									obstaclePoint = indexedObstacle.point;
+									break;
+								}
 							}
 						}
-					}
-					
-					
-					if (i == 1) {
-						q0 = prev;
-					}
-					else {
-						q0 = midPoint(prev, curr);
-					}
-					if (i == size-2) {
-						q2 = next;
-					}
-					else {
-						q2 = midPoint(next, curr);
-					}
-					
-					TrajectorySegment s;
-					if (hasObstacle) {
-						Point p = midPoint(obstaclePoint, curr);
-						s.curve = CreateConstrainedBezierCurve(q0, curr, q2, p, this->_motionConstraints.bezier_segments_num);
-						//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
-					}
-					else {
-						s.curve = new BezierCurve(q0, curr, q2, this->_motionConstraints.bezier_segments_num);
-						//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
-					}
-					this->_trajectory->appendSegment(s);
-					lunabotics::CurveTopic curveMsg;
-					curveMsg.start_idx = s.start_idx;
-					curveMsg.end_idx = s.finish_idx;
-					curveMsg.curvature = s.curve->maxCurvature();
-					pathMsg.curves.push_back(curveMsg);
-				}	
-				pts = this->_trajectory->getPoints();
-				pts.push_back(endPoint);
-				
-				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->_trajectory->maxCurvature(), 1/this->_trajectory->maxCurvature());
-					
+						
+						
+						if (i == 1) {
+							q0 = prev;
+						}
+						else {
+							q0 = midPoint(prev, curr);
+						}
+						if (i == size-2) {
+							q2 = next;
+						}
+						else {
+							q2 = midPoint(next, curr);
+						}
+						
+						TrajectorySegment s;
+						if (hasObstacle) {
+							Point p = midPoint(obstaclePoint, curr);
+							s.curve = CreateConstrainedBezierCurve(q0, curr, q2, p, this->_motionConstraints.bezier_segments_num);
+							//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+						}
+						else {
+							s.curve = new BezierCurve(q0, curr, q2, this->_motionConstraints.bezier_segments_num);
+							//ROS_INFO("Curve without tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y);
+						}
+						this->_trajectory->appendSegment(s);
+						lunabotics::CurveTopic curveMsg;
+						curveMsg.start_idx = s.start_idx;
+						curveMsg.end_idx = s.finish_idx;
+						curveMsg.curvature = s.curve->maxCurvature();
+						pathMsg.curves.push_back(curveMsg);
+					}	
+					pts = this->_trajectory->getPoints();
+					pts.push_back(endPoint);
+				}
+				else {
+					pts = corner_points;
+				}
 			}
 			else {
 				pts = corner_points;
 			}
+				
+			int poseSeq = 0;
+			this->_waypoints = pts;
+			for (PointArr::iterator it = pts.begin(); it != pts.end(); it++) {
+				Point pt = *it;
+				geometry_msgs::PoseStamped pose;
+				pose.header.seq = poseSeq++;
+				pose.header.stamp = ros::Time::now();
+				pose.header.frame_id = "map";
+				pose.pose.position = geometry_msgs_Point_from_Point(pt);
+				pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+				pathMsg.path.poses.push_back(pose);
+			}
+			this->_PIDHelper->setTrajectory(this->_waypoints);
+			
+			if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
+				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->_trajectory->maxCurvature(), 1/this->_trajectory->maxCurvature());
+			}
+			
+			 this->_waypointsIt = this->_steeringMode == lunabotics::proto::ACKERMANN ? this->_waypoints.begin() : this->_waypoints.begin()+1;		
+		//	ROS_INFO("Returned path: %s", sstr.str().c_str());
+			//Point waypoint = this->_waypoints.at(0);
+			//ROS_INFO("Heading towards (%.1f,%.1f)", (*this->_waypointsIt).x, (*this->_waypointsIt).y);
+			
+			this->_publisherPath.publish(pathMsg);
+	
+			this->_autonomyEnabled = true;
+			lunabotics::ControlParams controlParamsMsg;
+			controlParamsMsg.driving = this->_autonomyEnabled;
+			controlParamsMsg.has_min_icr_radius = false;
+			controlParamsMsg.next_waypoint_idx =  this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt-this->_waypoints.begin()+1 : 0;
+			this->_publisherControlParams.publish(controlParamsMsg);
 		}
 		else {
-			pts = corner_points;
+			ROS_WARN("Couldn't find a path'");
 		}
-		
-		int poseSeq = 0;
-		for (PointArr::iterator it = pts.begin(); it != pts.end(); it++) {
-			Point pt = *it;
-			
-			//float x_m = node.x*resolution;
-			//float y_m = node.y*resolution;
-			//float x_m = pt.x;
-			//float y_m = pt.y;
-			
-			this->_waypoints.push_back(pt);
-	//		sstr << "->(" << x_m << "," << y_m << ")";
-			
-			
-			geometry_msgs::PoseStamped pose;
-			pose.header.seq = poseSeq++;
-			pose.header.stamp = ros::Time::now();
-			pose.header.frame_id = "map";
-			pose.pose.position = geometry_msgs_Point_from_Point(pt);
-			pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-			pathMsg.path.poses.push_back(pose);
-		}
-		this->_PIDHelper->setTrajectory(pts);
-		
-		 this->_waypointsIt = this->_steeringMode == lunabotics::proto::ACKERMANN ? this->_waypoints.begin() : this->_waypoints.begin()+1;		
-	//	ROS_INFO("Returned path: %s", sstr.str().c_str());
-		//Point waypoint = this->_waypoints.at(0);
-		//ROS_INFO("Heading towards (%.1f,%.1f)", (*this->_waypointsIt).x, (*this->_waypointsIt).y);
-		
-		this->_publisherPath.publish(pathMsg);
-		
-		this->_autonomyEnabled = true;
-		lunabotics::ControlParams controlParamsMsg;
-		controlParamsMsg.driving = this->_autonomyEnabled;
-		controlParamsMsg.has_min_icr_radius = false;
-		controlParamsMsg.next_waypoint_idx =  this->_waypointsIt < this->_waypoints.end() ?  this->_waypointsIt-this->_waypoints.begin()+1 : 0;
-		this->_publisherControlParams.publish(controlParamsMsg);
 	}
-	else {
-		ROS_INFO("Path is empty");
-	}
-	
 	delete path;
-
-
 }
 
 //------------------- INHERITED METHODS --------------------------------
@@ -417,8 +459,7 @@ void MotionControlNode::runOnce()
 			else {
 				switch (this->_steeringMode) {
 					case lunabotics::proto::ACKERMANN: this->controlAckermann(); break;
-					case lunabotics::proto::TURN_IN_SPOT: this->controlPointTurn(); break;
-					case lunabotics::proto::CRAB: this->controlCrab(); break;
+					case lunabotics::proto::POINT_TURN: this->controlPointTurn(); break;
 					default: ROS_WARN("Unrecognized steering mode"); break;
 				}
 			}
@@ -455,6 +496,19 @@ void MotionControlNode::finalizeRoute()
 
 void MotionControlNode::controlAckermann()
 {
+	if (this->_ackermannJustStarted) {
+		this->_pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
+		this->controlPointTurn();
+		if (this->_pointTurnMotionState != lunabotics::proto::Telemetry::TURNING) {
+			this->_ackermannJustStarted = false;
+			//Stop turning and continue
+		}
+		else {
+			//Return and keep turning during next cycle
+			return;
+		}
+	}
+	
 	if (this->_isDiffDriveRobot) {
 		this->controlAckermannDiffDrive();
 	}
@@ -469,22 +523,18 @@ void MotionControlNode::controlPointTurn()
 		this->finalizeRoute();
 		return;
 	}
+	double distance = lunabotics::distance(*this->_waypointsIt, this->_currentPose.position);
 	double dx = (*this->_waypointsIt).x-this->_currentPose.position.x;
 	double dy = (*this->_waypointsIt).y-this->_currentPose.position.y;
 	double angle = normalizedAngle(atan2(dy, dx)-this->_currentPose.orientation);
 	
 	
 	if (this->_isDiffDriveRobot) {
-		this->controlPointTurnDiffDrive(dx, dy, angle);
+		this->controlPointTurnDiffDrive(distance, angle);
 	}
 	else {
-		this->controlPointTurnAllWheel(dx, dy, angle);
+		this->controlPointTurnAllWheel(distance, angle);
 	}
-}
-
-void MotionControlNode::controlCrab()
-{
-	//TBD
 }
 
 void MotionControlNode::controlStop()
@@ -736,7 +786,7 @@ void MotionControlNode::controlAckermannDiffDrive()
 		this->controlPointTurn();
 	}
 }
-void MotionControlNode::controlPointTurnAllWheel(double dx, double dy, double theta)
+void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 {
 	lunabotics::AllWheelCommon msg;
 
@@ -747,8 +797,7 @@ void MotionControlNode::controlPointTurnAllWheel(double dx, double dy, double th
 		case lunabotics::proto::Telemetry::STOPPED: {
 			//ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
-			if (fabs(dx) < this->_motionConstraints.point_turn_distance_accuracy &&
-				fabs(dy) < this->_motionConstraints.point_turn_distance_accuracy) {
+			if (distance < this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_waypointsIt++;
 				if (this->_waypointsIt >= this->_waypoints.end()) {
 					this->finalizeRoute();
@@ -763,14 +812,14 @@ void MotionControlNode::controlPointTurnAllWheel(double dx, double dy, double th
 			else if (fabs(theta) > this->_motionConstraints.point_turn_angle_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
 			}
-			else if (fabs(dx) > this->_motionConstraints.point_turn_distance_accuracy || fabs(dy) > this->_motionConstraints.point_turn_distance_accuracy) {
+			else if (distance > this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::DRIVING;
 			}				
 		}	
 		break;
 		case lunabotics::proto::Telemetry::DRIVING: {	
 			//ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
-			if (fabs(dx) < this->_motionConstraints.point_turn_distance_accuracy && fabs(dy) < this->_motionConstraints.point_turn_distance_accuracy) {
+			if (distance < this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
@@ -811,7 +860,7 @@ void MotionControlNode::controlPointTurnAllWheel(double dx, double dy, double th
 	this->_publisherAllWheelCommon.publish(msg);
 }
 
-void MotionControlNode::controlPointTurnDiffDrive(double dx, double dy, double theta)
+void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 {
 	lunabotics::ControlParams controlParamsMsg;
 	controlParamsMsg.driving = this->_autonomyEnabled;
@@ -828,7 +877,7 @@ void MotionControlNode::controlPointTurnDiffDrive(double dx, double dy, double t
 		case lunabotics::proto::Telemetry::STOPPED: {
 			//ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
-			if (fabs(dx) < this->_motionConstraints.point_turn_distance_accuracy && fabs(dy) < this->_motionConstraints.point_turn_distance_accuracy) {
+			if (distance < this->_motionConstraints.point_turn_distance_accuracy) {
 				 this->_waypointsIt++;
 				if ( this->_waypointsIt >= this->_waypoints.end()) {
 					this->finalizeRoute();
@@ -843,16 +892,14 @@ void MotionControlNode::controlPointTurnDiffDrive(double dx, double dy, double t
 			else if (fabs(theta) > this->_motionConstraints.point_turn_angle_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
 			}
-			else if (fabs(dx) > this->_motionConstraints.point_turn_distance_accuracy ||
-					 fabs(dy) > this->_motionConstraints.point_turn_distance_accuracy) {
+			else if (distance > this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::DRIVING;
 			}				
 		}	
 		break;
 		case lunabotics::proto::Telemetry::DRIVING: {	
 		//	ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);	
-			if (fabs(dx) < this->_motionConstraints.point_turn_distance_accuracy &&
-				fabs(dy) < this->_motionConstraints.point_turn_distance_accuracy) {
+			if (distance < this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				twistMsg.linear.x = 0;
 				twistMsg.angular.z = 0;
@@ -894,50 +941,20 @@ void MotionControlNode::controlPointTurnDiffDrive(double dx, double dy, double t
 
 //------------------ PLANNING METHODS ----------------------------------
 
-PathPtr MotionControlNode::findPath(Pose startPose, Point goalPoint, float &res)
+bool MotionControlNode::getMapIfNeeded()
 {
-	if (this->_clientMap.call(this->_serviceMap)) {
-		this->controlStop();
-		
-		unsigned int map_size = this->_serviceMap.response.map.data.size();
-		if (map_size > 0) {
-			ROS_INFO("Got map from service (%d cells)", (int)map_size);
-			ROS_INFO("Looking for a path...");
-			
-			//Generate a path
-			float resolution = this->_serviceMap.response.map.info.resolution;
-			res = resolution;
-			
-			int start_x = round(startPose.position.x/resolution);
-			int start_y = round(startPose.position.y/resolution);
-			int goal_x = round(goalPoint.x/resolution);
-			int goal_y = round(goalPoint.y/resolution);
-			
-			PathPtr graph = new Path(this->_serviceMap.response.map.data, 
-									this->_serviceMap.response.map.info.width, 
-									this->_serviceMap.response.map.info.height,
-									start_x, start_y, goal_x, goal_y);
-									
-			
-			if (graph->allNodes().size() == 0) {
-				ROS_INFO("Path is not found");
-				return NULL;
-			}
-			else {
-				if (graph->cornerNodes().size() == 1) {
-					ROS_INFO("Robot is at the goal");
-				}
-				return graph;
-			}
+	if (!_cached_map_up_to_date) {
+		if (!this->_clientMap.call(this->_serviceMap)) {
+			ROS_WARN("Failed to get a map from the service");
+			return false;
 		}
 		else {
-			ROS_ERROR("Failed to get a proper map from the service");
-		}	
+			this->_cached_map = this->_serviceMap.response.map;
+			this->_cached_map_up_to_date = true;
+			ROS_INFO("Got map from service (%d cells)", (int)this->_cached_map.data.size());
+		}
 	}
-	else {
-		ROS_ERROR("Failed to call service luna_map");
-	}
-	return NULL;
+	return true;
 }
 
 void MotionControlNode::run()

@@ -13,18 +13,22 @@ typedef std::vector<Node> NodeArr;
 typedef std::list<Node> NodeList;
 	
 class Node {
+private:
+	double _F;
+	double _G;
+	double _H;
+	bool _F_ok;
 public:
 	int x;
 	int y;
 	int parent_x;
 	int parent_y;
-	double F;
-	double G;
-	double H;
+	bool essential;
 	
 	Node();
 	Node(const Node &);
 	Node(int nx, int ny);
+	Node(Point p);
 	~Node(){};
 	Node &operator=(const Node &rhs);
 	int operator==(const Node &rhs) const;
@@ -33,6 +37,11 @@ public:
 	friend std::ostream &operator<<(std::ostream &, const Node &);
 	NodeList neighbours(int grid_width, int grid_height, OccupancyArr grid);
 	Node parent(NodeList parents);
+	void setG(double G);
+	void setH(double H);
+	double F();
+	double G();
+	double H();
 };
 
 }

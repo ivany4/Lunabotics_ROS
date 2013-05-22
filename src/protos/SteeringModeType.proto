@@ -1,7 +1,6 @@
 package lunabotics.proto;
 
 enum SteeringModeType {
-	ACKERMANN 		= 1;
-	TURN_IN_SPOT	= 2;
-	CRAB			= 3;
+        ACKERMANN 		= 1;
+        POINT_TURN              = 2;
 }

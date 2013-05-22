@@ -8,6 +8,7 @@ message AllWheelControl {
                 EXPLICIT		= 1;
                 PREDEFINED		= 2;
                 ICR                     = 3;
+                CRAB                    = 4;
         }
         required AllWheelControlType all_wheel_type = 1;
 
@@ -32,5 +33,11 @@ message AllWheelControl {
             required float velocity = 2;
         }
         optional ICRControl icr_data = 4;
+
+        message CrabControl {
+            required float heading = 1;
+            required float velocity = 2;
+        }
+        optional CrabControl crab_data = 5;
 
 }

@@ -6,6 +6,7 @@
 #include "lunabotics/AllWheelState.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/ICRControl.h"
+#include "lunabotics/CrabControl.h"
 #include "geometry/allwheel.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
@@ -32,6 +33,7 @@ ros::Publisher autonomyPublisher;
 ros::Publisher goalPublisher;
 ros::Publisher mapRequestPublisher;
 ros::Publisher ICRPublisher;
+ros::Publisher CrabPublisher;
 
 
 void quit(int sig) {
@@ -96,6 +98,8 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				
 				lunabotics::ControlMode controlModeMsg;
 				controlModeMsg.mode = type;
+				controlModeMsg.distance_accuracy = tc.steering_mode_data().position_accuracy();
+				controlModeMsg.angle_accuracy = tc.steering_mode_data().heading_accuracy();
 				if (type == lunabotics::proto::ACKERMANN) {
 					controlModeMsg.linear_speed_limit = tc.steering_mode_data().ackermann_steering_data().max_linear_velocity();
 					controlModeMsg.smth_else = tc.steering_mode_data().ackermann_steering_data().bezier_curve_segments();
@@ -142,18 +146,14 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			break;
 			
 			case lunabotics::proto::Telecommand::DEFINE_ROUTE: {
-				float goalX = tc.define_route_data().goal().x();
-				float goalY = tc.define_route_data().goal().y();
-				float toleranceAngle = tc.define_route_data().heading_accuracy();
-				float toleranceDistance = tc.define_route_data().position_accuracy();
-				
-				ROS_INFO("Navigation to (%.1f,%.1f)", goalX, goalY);
-				
 				lunabotics::Goal goalMsg;
-				goalMsg.point.x = goalX;
-				goalMsg.point.y = goalY;
-				goalMsg.angleAccuracy = toleranceAngle;
-				goalMsg.distanceAccuracy = toleranceDistance;
+				const lunabotics::proto::Telecommand::DefineRoute route = tc.define_route_data();
+	            for (int i = 0; i < route.waypoints_size(); i++) {
+	                const lunabotics::proto::Point waypoint = route.waypoints(i);
+	                geometry_msgs::Point pt = lunabotics::geometry_msgs_Point_from_Point(lunabotics::CreatePoint(waypoint.x(), waypoint.y()));
+					goalMsg.waypoints.push_back(pt);
+					ROS_INFO("Navigation to (%.1f,%.1f)", pt.x, pt.y);
+				}
 				goalPublisher.publish(goalMsg);
 			}
 			break;
@@ -218,6 +218,14 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					}
 					break;
 					
+					case lunabotics::proto::AllWheelControl::CRAB: {
+						lunabotics::CrabControl msg;
+						msg.heading = tc.all_wheel_control_data().crab_data().heading();
+						msg.velocity = tc.all_wheel_control_data().crab_data().velocity();
+						CrabPublisher.publish(msg);
+					}
+					break;
+					
 					default:
 					break;
 				}
@@ -267,6 +275,7 @@ int main(int argc, char **argv)
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
 	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);
+	CrabPublisher = nodeHandle.advertise<lunabotics::CrabControl>("crab", sizeof(float)*3);
 	
   	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 

@@ -7,22 +7,27 @@ using namespace lunabotics;
 
 #define USE_8_DIRECTIONS	1
 
-Node::Node(): x(0), y(0), parent_x(0), parent_y(0), F(0), G(0), H(0)
+Node::Node():_F(0), _G(0), _H(0), _F_ok(false), x(0), y(0), parent_x(0), parent_y(0), essential(false)
 {
 }
 
-Node::Node(int nx, int ny): x(nx), y(ny), parent_x(0), parent_y(0), F(0), G(0), H(0)
+Node::Node(int nx, int ny):_F(0), _G(0), _H(0), _F_ok(false), x(nx), y(ny), parent_x(0), parent_y(0), essential(false)
 {
 }
 
-Node::Node(const Node &copyin): x(copyin.x), y(copyin.y), parent_x(copyin.parent_x), parent_y(copyin.parent_y), F(copyin.F), G(copyin.G),
-								H(copyin.H)
+Node::Node(Point p):_F(0), _G(0), _H(0), _F_ok(false), x(p.x), y(p.y), parent_x(0), parent_y(0), essential(false)
 {
 }
+
+Node::Node(const Node &copyin):_F(copyin._F), _G(copyin._G), _H(copyin._H), _F_ok(copyin._F_ok),
+ x(copyin.x), y(copyin.y), parent_x(copyin.parent_x), parent_y(copyin.parent_y), essential(copyin.essential)
+{
+}
+
 namespace lunabotics {
 std::ostream &operator<<(std::ostream &output, const Node &aaa)
 {
-   output << "(" << aaa.x << "," << aaa.y << ")";// [parent (" << aaa.parent_x << "," << aaa.parent_y << "), F:" << aaa.F << " G:" << aaa.G << " H:" << aaa.H << "]" << endl;
+   output << "(" << aaa.x << "," << aaa.y << " ess " << aaa.essential << ")"; //" [parent (" << aaa.parent_x << "," << aaa.parent_y << ")])";//", F:" << aaa.F << " G:" << aaa.G << " H:" << aaa.H << "]" << endl;
    return output;
 }
 }
@@ -31,11 +36,13 @@ Node& Node::operator=(const Node &rhs)
 {
    this->x = rhs.x;
    this->y = rhs.y;
-   this->F = rhs.F;
-   this->G = rhs.G;
-   this->H = rhs.H;
+   this->_F = rhs._F;
+   this->_G = rhs._G;
+   this->_H = rhs._H;
+   this->_F_ok = rhs._F_ok;
    this->parent_x = rhs.parent_x;
    this->parent_y = rhs.parent_y;
+   this->essential = rhs.essential;
    return *this;
 }
 
@@ -132,10 +139,39 @@ Node Node::parent(NodeList parents) {
 // This function is required for built-in STL list functions like sort
 int Node::operator<(const Node &rhs) const
 {
-   if (this->F < rhs.F) return 1;
+   if (this->_F < rhs._F) return 1;
    return 0;
 }
 
 
+void Node::setG(double G)
+{
+	this->_G = G;
+	this->_F_ok = false;
+}
+void Node::setH(double H)
+{
+	this->_H = H;
+	this->_F_ok = false;
+}
+
+double Node::F()
+{
+	if (!this->_F_ok) {
+		this->_F = this->_G+this->_H;
+		this->_F_ok = true;
+	}
+	return this->_F;
+}
+
+double Node::G()
+{
+	return this->_G;
+}
+
+double Node::H()
+{
+	return this->_H;
+}
 
 

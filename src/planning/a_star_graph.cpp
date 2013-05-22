@@ -13,45 +13,58 @@ Path::Path(): width(0), height(0), initialized(false), map(), nodes(), corner_no
 {
 }
 
-Path::Path(OccupancyArr map, int width, int height, int start_x, int start_y, int goal_x, int goal_y): width(width), height(height), initialized(true), map(map), nodes(), corner_nodes()
+Path::Path(OccupancyArr map, int width, int height, Point start): width(width), height(height), initialized(true), map(map), nodes(), corner_nodes()
 {
-	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start_x, start_y, goal_x, goal_y);	
-	NodeArr graph;
-	
-    if (map.at(goal_x+goal_y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
-    if (map.at(start_x+start_y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
+	if (map.at(start.x+start.y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+
+    this->width = width;
+    this->height = height;
+    
+    this->nodes.push_back(Node(start));
+}
+
+void Path::appendGoal(Point goal)
+{
+    if (map.at(goal.x+goal.y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
     
     if (this->initialized) {
+		
 		NodeList open_set;
 		NodeList closed_set;
 		NodeList came_from;
+		NodeArr graph;
 		
-	    this->width = width;
-	    this->height = height;
 	    
-	    Node goal_node = Node(goal_x, goal_y);  
+	    Node goal_node = Node(goal.x, goal.y);  
+	    goal_node.essential = true;
+	    Node start_node = this->nodes.at(this->nodes.size()-1);
+	    start_node.parent_x = start_node.x;
+	    start_node.parent_y = start_node.y;
+	    start_node.essential = true;
 		
-	      
-	    Node start_node = Node(start_x, start_y);
-	    start_node.H = this->distance(start_node, goal_node);	//Distance
-	    start_node.G = 0;										//Cost
-	    start_node.F = start_node.H+start_node.G;				//Admissible heuristics
-	    start_node.parent_x = start_x;
-	    start_node.parent_y = start_y;
+		
+		
+	    start_node.setH(this->distance(start_node, goal_node));	//Distance
+
 	    open_set.push_back(start_node);
 	    
 	    std::stringstream sstr;
+		sstr << start_node << " and " << goal_node;
+		//ROS_INFO("Running A* between %s", sstr.str().c_str());
 	    
 	    while (!open_set.empty()) {
 	        open_set.sort();
 			Node current = open_set.front();
 			sstr.str(std::string());
 			sstr << current;
-			//ROS_INFO("Node with smallest F=%.3f is %s", current.F, sstr.str().c_str());
+			//ROS_INFO("Node with smallest F=%.3f is %s", current.F(), sstr.str().c_str());
 	
 	        if (current == goal_node) {
-				//ROS_INFO("Found goal %s", sstr.str().c_str());
+				ROS_INFO("Found goal %s. Setting essential", sstr.str().c_str());
+				current.essential = true;
 				graph = this->reconstruct_path(came_from, current);
+			//	ROS_INFO("Path reconstructed");
 				reverse(graph.begin(), graph.end());
 				break;
 			}
@@ -67,15 +80,14 @@ Path::Path(OccupancyArr map, int width, int height, int start_x, int start_y, in
 					continue;
 				}
 				
-				double tentative_G = current.G + this->distance(current, neighbour);
+				double tentative_G = current.G() + this->distance(current, neighbour);
 				
-				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G) {
+				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G()) {
 					came_from.push_back(current);
 					neighbour.parent_x = current.x;
 					neighbour.parent_y = current.y;
-					neighbour.G = tentative_G;
-					neighbour.H = this->distance(neighbour, goal_node);
-					neighbour.F = neighbour.G + neighbour.H;
+					neighbour.setG(tentative_G);
+					neighbour.setH(this->distance(neighbour, goal_node));
 					if (!this->in_set(open_set, neighbour)) {
 						open_set.push_back(neighbour);
 					}
@@ -83,7 +95,11 @@ Path::Path(OccupancyArr map, int width, int height, int start_x, int start_y, in
 			}
 	    }
 	
-		this->nodes = graph;
+	
+		if (graph.size() > 1) {
+			//ROS_INFO("Appending %d nodes to the path of %d", (int)graph.size(), (int)this->nodes.size());
+			this->nodes.insert(this->nodes.end(), graph.begin()+1, graph.end());
+		}
 	}
 }
 
@@ -186,12 +202,10 @@ NodeArr Path::allNodes()
 
 NodeArr Path::cornerNodes()
 {
-	if (this->corner_nodes.size() > 0) {
-		return this->corner_nodes;
-	}
-	else if (this->nodes.size() > 1) {
+	if (this->corner_nodes.empty() && this->nodes.size() > 1) {
 		//ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
 		NodeArr graph = this->removeStraightPathWaypoints(this->nodes);		
+		
 		//ROS_INFO("After removing straight path nodes %d", (int)graph.size());
 		int currentWaypointIdx = graph.size()-1;
 		int finalWaypointIdx = 0;
@@ -206,27 +220,28 @@ NodeArr Path::cornerNodes()
 			sstr.str(std::string());
 			sstr << currentWaypoint;
 			sstr << "->" << furthestWaypoint;
-			bool crossesObstacles = this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint);
-			if (crossesObstacles) {
-				//ROS_INFO("%s crosses obstacles", sstr.str().c_str());
+			bool direct = !(this->isEssentialNodeInBetween(currentWaypointIdx, furthesWaypointIdx, graph) ||
+			 this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint));
+			if (!direct) {
+			//	ROS_INFO("%s crosses obstacles", sstr.str().c_str());
 				if (++furthesWaypointIdx == currentWaypointIdx-1) {
 					sstr.str(std::string());
 					sstr << currentWaypoint;
-					//ROS_INFO("Saving %s", sstr.str().c_str());
+				//	ROS_INFO("Saving %s", sstr.str().c_str());
 					newGraph.push_back(currentWaypoint);
 					currentWaypoint = graph.at(--currentWaypointIdx);
 					furthestWaypoint = finalWaypoint;
 					furthesWaypointIdx = finalWaypointIdx;
 					sstr.str(std::string());
 					sstr << currentWaypoint;
-					//ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
+				//	ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
 				}
 				else {
 					furthestWaypoint = graph.at(furthesWaypointIdx);
 				}
 			}
 			else {
-				//ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
+			//	ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
 				newGraph.push_back(currentWaypoint);
 				currentWaypoint = furthestWaypoint;
 				currentWaypointIdx = furthesWaypointIdx;
@@ -234,18 +249,29 @@ NodeArr Path::cornerNodes()
 				furthesWaypointIdx = finalWaypointIdx;
 				sstr.str(std::string());
 				sstr << currentWaypoint;
-				//ROS_INFO("Jumping to %s", sstr.str().c_str());
+			//	ROS_INFO("Jumping to %s", sstr.str().c_str());
 			}
 		}
 		newGraph.push_back(finalWaypoint);
 		std::reverse(newGraph.begin(), newGraph.end());
 		this->corner_nodes = newGraph;
-		return newGraph;
 	}
 	return this->corner_nodes;
 }
 
 //-------------------- PRIVATE METHODS --------------------------//
+
+bool Path::isEssentialNodeInBetween(int node1_idx, int node2_idx, NodeArr arr)
+{
+	while (node1_idx > node2_idx) {
+		node1_idx--;
+		Node node = arr.at(node1_idx);
+		if (node.essential) {
+			return true;
+		}
+	}
+	return false;
+}
 
 bool Path::isObstacleBetweenNodes(Node node1, Node node2)
 {
@@ -431,12 +457,20 @@ NodeArr Path::removeStraightPathWaypoints(NodeArr originalGraph)
 		newGraph.push_back(*it);
 	}
 	for (unsigned int i = 1; i < originalGraph.size()-1; i++) {
-		Node previousNode = originalGraph.at(i-1);
-		Node nextNode = originalGraph.at(i+1);
 		Node node = originalGraph.at(i);
-		//ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
-		if (!((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y)) {
+		bool needsToBeAdded = node.essential;
+		if (!needsToBeAdded) {
+			Node previousNode = originalGraph.at(i-1);
+			Node nextNode = originalGraph.at(i+1);
+			//ROS_INFO("Comparing (%d-%d) vs %d, (%d-%d) vs %d", nextNode.x, previousNode.x, node.x, nextNode.y, previousNode.y, node.y);
+			needsToBeAdded = !((nextNode.x+previousNode.x)/2.0 == node.x && (nextNode.y+previousNode.y)/2.0 == node.y);
+		}
+		if (needsToBeAdded) {
 			newGraph.push_back(node);
+		}
+		else {
+			std::stringstream sstr;
+			sstr << node;
 		}
 	}
 	if (originalGraph.size() > 1) {
@@ -451,6 +485,9 @@ NodeArr Path::reconstruct_path(NodeList came_from, Node current)
 {	
 	NodeArr path;
 	Node parent = current.parent(came_from);
+	//std::stringstream sstr;
+	//sstr << parent << " of " << current;
+	//ROS_INFO("Parent %s", sstr.str().c_str());
 	if (parent != current) {
 		path = this->reconstruct_path(came_from, parent);
 		path.insert(path.begin(), current);
@@ -471,4 +508,15 @@ int8_t Path::mapAt(int x, int y)
 		return 0;
 	}
 	return this->map.at(width*y+x);
+}
+
+void lunabotics::PrintNodes(NodeArr arr, std::string label)
+{
+	ROS_INFO("==============%s===============", label.c_str());
+    std::stringstream sstr;
+    for (NodeArr::iterator it = arr.begin(); it < arr.end(); it++) {
+		sstr << (*it) << std::endl;
+	}
+	ROS_INFO("%s", sstr.str().c_str());
+	ROS_INFO("======================================");
 }
