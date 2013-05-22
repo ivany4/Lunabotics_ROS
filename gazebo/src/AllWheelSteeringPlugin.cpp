@@ -37,10 +37,10 @@ namespace gazebo
 		if (this->LoadParams(_sdf)) {
 			this->node = new ros::NodeHandle("lunabotics");
 	
-			this->leftFrontPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
-			this->rightFrontPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
-			this->leftRearPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
-			this->rightRearPID = new lunabotics::control::PIDController(Kp, Ki, Kd);
+			this->leftFrontPID = new lunabotics::PIDController(Kp, Ki, Kd);
+			this->rightFrontPID = new lunabotics::PIDController(Kp, Ki, Kd);
+			this->leftRearPID = new lunabotics::PIDController(Kp, Ki, Kd);
+			this->rightRearPID = new lunabotics::PIDController(Kp, Ki, Kd);
 			
 			this->leftFrontWheelSteeringJoint->SetMaxForce(0, 5.0);
 			this->rightFrontWheelSteeringJoint->SetMaxForce(0, 5.0);
@@ -81,6 +81,8 @@ namespace gazebo
 		this->rightFrontDrivingSpeed = msg->driving.right_front;
 		this->leftRearDrivingSpeed = msg->driving.left_rear;
 		this->rightRearDrivingSpeed = msg->driving.right_rear;
+		
+		//ROS_INFO("Steering %.2f %.2f %.2f %.2f  Driving %.2f %.2f %.2f %.2f", msg->steering.left_front, msg->steering.right_front, msg->steering.left_rear, msg->steering.right_rear, msg->driving.left_front, msg->driving.right_front, msg->driving.left_rear, msg->driving.right_rear);
 	}
 	
 	bool AllWheelSteeringPlugin::LoadParams(sdf::ElementPtr _sdf) {

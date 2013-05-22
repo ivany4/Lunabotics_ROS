@@ -51,6 +51,8 @@ _ackermannJustStarted(false)
 		this->_PIDHelper = new PIDGeometry(VEC_OFFSET_ALL, VEC_MULTI_ALL);
 	}
 	
+	this->_pointTurnPID = new PIDController(1, 0.1, 0.5);
+	
 	this->_geometryHelper = new AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
 	
 	this->_trajectory = new Trajectory();	
@@ -87,6 +89,7 @@ MotionControlNode::~MotionControlNode()
 {
 	delete this->_predefinedControl;
 	delete this->_PID;
+	delete this->_pointTurnPID;
 	delete this->_geometryHelper;
 	delete this->_trajectory;
 	delete this->_PIDHelper;
@@ -836,12 +839,13 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 
 	lunabotics::ControlParams controlParamsMsg;
 	controlParamsMsg.driving = this->_autonomyEnabled;
+	bool publishCommonMsg = true;
 	
 	switch (this->_pointTurnMotionState) {
 		case lunabotics::proto::Telemetry::STOPPED: {
 			//ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
-			if (distance < this->_motionConstraints.point_turn_distance_accuracy) {
+			if (distance <= this->_motionConstraints.point_turn_distance_accuracy) {
 				this->_waypointsIt++;
 				if (this->_waypointsIt >= this->_waypoints.end()) {
 					this->finalizeRoute();
@@ -868,7 +872,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
-			else if (fabs(theta) > this->_motionConstraints.point_turn_angle_accuracy) {
+			else if (fabs(theta) > 0.3) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
 			}	
 			else {
@@ -877,22 +881,33 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 		}
 		break;
 		case lunabotics::proto::Telemetry::TURNING: {
+			
 			int direction = sign(theta, this->_motionConstraints.point_turn_angle_accuracy);
-			//ROS_INFO("SKID: turning  %d (%.2f-%.2f)      dx: %.5f dy: %.5f angle: %.5f", direction, angle, this->_motionConstraints.point_turn_angle_accuracy, dx, dy, angle);
-		
+			
 			if (direction == 0) {
 				this->_pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
 			else {
-				//ROS_INFO("SKID: %s", direction == -1 ? "Right" : "Left");
-				if (direction == -1) {
-					msg.predefined_cmd = lunabotics::proto::AllWheelControl::TURN_CW;
+				float lf, rf, lr, rr;
+				Point p = CreateZeroPoint();
+				if (this->_geometryHelper->calculateAngles(p, lf, rf, lr, rr)) {
+					double signal;
+					if (this->_pointTurnPID->control(theta, signal)) {
+						publishCommonMsg = false;
+						lunabotics::AllWheelState allWheelMsg;
+						allWheelMsg.steering.left_front = lf;
+						allWheelMsg.steering.right_front = rf;
+						allWheelMsg.steering.left_rear = lr;
+						allWheelMsg.steering.right_rear = rr;
+						allWheelMsg.driving.left_front = -signal;
+						allWheelMsg.driving.right_front = signal;
+						allWheelMsg.driving.left_rear = -signal;
+						allWheelMsg.driving.right_rear = signal;
+						this->_publisherAllWheelMotion.publish(allWheelMsg);
+					}
 				}
-				else {
-					msg.predefined_cmd = lunabotics::proto::AllWheelControl::TURN_CCW;
-				}
-			}	
+			}
 		}
 		break;
 		default: break;
@@ -902,7 +917,9 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 	controlParamsMsg.has_point_turn_state = true;
 	controlParamsMsg.has_min_icr_radius = false;
 	this->_publisherControlParams.publish(controlParamsMsg);
-	this->_publisherAllWheelCommon.publish(msg);
+	if (publishCommonMsg) {
+		this->_publisherAllWheelCommon.publish(msg);
+	}
 }
 
 void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
@@ -1005,7 +1022,7 @@ bool MotionControlNode::getMapIfNeeded()
 
 void MotionControlNode::run()
 {
-	//Let the parent to the trick
+	//Let the parent do the trick
 	ROSNode::run();
 }
 

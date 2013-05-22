@@ -52,10 +52,10 @@ namespace gazebo
 		double wheelRadius;
 		double linkShoulder;
 		
-		lunabotics::control::PIDControllerPtr leftFrontPID;
-		lunabotics::control::PIDControllerPtr rightFrontPID;
-		lunabotics::control::PIDControllerPtr leftRearPID;
-		lunabotics::control::PIDControllerPtr rightRearPID;
+		lunabotics::PIDControllerPtr leftFrontPID;
+		lunabotics::PIDControllerPtr rightFrontPID;
+		lunabotics::PIDControllerPtr leftRearPID;
+		lunabotics::PIDControllerPtr rightRearPID;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;

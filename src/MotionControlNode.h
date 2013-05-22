@@ -83,6 +83,7 @@ private:
 	
 	lunabotics::PredefinedCmdControllerPtr _predefinedControl;
 	lunabotics::PIDControllerPtr _PID;
+	lunabotics::PIDControllerPtr _pointTurnPID;
 	lunabotics::AllWheelGeometryPtr _geometryHelper;
 	lunabotics::PIDGeometryPtr _PIDHelper;
 	lunabotics::TrajectoryPtr _trajectory;

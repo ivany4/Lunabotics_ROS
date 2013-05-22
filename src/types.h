@@ -48,6 +48,11 @@ inline Point CreatePoint(float x, float y)
 	return result;
 }
 
+inline Point CreateZeroPoint()
+{
+	return CreatePoint(0,0);
+}
+
 inline geometry_msgs::Point geometry_msgs_Point_from_Point(Point p)
 {
 	geometry_msgs::Point result;
