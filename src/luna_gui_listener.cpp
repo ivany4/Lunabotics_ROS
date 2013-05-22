@@ -100,14 +100,8 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				controlModeMsg.mode = type;
 				controlModeMsg.distance_accuracy = tc.steering_mode_data().position_accuracy();
 				controlModeMsg.angle_accuracy = tc.steering_mode_data().heading_accuracy();
-				if (type == lunabotics::proto::ACKERMANN) {
-					controlModeMsg.linear_speed_limit = tc.steering_mode_data().ackermann_steering_data().max_linear_velocity();
-					controlModeMsg.smth_else = tc.steering_mode_data().ackermann_steering_data().bezier_curve_segments();
-				}
-				else if (type == lunabotics::proto::AUTO) {
-					controlModeMsg.linear_speed_limit = tc.steering_mode_data().auto_steering_data().max_linear_velocity();
-					controlModeMsg.smth_else = tc.steering_mode_data().auto_steering_data().bezier_curve_segments();
-				}
+				controlModeMsg.linear_speed_limit = tc.steering_mode_data().max_linear_velocity();
+				controlModeMsg.bezier_segments = tc.steering_mode_data().bezier_curve_segments();
 				controlModePublisher.publish(controlModeMsg);
 			}
 			break;

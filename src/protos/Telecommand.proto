@@ -34,22 +34,8 @@ message Telecommand {
                 required SteeringModeType type = 1;
                 required float heading_accuracy = 2;
                 required float position_accuracy = 3;
-
-                message AckermannSteeringData {
-                                optional float max_linear_velocity = 1 [default = 0.2];
-                                optional int32 bezier_curve_segments = 2 [default = 20];
-                }
-                optional AckermannSteeringData ackermann_steering_data = 4;
-
-                message PointTurnSteeringData {
-                }
-                optional PointTurnSteeringData point_turn_steering_data = 5;
-
-                message AutoSteeringData {
-                                optional float max_linear_velocity = 1 [default = 0.2];
-                                optional int32 bezier_curve_segments = 2 [default = 20];
-                }
-                optional AutoSteeringData auto_steering_data = 6;
+                required float max_linear_velocity = 4;
+                required int32 bezier_curve_segments = 5;
     }
     optional SteeringMode steering_mode_data = 4;
 

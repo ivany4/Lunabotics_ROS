@@ -127,10 +127,8 @@ void MotionControlNode::callbackSteeringMode(const lunabotics::ControlMode::Cons
 	this->_steeringMode = (lunabotics::proto::SteeringModeType)msg->mode;
 	this->_motionConstraints.point_turn_angle_accuracy = msg->angle_accuracy;
 	this->_motionConstraints.point_turn_distance_accuracy = msg->distance_accuracy;
-	if (this->_steeringMode == lunabotics::proto::ACKERMANN) {
-		this->_motionConstraints.lin_velocity_limit = msg->linear_speed_limit;
-		this->_motionConstraints.bezier_segments_num = (int)msg->smth_else;
-	}
+	this->_motionConstraints.lin_velocity_limit = msg->linear_speed_limit;
+	this->_motionConstraints.bezier_segments_num = msg->bezier_segments;
 	
 	ROS_INFO("Switching control mode to %s", steeringModeToString(this->_steeringMode).c_str());
 }
@@ -607,6 +605,10 @@ void MotionControlNode::controlStop()
 	msg.segment_idx = this->_segmentsIt < this->_segments.end() ? this->_segmentsIt-this->_segments.begin()+1 : 0;
 	this->_publisherControlParams.publish(msg);
 	this->_waypoints.clear();
+	
+	
+	geometry_msgs::Point ICRMsg = geometry_msgs_Point_from_Point(CreateZeroPoint());
+	this->_publisherICR.publish(ICRMsg);
 }
 
 
