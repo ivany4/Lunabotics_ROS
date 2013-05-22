@@ -249,8 +249,12 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	ROS_INFO("Getting %d waypoints cmd", (int)msg->waypoints.size());
 	this->getMapIfNeeded();
 	float resolution = this->_cached_map.info.resolution;
-	Point start = CreatePoint(round(this->_currentPose.position.x/resolution),
-							round(this->_currentPose.position.y/resolution));
+	int start_x = std::min(round(this->_currentPose.position.x/resolution), (double)this->_cached_map.info.width-1);
+	int start_y = std::min(round(this->_currentPose.position.y/resolution), (double)this->_cached_map.info.height-1);
+	start_x = std::max(0, start_x);
+	start_y = std::max(0, start_y);
+	Point start = CreatePoint(start_x, start_y);
+	ROS_INFO("Starting point is %d,%d", start_x, start_y);
 	
 	PathPtr path = new Path(this->_cached_map.data, this->_cached_map.info.width,
 							this->_cached_map.info.height, start);

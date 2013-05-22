@@ -28,7 +28,8 @@ float BezierCurve::maxCurvature()
 			double k0 = A/pow(distance(this->_p0, this->_p1), 3);
 			double k1 = A/pow(distance(this->_p1, this->_p2), 3);
 			this->_cached_max_curvature = std::max(k0, k1);
-		}		
+		}
+		this->_cached_max_curvature /= 10.0;
 	}
 	return this->_cached_max_curvature;
 }
