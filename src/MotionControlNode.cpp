@@ -291,6 +291,9 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			//Transform into bezier curves
 			if (this->steeringMode == lunabotics::proto::ACKERMANN || this->steeringMode == lunabotics::proto::AUTO) {
 				unsigned int size = corner_points.size();
+				if (size > 0) {
+					corner_points[0] = this->currentPose.position;
+				}
 				if (size > 2) {
 					Point startPoint = corner_points.at(0);
 					Point endPoint = corner_points.at(size-1);
