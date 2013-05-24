@@ -168,8 +168,10 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				pidMsg.p = tc.adjust_pid_data().p();
 				pidMsg.i = tc.adjust_pid_data().i();
 				pidMsg.d = tc.adjust_pid_data().d();
-				pidMsg.velocity_offset = tc.adjust_pid_data().velocity_offset();
-				pidMsg.velocity_multiplier = tc.adjust_pid_data().velocity_multiplier();
+				pidMsg.feedback_min_offset = tc.adjust_pid_data().feedback_min_offset();
+				pidMsg.feedback_multiplier = tc.adjust_pid_data().feedback_multiplier();
+				pidMsg.feedforward_min_offset = tc.adjust_pid_data().feedforward_min_offset();
+				pidMsg.feedforward_fraction = tc.adjust_pid_data().feedforward_fraction();
 				pidPublisher.publish(pidMsg);
 			}
 			break;

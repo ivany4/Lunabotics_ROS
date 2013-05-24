@@ -52,8 +52,10 @@ message Telecommand {
                 required float p = 1;
                 required float i = 2;
                 required float d = 3;
-                required float velocity_offset = 4;
-                required float velocity_multiplier = 5;
+                required float feedback_min_offset = 4;
+                required float feedback_multiplier = 5;
+                required float feedforward_min_offset = 6;
+                required float feedforward_fraction = 7;
     }
     optional AdjustPID adjust_pid_data = 7;
 

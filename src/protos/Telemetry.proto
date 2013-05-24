@@ -24,11 +24,15 @@ message Telemetry {
                 optional float min_icr_offset = 9;
 
                 message AckermannTelemetry {
-                        required float pid_error = 1;
-                        required Point closest_trajectory_point = 2;
-                        required Point velocity_vector_point = 3;
-                        required Point closest_trajectory_local_point = 4;
-                        required Point velocity_vector_local_point = 5;
+                        required float feedback_error = 1;
+						required float feedforward_prediction = 2;
+						required float feedforward_curve_radius = 3;
+                        required Point feedback_path_point = 4;
+                        required Point feedback_point = 5;
+                        required Point feedback_path_point_local = 6;
+                        required Point feedback_point_local = 7;
+                        repeated Point feedforward_points_local = 8;
+                        required Point feedforward_center = 9;
                 }
                 optional AckermannTelemetry ackermann_telemetry = 10;
 

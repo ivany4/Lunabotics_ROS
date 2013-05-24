@@ -45,7 +45,7 @@ private:
 	ros::Publisher publisherAllWheelMotion;
 	ros::Publisher publisherPath;
 	ros::Publisher publisherICR;
-	ros::Publisher publisherControlParams;
+	ros::Publisher publisherPathFollowingTelemetry;
 	ros::Publisher publisherGeometry;
 	ros::Publisher publisherAllWheelCommon;
 

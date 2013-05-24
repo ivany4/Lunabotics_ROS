@@ -2,7 +2,7 @@
 #include "lunabotics/Control.h"
 #include "lunabotics/State.h"
 #include "lunabotics/Vision.h"
-#include "lunabotics/ControlParams.h"
+#include "lunabotics/PathFollowingTelemetry.h"
 #include "lunabotics/ControlMode.h"
 #include "lunabotics/AllWheelState.h"
 #include "lunabotics/PID.h"
@@ -28,7 +28,7 @@ bool sendPath = false;
 bool sendAllWheel = false;
 bool sendGeometry = false;
 lunabotics::State stateMsg;
-lunabotics::ControlParams controlParams;
+lunabotics::PathFollowingTelemetry pathFollowingMsg;
 lunabotics::Vision vision;
 lunabotics::RobotGeometry geometry;
 lunabotics::AllWheelState allWheelStateMsg;
@@ -74,9 +74,9 @@ void controlModeCallback(const lunabotics::ControlMode& msg)
 	controlMode = (lunabotics::proto::SteeringModeType)msg.mode;					
 }
 
-void controlParamsCallback(const lunabotics::ControlParams& msg)
+void pathFollowingMsgCallback(const lunabotics::PathFollowingTelemetry& msg)
 {
-	controlParams = msg;		
+	pathFollowingMsg = msg;		
 }
 
 void pathCallback(const lunabotics::PathTopic& msg)
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("map_update", 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe("path", 256, pathCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
-	ros::Subscriber controlParamsSubscriber = nodeHandle.subscribe("control_params", 1, controlParamsCallback);
+	ros::Subscriber pathFollowingMsgSubscriber = nodeHandle.subscribe("control_params", 1, pathFollowingMsgCallback);
 	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 1, visionCallback);
 	ros::Subscriber ICRSubscriber = nodeHandle.subscribe("icr_state", sizeof(float)*2, ICRCallback);
 	ros::Subscriber AllWheelStateSubscriber = nodeHandle.subscribe("all_wheel_feeback", sizeof(float)*8, AllWheelStateCallback);
@@ -155,35 +155,45 @@ int main(int argc, char **argv)
 					state->mutable_velocities()->set_linear(stateMsg.odometry.twist.twist.linear.x);
 					state->mutable_velocities()->set_angular(stateMsg.odometry.twist.twist.angular.z);
 					state->set_steering_mode(controlMode);
-					state->set_autonomy_enabled(controlParams.driving);
+					state->set_autonomy_enabled(pathFollowingMsg.is_driving);
 					state->mutable_icr()->set_x(ICR.x);
 					state->mutable_icr()->set_y(ICR.y);
 					
-					if (controlParams.driving) {
-						if (controlParams.has_min_icr_radius) {
-							ROS_INFO("Setting %f", controlParams.min_icr_radius);
-							state->set_min_icr_offset(controlParams.min_icr_radius);
+					if (pathFollowingMsg.is_driving) {
+						if (pathFollowingMsg.has_min_icr_radius) {
+							ROS_INFO("Setting %f", pathFollowingMsg.min_icr_radius);
+							state->set_min_icr_offset(pathFollowingMsg.min_icr_radius);
 						}
-						if (controlParams.has_trajectory_data) {
-							state->set_next_waypoint_idx(controlParams.next_waypoint_idx);
-							state->set_segment_idx(controlParams.segment_idx);
-							if (controlMode == lunabotics::proto::ACKERMANN) {
-								lunabotics::proto::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
-								ackermannData->set_pid_error(controlParams.y_err);
-								ackermannData->mutable_closest_trajectory_point()->set_x(controlParams.trajectory_point.x);
-								ackermannData->mutable_closest_trajectory_point()->set_y(controlParams.trajectory_point.y);
-								ackermannData->mutable_velocity_vector_point()->set_x(controlParams.velocity_point.x);
-								ackermannData->mutable_velocity_vector_point()->set_y(controlParams.velocity_point.y);
-								ackermannData->mutable_closest_trajectory_local_point()->set_x(controlParams.t_trajectory_point.x);
-								ackermannData->mutable_closest_trajectory_local_point()->set_y(controlParams.t_trajectory_point.y);
-								ackermannData->mutable_velocity_vector_local_point()->set_x(controlParams.t_velocity_point.x);
-								ackermannData->mutable_velocity_vector_local_point()->set_y(controlParams.t_velocity_point.y);
-							}
-						}
-						if (controlParams.has_point_turn_state) {
-							lunabotics::proto::Telemetry::PointTurnState st = (lunabotics::proto::Telemetry::PointTurnState)controlParams.point_turn_state;
+						if (pathFollowingMsg.has_point_turn_state) {
+							lunabotics::proto::Telemetry::PointTurnState st = (lunabotics::proto::Telemetry::PointTurnState)pathFollowingMsg.point_turn_state;
 							ROS_ERROR("STATE %d", st);
 							state->mutable_point_turn_telemetry()->set_state(st);
+						}
+						if (pathFollowingMsg.has_path_parts_enumeration) {
+							state->set_next_waypoint_idx(pathFollowingMsg.next_waypoint_idx);
+							state->set_segment_idx(pathFollowingMsg.segment_idx);
+						}
+						if (pathFollowingMsg.has_path_following_geometry) {
+							lunabotics::proto::Telemetry::State::AckermannTelemetry *ackermannData = state->mutable_ackermann_telemetry();
+							ackermannData->set_feedback_error(pathFollowingMsg.feedback_error);
+							ackermannData->set_feedforward_prediction(pathFollowingMsg.feedforward_prediction);
+							ackermannData->set_feedforward_curve_radius(pathFollowingMsg.feedforward_curve_radius);
+							ackermannData->mutable_feedback_path_point()->set_x(pathFollowingMsg.feedback_path_point.x);
+							ackermannData->mutable_feedback_path_point()->set_y(pathFollowingMsg.feedback_path_point.y);
+							ackermannData->mutable_feedback_point()->set_x(pathFollowingMsg.feedback_point.x);
+							ackermannData->mutable_feedback_point()->set_y(pathFollowingMsg.feedback_point.y);
+							ackermannData->mutable_feedback_path_point_local()->set_x(pathFollowingMsg.feedback_path_point_local.x);
+							ackermannData->mutable_feedback_path_point_local()->set_y(pathFollowingMsg.feedback_path_point_local.y);
+							ackermannData->mutable_feedback_point_local()->set_x(pathFollowingMsg.feedback_point_local.x);
+							ackermannData->mutable_feedback_point_local()->set_y(pathFollowingMsg.feedback_point_local.y);
+							ackermannData->mutable_feedforward_center()->set_x(pathFollowingMsg.feedforward_center.x);
+							ackermannData->mutable_feedforward_center()->set_y(pathFollowingMsg.feedforward_center.y);
+							for (unsigned int i = 0; i < pathFollowingMsg.feedforward_points_local.size(); i++) {
+								geometry_msgs::Point pt = pathFollowingMsg.feedforward_points_local.at(i);
+								lunabotics::proto::Point *point = ackermannData->add_feedforward_points_local();
+								point->set_x(pt.x);
+								point->set_y(pt.y);
+							}
 						}
 					}
 					

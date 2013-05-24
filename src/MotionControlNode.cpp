@@ -3,7 +3,7 @@
 #include "nav_msgs/GetMap.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
-#include "lunabotics/ControlParams.h"
+#include "lunabotics/PathFollowingTelemetry.h"
 #include "lunabotics/RobotGeometry.h"
 
 using namespace lunabotics;
@@ -42,18 +42,19 @@ ackermannJustStarted(false)
 	
 	this->predefinedControl = new PredefinedCmdController();
 	
+	this->robotGeometry = new AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
+	
 	if (this->isDiffDriveRobot) {
 		this->ackermannPID = new PIDController(PID_P_DIFF, PID_I_DIFF, PID_D_DIFF);
-		this->pathFollowingGeometry = new PathFollowingGeometry(VEC_OFFSET_DIFF, VEC_MULTI_DIFF);
+		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, VEC_OFFSET_DIFF, VEC_MULTI_DIFF);
 	}
 	else {
 		this->ackermannPID = new PIDController(PID_P_ALL, PID_I_ALL, PID_D_ALL);
-		this->pathFollowingGeometry = new PathFollowingGeometry(VEC_OFFSET_ALL, VEC_MULTI_ALL);
+		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, VEC_OFFSET_ALL, VEC_MULTI_ALL);
 	}
 	
 	this->pointTurnPID = new PIDController(1, 0.1, 0.5);
 	
-	this->robotGeometry = new AllWheelGeometry(zeroPoint, zeroPoint, zeroPoint, zeroPoint);
 	
 	this->trajectory = new Trajectory();	
 	
@@ -74,7 +75,7 @@ ackermannJustStarted(false)
 	this->publisherPath = this->nodeHandle->advertise<lunabotics::PathTopic>("path", 256);
 	this->publisherICR = this->nodeHandle->advertise<geometry_msgs::Point>("icr_state", sizeof(float)*2);
 	this->publisherAllWheelMotion = this->nodeHandle->advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
-	this->publisherControlParams = this->nodeHandle->advertise<lunabotics::ControlParams>("control_params", 256);
+	this->publisherPathFollowingTelemetry = this->nodeHandle->advertise<lunabotics::PathFollowingTelemetry>("control_params", 256);
 	this->publisherGeometry = this->nodeHandle->advertise<lunabotics::RobotGeometry>("geometry", sizeof(float)*2*4);
 	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(uint32_t));
 	
@@ -116,9 +117,10 @@ void MotionControlNode::callbackPID(const lunabotics::PID::ConstPtr &msg)
 	this->ackermannPID->setP(msg->p);
 	this->ackermannPID->setI(msg->i);
 	this->ackermannPID->setD(msg->d);
-	this->pathFollowingGeometry->setFeedbackPointOffsetMultiplier(msg->velocity_multiplier);
-	this->pathFollowingGeometry->setFeedbackPointOffsetMin(msg->velocity_offset);
-
+	this->pathFollowingGeometry->setFeedbackPointOffsetMultiplier(msg->feedback_multiplier);
+	this->pathFollowingGeometry->setFeedbackPointOffsetMin(msg->feedback_min_offset);
+	this->pathFollowingGeometry->setFeedforwardCurvatureDetectionStart(msg->feedforward_min_offset);
+	this->pathFollowingGeometry->setFeedforwardPointOffsetFraction(msg->feedforward_fraction);
 }
 
 void MotionControlNode::callbackSteeringMode(const lunabotics::ControlMode::ConstPtr &msg)
@@ -398,12 +400,13 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			this->publisherPath.publish(pathMsg);
 	
 			this->autonomyEnabled = true;
-			lunabotics::ControlParams controlParamsMsg;
-			controlParamsMsg.driving = this->autonomyEnabled;
-			controlParamsMsg.has_min_icr_radius = false;
-			controlParamsMsg.next_waypoint_idx =  this->waypointsIt < this->waypoints.end() ?  this->waypointsIt-this->waypoints.begin()+1 : 0;
-			controlParamsMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
-			this->publisherControlParams.publish(controlParamsMsg);
+			lunabotics::PathFollowingTelemetry telemetryMsg;
+			telemetryMsg.is_driving = this->autonomyEnabled;
+			telemetryMsg.has_min_icr_radius = false;
+			telemetryMsg.has_path_parts_enumeration = true;
+			telemetryMsg.next_waypoint_idx =  this->waypointsIt < this->waypoints.end() ?  this->waypointsIt-this->waypoints.begin()+1 : 0;
+			telemetryMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
+			this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 		}
 		else {
 			ROS_WARN("Couldn't find a path'");
@@ -609,12 +612,13 @@ void MotionControlNode::controlStop()
 		msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 		this->publisherAllWheelCommon.publish(msg);
 	}
-	lunabotics::ControlParams msg;
-	msg.driving = this->autonomyEnabled;
+	lunabotics::PathFollowingTelemetry msg;
+	msg.is_driving = this->autonomyEnabled;
 	msg.has_min_icr_radius = false;
 	msg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ?  this->waypointsIt- this->waypoints.begin()+1 : 0;
 	msg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
-	this->publisherControlParams.publish(msg);
+	msg.has_path_parts_enumeration = true;
+	this->publisherPathFollowingTelemetry.publish(msg);
 	this->waypoints.clear();
 	
 	
@@ -667,18 +671,27 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		
 		double y_err = this->pathFollowingGeometry->getFeedbackError();
-		lunabotics::ControlParams controlParamsMsg;
-		controlParamsMsg.trajectory_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getClosestPathPoint());
-		controlParamsMsg.velocity_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackLookAheadPoint());
-		controlParamsMsg.y_err = y_err;
-		controlParamsMsg.driving = this->autonomyEnabled;
-		controlParamsMsg.t_trajectory_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getClosestPathPointInLocalFrame());
-		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackLookAheadPointLocalFrame());
-		controlParamsMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;
-		controlParamsMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
-		controlParamsMsg.has_trajectory_data = true;
-		controlParamsMsg.has_min_icr_radius = true;
-		controlParamsMsg.min_icr_radius = this->minICRRadius;
+		lunabotics::PathFollowingTelemetry telemetryMsg;
+		telemetryMsg.feedback_error = y_err;
+		telemetryMsg.feedforward_prediction = this->pathFollowingGeometry->getFeedforwardPrediction();
+		telemetryMsg.feedforward_curve_radius = this->pathFollowingGeometry->getCurveRadius();
+		telemetryMsg.feedback_path_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPoint());
+		telemetryMsg.feedback_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPoint());
+		telemetryMsg.feedback_path_point_local = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPointInLocalFrame());
+		telemetryMsg.feedback_point_local = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPointInLocalFrame());
+		telemetryMsg.feedforward_center = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedforwardCurveCenterPoint());
+		telemetryMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;
+		telemetryMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
+		telemetryMsg.has_path_following_geometry = true;
+		telemetryMsg.has_path_parts_enumeration = true;
+		telemetryMsg.has_min_icr_radius = true;
+		telemetryMsg.min_icr_radius = this->minICRRadius;
+		telemetryMsg.is_driving = this->autonomyEnabled;
+		
+		PointArr pts = this->pathFollowingGeometry->getCurvatureDetectionPointsInLocalFrame();
+		for (unsigned int i = 0; i < pts.size(); i++) {
+			telemetryMsg.feedforward_points_local.push_back(geometry_msgs_Point_from_Point(pts.at(i)));
+		}
 		
 		//Control law
 		
@@ -712,8 +725,8 @@ void MotionControlNode::controlAckermannAllWheel()
 			if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
 				this->minICRRadius = abs_offset_y;
 				ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
-				controlParamsMsg.min_icr_radius = abs_offset_y;
-				controlParamsMsg.has_min_icr_radius = true;
+				telemetryMsg.min_icr_radius = abs_offset_y;
+				telemetryMsg.has_min_icr_radius = true;
 			}
 			
 			
@@ -752,7 +765,7 @@ void MotionControlNode::controlAckermannAllWheel()
 				this->publisherAllWheelMotion.publish(controlMsg);
 			}
 		}
-		this->publisherControlParams.publish(controlParamsMsg);
+		this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 	}
 	else {
 		//No need for curvature, just straight driving
@@ -805,18 +818,19 @@ void MotionControlNode::controlAckermannDiffDrive()
 		
 		
 		double y_err = this->pathFollowingGeometry->getFeedbackError();
-		lunabotics::ControlParams controlParamsMsg;
-		controlParamsMsg.trajectory_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getClosestPathPoint());
-		controlParamsMsg.velocity_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackLookAheadPoint());
-		controlParamsMsg.y_err = y_err;
-		controlParamsMsg.driving = this->autonomyEnabled;
-		controlParamsMsg.t_trajectory_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getClosestPathPointInLocalFrame());
-		controlParamsMsg.t_velocity_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackLookAheadPointLocalFrame());
-		controlParamsMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;
-		controlParamsMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
-		controlParamsMsg.has_trajectory_data = true;
-		controlParamsMsg.has_min_icr_radius = false;
-		this->publisherControlParams.publish(controlParamsMsg);
+		lunabotics::PathFollowingTelemetry telemetryMsg;
+		telemetryMsg.feedback_path_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPoint());
+		telemetryMsg.feedback_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPoint());
+		telemetryMsg.feedback_error = y_err;
+		telemetryMsg.is_driving = this->autonomyEnabled;
+		telemetryMsg.feedback_path_point_local = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPointInLocalFrame());
+		telemetryMsg.feedback_point_local = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPointInLocalFrame());
+		telemetryMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;
+		telemetryMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
+		telemetryMsg.has_path_following_geometry = true;
+		telemetryMsg.has_min_icr_radius = false;
+		telemetryMsg.has_path_parts_enumeration = true;
+		this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 		
 		//Control law
 		
@@ -850,8 +864,8 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 {
 	lunabotics::AllWheelCommon msg;
 
-	lunabotics::ControlParams controlParamsMsg;
-	controlParamsMsg.driving = this->autonomyEnabled;
+	lunabotics::PathFollowingTelemetry telemetryMsg;
+	telemetryMsg.is_driving = this->autonomyEnabled;
 	bool publishCommonMsg = true;
 	
 	switch (this->pointTurnMotionState) {
@@ -864,9 +878,9 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 					this->finalizeRoute();
 				}
 				else {
-					controlParamsMsg.has_trajectory_data = true;
-					controlParamsMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;	
-					controlParamsMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
+					telemetryMsg.has_path_parts_enumeration = true; 
+					telemetryMsg.next_waypoint_idx = this->waypointsIt < this->waypoints.end() ? this->waypointsIt-this->waypoints.begin()+1 : 0;	
+					telemetryMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
 					//lunabotics::Point nextWaypoint = *this->waypointsIt;
 					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypoint.position.x, nextWaypoint.position.y);
 				}
@@ -926,10 +940,10 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 		default: break;
 	}
 	
-	controlParamsMsg.point_turn_state = this->pointTurnMotionState;
-	controlParamsMsg.has_point_turn_state = true;
-	controlParamsMsg.has_min_icr_radius = false;
-	this->publisherControlParams.publish(controlParamsMsg);
+	telemetryMsg.point_turn_state = this->pointTurnMotionState;
+	telemetryMsg.has_point_turn_state = true;
+	telemetryMsg.has_min_icr_radius = false;
+	this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 	if (publishCommonMsg) {
 		this->publisherAllWheelCommon.publish(msg);
 	}
@@ -937,9 +951,9 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 
 void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 {
-	lunabotics::ControlParams controlParamsMsg;
-	controlParamsMsg.driving = this->autonomyEnabled;
-	controlParamsMsg.has_point_turn_state = true;
+	lunabotics::PathFollowingTelemetry telemetryMsg;
+	telemetryMsg.is_driving = this->autonomyEnabled;
+	telemetryMsg.has_point_turn_state = true;
 	geometry_msgs::Twist twistMsg;
 	twistMsg.linear.x = 0;
 	twistMsg.linear.y = 0;
@@ -958,9 +972,9 @@ void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 					this->finalizeRoute();
 				}
 				else {
-					controlParamsMsg.has_trajectory_data = true;
-					controlParamsMsg.next_waypoint_idx =  this->waypointsIt < this->waypoints.end() ?  this->waypointsIt-this->waypoints.begin()+1 : 0;
-					controlParamsMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
+					telemetryMsg.has_path_parts_enumeration = true;
+					telemetryMsg.next_waypoint_idx =  this->waypointsIt < this->waypoints.end() ?  this->waypointsIt-this->waypoints.begin()+1 : 0;
+					telemetryMsg.segment_idx = this->segmentsIt < this->segments.end() ? this->segmentsIt-this->segments.begin()+1 : 0;
 					//lunabotics::Point nextWaypoint = * this->waypointsIt;
 					//ROS_INFO("Waypoint reached. Now heading towards (%.1f,%.1f)", nextWaypoint.position.x, nextWaypoint.position.y);
 				}
@@ -1008,9 +1022,9 @@ void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 		default: break;
 	}
 	
-	controlParamsMsg.point_turn_state = this->pointTurnMotionState;
-	controlParamsMsg.has_min_icr_radius = false;
-	this->publisherControlParams.publish(controlParamsMsg);
+	telemetryMsg.point_turn_state = this->pointTurnMotionState;
+	telemetryMsg.has_min_icr_radius = false;
+	this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 	this->publisherDiffDriveMotion.publish(twistMsg);
 }
 

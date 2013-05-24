@@ -1,0 +1,25 @@
+
+bool is_driving
+
+#Path following geometry
+float32 feedback_error
+float32 feedforward_prediction
+float32 feedforward_curve_radius
+geometry_msgs/Point feedback_point
+geometry_msgs/Point feedback_path_point
+geometry_msgs/Point feedback_point_local
+geometry_msgs/Point feedback_path_point_local
+geometry_msgs/Point[] feedforward_points_local
+geometry_msgs/Point feedforward_center
+bool has_path_following_geometry
+
+#Path parts enumeration
+int32 next_waypoint_idx
+int32 segment_idx
+bool has_path_parts_enumeration
+
+#Live control telemetry
+uint8 point_turn_state
+bool has_point_turn_state
+float32 min_icr_radius
+bool has_min_icr_radius

@@ -28,6 +28,8 @@ namespace lunabotics {
 struct Point {
 	float x;
 	float y;
+	bool operator==(const Point &b) const {return x == b.x && y == b.y;}
+	bool operator!=(const Point &b) const {return x != b.x || y != b.y;}
 };
 
 struct Pose {
@@ -89,6 +91,8 @@ inline Pose Pose_from_geometry_msgs_Pose(geometry_msgs::Pose p)
 struct Line {
 	Point p1;
 	Point p2;
+	bool operator==(const Line &b) const {return p1 == b.p1 && p2 == b.p2;}
+	bool operator!=(const Line &b) const {return p1 != b.p1 || p2 != b.p2;}
 };
 
 inline Line CreateLine(Point p1, Point p2)
@@ -108,13 +112,13 @@ typedef std::vector<Point> PointArr;
 typedef std::vector<Pose> PoseArr;
 typedef std::vector<int8_t> OccupancyArr;
 typedef std::vector<IndexedPoint> IndexedPointArr;
+typedef PointArr::iterator PointArrIt;
 
 inline int sign(double value, double accuracy) {
 	if (value > accuracy) return 1;
 	if (value < -accuracy) return -1;
 	return 0;
 }
-
 }
 
 
