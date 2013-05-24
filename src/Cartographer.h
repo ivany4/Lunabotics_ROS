@@ -13,18 +13,18 @@ namespace lunabotics {
 
 class Cartographer : ROSNode {
 private:
-	int _sequence;
-	bool _mapFromFile;
-	std::string _mapFilename;
+	int sequence;
+	bool mapFromFile;
+	std::string mapFilename;
 	
 	//Subscriber
-	ros::Subscriber _subscriberVision;
-	ros::Subscriber _subscriberState;
+	ros::Subscriber subscriberVision;
+	ros::Subscriber subscriberState;
 
 	//Services
-	ros::ServiceClient _clientMap;
-	ros::ServiceServer _serverMap;
-	nav_msgs::GetMap _serviceMap;
+	ros::ServiceClient clientMap;
+	ros::ServiceServer serverMap;
+	nav_msgs::GetMap serviceMap;
 
 	//Callback methods
 	void callbackVision(const lunabotics::Vision::ConstPtr &msg);

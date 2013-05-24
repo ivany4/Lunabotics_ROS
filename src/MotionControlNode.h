@@ -41,54 +41,54 @@ struct MotionConstraints {
 
 class MotionControlNode : ROSNode {
 private:
-	ros::Publisher _publisherDiffDriveMotion;
-	ros::Publisher _publisherAllWheelMotion;
-	ros::Publisher _publisherPath;
-	ros::Publisher _publisherICR;
-	ros::Publisher _publisherControlParams;
-	ros::Publisher _publisherGeometry;
-	ros::Publisher _publisherAllWheelCommon;
+	ros::Publisher publisherDiffDriveMotion;
+	ros::Publisher publisherAllWheelMotion;
+	ros::Publisher publisherPath;
+	ros::Publisher publisherICR;
+	ros::Publisher publisherControlParams;
+	ros::Publisher publisherGeometry;
+	ros::Publisher publisherAllWheelCommon;
 
-	ros::Subscriber _subscriberEmergency;
-	ros::Subscriber _subscriberAutonomy;
-	ros::Subscriber _subscriberState;
-	ros::Subscriber _subscriberGoal;
-	ros::Subscriber _subscriberPID;
-	ros::Subscriber _subscriberSteeringMode;
-	ros::Subscriber _subscriberICR;
-	ros::Subscriber _subscriberCrab;
-	ros::Subscriber _subscriberAllWheelCommon;
-	ros::Subscriber _subscriberAllWheelFeedback;
+	ros::Subscriber subscriberEmergency;
+	ros::Subscriber subscriberAutonomy;
+	ros::Subscriber subscriberState;
+	ros::Subscriber subscriberGoal;
+	ros::Subscriber subscriberPID;
+	ros::Subscriber subscriberSteeringMode;
+	ros::Subscriber subscriberICR;
+	ros::Subscriber subscriberCrab;
+	ros::Subscriber subscriberAllWheelCommon;
+	ros::Subscriber subscriberAllWheelFeedback;
 	
-	ros::ServiceClient _clientMap;
+	ros::ServiceClient clientMap;
 
-	nav_msgs::GetMap _serviceMap;
+	nav_msgs::GetMap serviceMap;
 	
-	nav_msgs::OccupancyGrid _cached_map;
-	bool _cached_map_up_to_date;
+	nav_msgs::OccupancyGrid cached_map;
+	bool cached_map_up_to_date;
 	
-	int _sequence;
-	bool _autonomyEnabled;
-	lunabotics::proto::SteeringModeType _steeringMode;
-	lunabotics::proto::Telemetry::PointTurnState _pointTurnMotionState;
-	lunabotics::Pose _currentPose;
-	lunabotics::TrajectorySegmentArr::iterator _segmentsIt;
-	lunabotics::TrajectorySegmentArr _segments;
-	lunabotics::PointArr::iterator _waypointsIt;
-	lunabotics::PointArr _waypoints;
-	lunabotics::PointArr _desiredWaypoints;
-	MotionConstraints _motionConstraints;
-	double _minICRRadius;
-	bool _ackermannJustStarted;
+	int sequence;
+	bool autonomyEnabled;
+	lunabotics::proto::SteeringModeType steeringMode;
+	lunabotics::proto::Telemetry::PointTurnState pointTurnMotionState;
+	lunabotics::Pose currentPose;
+	lunabotics::TrajectorySegmentArr::iterator segmentsIt;
+	lunabotics::TrajectorySegmentArr segments;
+	lunabotics::PointArr::iterator waypointsIt;
+	lunabotics::PointArr waypoints;
+	lunabotics::PointArr desiredWaypoints;
+	MotionConstraints motionConstraints;
+	double minICRRadius;
+	bool ackermannJustStarted;
 	
-	lunabotics::PredefinedCmdControllerPtr _predefinedControl;
-	lunabotics::PIDControllerPtr _PID;
-	lunabotics::PIDControllerPtr _pointTurnPID;
-	lunabotics::AllWheelGeometryPtr _geometryHelper;
-	lunabotics::PIDGeometryPtr _PIDHelper;
-	lunabotics::TrajectoryPtr _trajectory;
+	lunabotics::PredefinedCmdControllerPtr predefinedControl;
+	lunabotics::PIDControllerPtr ackermannPID;
+	lunabotics::PIDControllerPtr pointTurnPID;
+	lunabotics::AllWheelGeometryPtr robotGeometry;
+	lunabotics::PathFollowingGeometryPtr pathFollowingGeometry;
+	lunabotics::TrajectoryPtr trajectory;
 	
-	tf::TransformListener _tfListener;
+	tf::TransformListener tfListener;
 	
 	//Topic callbacks
 	void callbackGoal(const lunabotics::Goal::ConstPtr &msg);

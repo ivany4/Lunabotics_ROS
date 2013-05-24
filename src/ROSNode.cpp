@@ -6,25 +6,25 @@ using namespace lunabotics;
 ROSNode::ROSNode(int argc, char **argv, std::string name, int frequency)
 {
 	ROS_INFO("Initializing %s", name.c_str());
-	this->_argc = 0;
-	this->_argv = NULL;
-	this->_spinFrequency = frequency;
+	this->argc = 0;
+	this->argv = NULL;
+	this->spinFrequency = frequency;
 	if (argc > 1) {
 		this->parseArgs(argc, argv);
 	}
 	ros::init(argc, argv, name);
-	this->_nodeHandle = new ros::NodeHandle("lunabotics");
+	this->nodeHandle = new ros::NodeHandle("lunabotics");
 }
 
 ROSNode::~ROSNode()
 {
-	for (int i = 0; i < this->_argc; i++) {
-		delete this->_argv[i];
+	for (int i = 0; i < this->argc; i++) {
+		delete this->argv[i];
 	}
-	if (this->_argv) {
-		delete this->_argv;
+	if (this->argv) {
+		delete this->argv;
 	}
-	delete this->_nodeHandle;
+	delete this->nodeHandle;
 }
 
 char *ROSNode::getCommandOption(char **begin, char **end, const std::string &option)
@@ -43,10 +43,10 @@ bool ROSNode::commandOptionExists(char **begin, char **end, const std::string &o
 
 void ROSNode::run()
 {
-	ROS_INFO("Spinning with frequency %d Hz", this->_spinFrequency);
-	if (this->_spinFrequency > 0) {
+	ROS_INFO("Spinning with frequency %d Hz", this->spinFrequency);
+	if (this->spinFrequency > 0) {
 		
-		ros::Rate loop_rate(this->_spinFrequency);
+		ros::Rate loop_rate(this->spinFrequency);
 		while (ros::ok()) {
 			
 			this->runOnce();
@@ -66,19 +66,19 @@ void ROSNode::parseArgs(int argc, char **argv)
 	
 	//Not saving first argument (command name)
     std::stringstream sstr;
-	this->_argc = argc-1;
-	this->_argv = new char *[argc-1];
+	this->argc = argc-1;
+	this->argv = new char *[argc-1];
 	for (int i = 1; i < argc; i++) {
 		int len = strlen(argv[i]);
-		this->_argv[i-1] = new char[len];
-		strcpy(this->_argv[i-1], argv[i]);
+		this->argv[i-1] = new char[len];
+		strcpy(this->argv[i-1], argv[i]);
 		sstr << argv[i];
 	}
 	
 	ROS_INFO("Parsing command line argument(s): %s", sstr.str().c_str());
 	
-	this->_isDiffDriveRobot = this->commandOptionExists(this->_argv, this->_argv + this->_argc, "-D");
-	if (this->_isDiffDriveRobot) {
+	this->isDiffDriveRobot = this->commandOptionExists(this->argv, this->argv + this->argc, "-D");
+	if (this->isDiffDriveRobot) {
 		ROS_INFO("Configuration: Diffrential Drive");
 	}
 	else {

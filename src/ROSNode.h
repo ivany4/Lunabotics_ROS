@@ -6,12 +6,12 @@ namespace lunabotics {
 
 class ROSNode {
 	protected:
-		bool _isDiffDriveRobot;
-		ros::NodeHandle *_nodeHandle;
+		bool isDiffDriveRobot;
+		ros::NodeHandle *nodeHandle;
 		ros::Subscriber sub;
-		int _spinFrequency;
-		int _argc;
-		char **_argv;
+		int spinFrequency;
+		int argc;
+		char **argv;
 		
 		char *getCommandOption(char **begin, char **end, const std::string &option);
 		bool commandOptionExists(char **begin, char **end, const std::string &option);

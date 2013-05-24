@@ -10,17 +10,17 @@ inline int randomNumber(int min, int max)
 
 Cartographer::Cartographer(int argc, char **argv, std::string name, int frequency):
 ROSNode(argc, argv, name, frequency),
-_sequence(0), _mapFromFile(false), _mapFilename()
+sequence(0), mapFromFile(false), mapFilename()
 {	
 	this->parseArgs();
 	
 	//Subscribers
-	this->_subscriberVision = this->_nodeHandle->subscribe("vision", 256, &Cartographer::callbackVision, this);
-	this->_subscriberState = this->_nodeHandle->subscribe("state", 1, &Cartographer::callbackState, this);
+	this->subscriberVision = this->nodeHandle->subscribe("vision", 256, &Cartographer::callbackVision, this);
+	this->subscriberState = this->nodeHandle->subscribe("state", 1, &Cartographer::callbackState, this);
 	
 	//Services
-	this->_serverMap = this->_nodeHandle->advertiseService("map", &Cartographer::callbackGetMap, this);
-	this->_clientMap = this->_nodeHandle->serviceClient<nav_msgs::GetMap>("/dynamic_map");
+	this->serverMap = this->nodeHandle->advertiseService("map", &Cartographer::callbackGetMap, this);
+	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>("/dynamic_map");
 }
 
 Cartographer::~Cartographer()
@@ -43,22 +43,22 @@ bool Cartographer::callbackGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetM
 {	
 	ROS_INFO("Got a map request");
 	
-	if (this->_mapFromFile) {
+	if (this->mapFromFile) {
 		ROS_INFO("Reading from file");
-		res.map = this->readMapFromFile(this->_mapFilename);
+		res.map = this->readMapFromFile(this->mapFilename);
 	}
 	else {
 		//Gmapping map
 		
-		if (this->_clientMap.call(this->_serviceMap)) {
-			res = this->_serviceMap.response;
+		if (this->clientMap.call(this->serviceMap)) {
+			res = this->serviceMap.response;
 		}
 		else {
 			ROS_WARN("Failed to call /dynamic_map gmapping");
 		}
 	}
 		
-	res.map.header.seq = this->_sequence++;
+	res.map.header.seq = this->sequence++;
 	res.map.header.frame_id = "map";
 	res.map.header.stamp = ros::Time::now();
 	
@@ -122,10 +122,10 @@ void Cartographer::run()
 
 void Cartographer::parseArgs()
 {
-	if (this->commandOptionExists(this->_argv, this->_argv + this->_argc, "-f")) {
-		this->_mapFromFile = true;
-		this->_mapFilename = std::string(this->getCommandOption(this->_argv, this->_argv + this->_argc, "-f"));
-		ROS_INFO("World map file: %s", this->_mapFilename.c_str());
+	if (this->commandOptionExists(this->argv, this->argv + this->argc, "-f")) {
+		this->mapFromFile = true;
+		this->mapFilename = std::string(this->getCommandOption(this->argv, this->argv + this->argc, "-f"));
+		ROS_INFO("World map file: %s", this->mapFilename.c_str());
 	}
 }
 

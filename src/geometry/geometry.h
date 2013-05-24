@@ -2,7 +2,8 @@
 #define _GEOMETRY_H_
 
 #include "basic.h"
-#include "PIDGeometry.h"
+#include "PathFollowingGeometry.h"
 #include "allwheel.h"
+#include "BezierCurve.h"
 
 #endif //_GEOMETRY_H_
