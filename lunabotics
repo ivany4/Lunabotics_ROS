@@ -171,12 +171,12 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 			if [ $profile = "Pioneer" ]; then
 				roslaunch lunabotics.launch oip:=$out_addr cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose diffdrive:=$diffdrive filename:=$mapfile
 			elif [ $profile = "Elias1" ]; then
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive'" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"
 			elif [ $profile = "Elias2" ]; then
 				roslaunch comm.launch oip:=$out_addr
 			else
 				gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener"
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive'" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
 				if [ $use_map_file -eq 0 ]; then
 					 gnome-terminal --tab -t "Gmapping" -e "bash rosrun gmapping slam_gmapping scan:=base_scan"
 				fi

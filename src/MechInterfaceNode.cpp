@@ -1,5 +1,12 @@
 #include "MechInterfaceNode.h"
 
+#include "lunabotics/State.h"
+#include "lunabotics/ICRControl.h"
+#include "lunabotics/AllWheelCommon.h"
+#include "geometry_msgs/Twist.h"
+
+#include "../protos_gen/AllWheelControl.pb.h"
+
 using namespace lunabotics;
 
 MechInterfaceNode::MechInterfaceNode(int argc, char **argv, std::string name, int frequency):
@@ -8,12 +15,12 @@ ROSNode(argc, argv, name, frequency)
 	//Create publishers
 	this->publisherTwist = this->nodeHandle->advertise<geometry_msgs::Twist>("/cmd_vel", 256);
 	this->publisherState = this->nodeHandle->advertise<lunabotics::State>("state", 256);
+	this->publisherICRControl = this->nodeHandle->advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);
+	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
 	
 	//Create subscribers
 	this->subscriberOdometry = this->nodeHandle->subscribe("/odom", 256, &MechInterfaceNode::callbackOdometry, this);
 	this->subscriberTeleoperation = this->nodeHandle->subscribe("control", 256, &MechInterfaceNode::callbackTeleoperation, this);
-	
-	
 }
 
 MechInterfaceNode::~MechInterfaceNode()
@@ -33,30 +40,71 @@ void MechInterfaceNode::callbackTeleoperation(const lunabotics::Teleoperation::C
 {
 	ROS_INFO("%s%s%s%s", msg->forward ? "^" : "", msg->backward ? "v" : "", msg->left ? "<" : "", msg->right ? ">" : "");
 	
-	float v = 0;
-	if (msg->forward && !msg->backward) {
-		v = 5.0;
+	if (this->isDiffDriveRobot) {
+		float v = 0;
+		if (msg->forward && !msg->backward) {
+			v = 5.0;
+		}
+		else if (!msg->forward && msg->backward) {
+			v = -3.0;
+		}
+		
+		float w = 0;
+		if (msg->left && !msg->right) {
+			w = 1.0;
+		}
+		else if (!msg->left && msg->right) {
+			w = -1.0;
+		}
+		
+		geometry_msgs::Twist controlMsg;
+		controlMsg.linear.x = v;
+		controlMsg.linear.y = 0;
+		controlMsg.linear.z = 0;
+		controlMsg.angular.x = 0;
+		controlMsg.angular.y = 0;
+		controlMsg.angular.z = w;
+		this->publisherTwist.publish(controlMsg);
 	}
-	else if (!msg->forward && msg->backward) {
-		v = -3.0;
+	else {
+		if ((!msg->left && !msg->right) || (msg->left && msg->right)) {
+			lunabotics::AllWheelCommon controlMsg;
+			if ((msg->forward || msg->backward) && !(msg->forward && msg->backward)) {
+				//Predefined longitudal
+				ROS_INFO("TELEOP: Longitudal");
+				controlMsg.predefined_cmd = msg->forward ? lunabotics::proto::AllWheelControl::DRIVE_FORWARD : lunabotics::proto::AllWheelControl::DRIVE_BACKWARD;
+			}
+			else {
+				ROS_INFO("TELEOP: Stop");
+				controlMsg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
+			}
+			this->publisherAllWheelCommon.publish(controlMsg);
+			
+		}
+		else if (!msg->forward && !msg->backward) {
+			//Predefined point-turn
+			ROS_INFO("TELEOP: Point-turn");
+			lunabotics::AllWheelCommon controlMsg;
+			controlMsg.predefined_cmd = msg->left ? lunabotics::proto::AllWheelControl::TURN_CCW : lunabotics::proto::AllWheelControl::TURN_CW;
+			this->publisherAllWheelCommon.publish(controlMsg);
+		}
+		else if (msg->forward && msg->backward) {
+			//Predefined crab
+			ROS_INFO("TELEOP: Crab");
+			lunabotics::AllWheelCommon controlMsg;
+			controlMsg.predefined_cmd = msg->left ? lunabotics::proto::AllWheelControl::CRAB_LEFT : lunabotics::proto::AllWheelControl::CRAB_RIGHT;
+			this->publisherAllWheelCommon.publish(controlMsg);
+		}
+		else {
+			//ICR
+			ROS_INFO("TELEOP: ICR");
+			lunabotics::ICRControl controlMsg;
+			controlMsg.ICR.x = 0;
+			controlMsg.ICR.y = msg->left ? 1 : -1;
+			controlMsg.velocity = 0.3;
+			this->publisherICRControl.publish(controlMsg);
+		}
 	}
-	
-	float w = 0;
-	if (msg->left && !msg->right) {
-		w = 1.0;
-	}
-	else if (!msg->left && msg->right) {
-		w = -1.0;
-	}
-	
-	geometry_msgs::Twist controlMsg;
-	controlMsg.linear.x = v;
-	controlMsg.linear.y = 0;
-	controlMsg.linear.z = 0;
-	controlMsg.angular.x = 0;
-	controlMsg.angular.y = 0;
-	controlMsg.angular.z = w;
-	this->publisherTwist.publish(controlMsg);
 }
 				
 

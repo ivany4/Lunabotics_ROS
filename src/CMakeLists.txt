@@ -50,6 +50,7 @@ target_link_libraries(protos ${PROTOBUF_LIBRARY})
 
 target_link_libraries(luna_gui_listener protos)
 target_link_libraries(luna_gui_gw protos)
+target_link_libraries(luna_mech_gw protos)
 
 HEADER_DIRECTORIES(DIRS_TO_INCLUDE)
 message (STATUS "Include directories will be ${DIRS_TO_INCLUDE}")

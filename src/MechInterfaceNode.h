@@ -4,7 +4,6 @@
 #include "ROSNode.h"
 
 //Topics and Services
-#include "lunabotics/State.h"
 #include "lunabotics/Teleoperation.h"
 #include "nav_msgs/Odometry.h"
 
@@ -16,6 +15,8 @@ private:
 	//Publishers
 	ros::Publisher publisherTwist;
 	ros::Publisher publisherState;
+	ros::Publisher publisherICRControl;
+	ros::Publisher publisherAllWheelCommon;
 	
 	//Subscribers
 	ros::Subscriber subscriberOdometry;
