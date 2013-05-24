@@ -16,13 +16,9 @@ add_subdirectory(geometry)
 add_subdirectory(planning)
 add_subdirectory(control)
 
-message (STATUS "FOOOOOOOO ${FOO}")
-
-#add_definitions(-DFOO)
-
 rosbuild_add_executable(luna_gui_gw luna_gui_gw.cpp)
 rosbuild_add_executable(luna_gui_listener luna_gui_listener.cpp)
-rosbuild_add_executable(luna_mech_gw luna_mech_gw.cpp)
+rosbuild_add_executable(luna_mech_gw ROSNode.cpp MechInterfaceNode.cpp)
 rosbuild_add_executable(luna_fear luna_fear.cpp)
 rosbuild_add_executable(luna_driver ROSNode.cpp MotionControlNode.cpp)
 rosbuild_add_executable(luna_planner luna_planner.cpp)

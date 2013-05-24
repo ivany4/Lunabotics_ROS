@@ -123,7 +123,7 @@ void MotionControlNode::callbackPID(const lunabotics::PID::ConstPtr &msg)
 	this->pathFollowingGeometry->setFeedforwardPointOffsetFraction(msg->feedforward_fraction);
 }
 
-void MotionControlNode::callbackSteeringMode(const lunabotics::ControlMode::ConstPtr &msg)
+void MotionControlNode::callbackSteeringMode(const lunabotics::SteeringMode::ConstPtr &msg)
 {
 	
 	this->steeringMode = (lunabotics::proto::SteeringModeType)msg->mode;

@@ -21,7 +21,7 @@
 #include "lunabotics/ICRControl.h"
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/AllWheelState.h"
-#include "lunabotics/ControlMode.h"
+#include "lunabotics/SteeringMode.h"
 #include "lunabotics/CrabControl.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/State.h"
@@ -96,7 +96,7 @@ private:
 	void callbackAutonomy(const std_msgs::Bool::ConstPtr &msg);
 	void callbackAllWheelCommon(const lunabotics::AllWheelCommon::ConstPtr &msg);
 	void callbackAllWheelFeedback(const lunabotics::AllWheelState::ConstPtr &msg);
-	void callbackSteeringMode(const lunabotics::ControlMode::ConstPtr &msg);
+	void callbackSteeringMode(const lunabotics::SteeringMode::ConstPtr &msg);
 	void callbackPID(const lunabotics::PID::ConstPtr &msg);
 	void callbackCrab(const lunabotics::CrabControl::ConstPtr &msg);
 	void callbackState(const lunabotics::State::ConstPtr &msg);

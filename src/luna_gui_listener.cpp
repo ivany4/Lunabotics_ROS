@@ -1,6 +1,6 @@
 #include "ros/ros.h"
-#include "lunabotics/Control.h"
-#include "lunabotics/ControlMode.h"
+#include "lunabotics/Teleoperation.h"
+#include "lunabotics/SteeringMode.h"
 #include "lunabotics/Goal.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/AllWheelState.h"
@@ -26,7 +26,7 @@ boost::array<char, 4096> buffer;
 
 ros::Publisher allWheelPublisher;
 ros::Publisher allWheelCommonPublisher;
-ros::Publisher controlPublisher;
+ros::Publisher teleoperationPublisher;
 ros::Publisher controlModePublisher;
 ros::Publisher pidPublisher;
 ros::Publisher autonomyPublisher;
@@ -46,15 +46,12 @@ void quit(int sig) {
 void emergency_stop()
 {
 	ROS_WARN("Emergency STOP");
-	lunabotics::Control controlMsg;
-	controlMsg.control_type = 0;	//Motion only
-	controlMsg.motion.linear.x = 0;
-	controlMsg.motion.linear.y = 0;
-	controlMsg.motion.linear.z = 0;
-	controlMsg.motion.angular.x = 0;
-	controlMsg.motion.angular.y = 0;
-	controlMsg.motion.angular.z = 0;
-	controlPublisher.publish(controlMsg);
+	lunabotics::Teleoperation controlMsg;
+	controlMsg.forward = false;
+	controlMsg.backward = false;
+	controlMsg.left = false;
+	controlMsg.right = false;
+	teleoperationPublisher.publish(controlMsg);
 	
 	lunabotics::AllWheelState msg;
 	msg.driving.left_front = 0;
@@ -96,7 +93,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 				
 				ROS_INFO("Switching control mode to %s", steeringModeToString(type).c_str());
 				
-				lunabotics::ControlMode controlModeMsg;
+				lunabotics::SteeringMode controlModeMsg;
 				controlModeMsg.mode = type;
 				controlModeMsg.distance_accuracy = tc.steering_mode_data().position_accuracy();
 				controlModeMsg.angle_accuracy = tc.steering_mode_data().heading_accuracy();
@@ -107,39 +104,12 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			break;
 			
 			case lunabotics::proto::Telecommand::TELEOPERATION: {
-				lunabotics::Control controlMsg;
-				
-			    bool driveForward 	= tc.teleoperation_data().forward();
-			    bool driveBackward 	= tc.teleoperation_data().backward();
-			    bool driveLeft 		= tc.teleoperation_data().left();
-			    bool driveRight 	= tc.teleoperation_data().right();
-			
-				ROS_INFO("%s%s%s%s", driveForward ? "^" : "", driveBackward ? "v" : "", driveLeft ? "<" : "", driveRight ? ">" : "");
-				
-				float stageLinearSpeed = 0;
-				if (driveForward && !driveBackward) {
-					stageLinearSpeed = 5.0;
-				}
-				else if (!driveForward && driveBackward) {
-					stageLinearSpeed = -3.0;
-				}
-				
-				float stageAngularSpeed = 0;
-				if (driveLeft && !driveRight) {
-					stageAngularSpeed = 1.0;
-				}
-				else if (!driveLeft && driveRight) {
-					stageAngularSpeed = -1.0;
-				}
-				
-				controlMsg.control_type = 0;	//Motion only
-				controlMsg.motion.linear.x = stageLinearSpeed;
-				controlMsg.motion.linear.y = 0;
-				controlMsg.motion.linear.z = 0;
-				controlMsg.motion.angular.x = 0;
-				controlMsg.motion.angular.y = 0;
-				controlMsg.motion.angular.z = stageAngularSpeed;
-				controlPublisher.publish(controlMsg);
+				lunabotics::Teleoperation teleopMsg;
+				teleopMsg.forward = tc.teleoperation_data().forward();
+				teleopMsg.backward = tc.teleoperation_data().backward();
+				teleopMsg.left = tc.teleoperation_data().left();
+				teleopMsg.right = tc.teleoperation_data().right();
+				teleoperationPublisher.publish(teleopMsg);
 			}
 			break;
 			
@@ -266,10 +236,10 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_listener");
 		
 	ros::NodeHandle nodeHandle("lunabotics");
-	controlPublisher = nodeHandle.advertise<lunabotics::Control>("control", 256);
+	teleoperationPublisher = nodeHandle.advertise<lunabotics::Teleoperation>("control", 256);
 	pidPublisher = nodeHandle.advertise<lunabotics::PID>("pid", sizeof(float)*3);
 	autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
-	controlModePublisher = nodeHandle.advertise<lunabotics::ControlMode>("control_mode", 1);
+	controlModePublisher = nodeHandle.advertise<lunabotics::SteeringMode>("control_mode", 1);
 	goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
 	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
 	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));

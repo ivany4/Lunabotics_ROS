@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "lunabotics/State.h"
-#include "lunabotics/Control.h"
+#include "lunabotics/Teleoperation.h"
 #include "lunabotics/ControlParams.h"
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Empty.h"
@@ -9,9 +9,11 @@ geometry_msgs::Twist twistMsg;
 lunabotics::State stateMsg;
 bool publishState;
 
-void controlCallback(const lunabotics::Control& msg)
+void controlCallback(const lunabotics::Teleoperation& msg)
 {	
 	twistMsg = msg.motion;
+	
+	
 }
 
 void odoCallback(const nav_msgs::Odometry& msg)
