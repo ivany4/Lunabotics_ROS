@@ -395,7 +395,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->trajectory->maxCurvature(), 1/this->trajectory->maxCurvature());
 			}
 			
-			 this->waypointsIt = this->steeringMode == lunabotics::proto::ACKERMANN ? this->waypoints.begin() : this->waypoints.begin()+1;		
+			 this->waypointsIt = this->waypoints.begin()+1;		
 		//	ROS_INFO("Returned path: %s", sstr.str().c_str());
 			//Point waypoint = this->waypoints.at(0);
 			//ROS_INFO("Heading towards (%.1f,%.1f)", (*this->waypointsIt).x, (*this->waypointsIt).y);
