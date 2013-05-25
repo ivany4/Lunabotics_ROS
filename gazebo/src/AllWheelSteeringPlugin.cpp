@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <numeric>
 #include "std_msgs/Empty.h"
+#include "../../src/topics.h"
 
 #define Kp	4
 #define Ki	0.1
@@ -57,14 +58,14 @@ namespace gazebo
 			this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&AllWheelSteeringPlugin::OnUpdate, this));
 	
 			// ROS Listener
-			this->sub = this->node->subscribe<lunabotics::AllWheelState>("all_wheel", 100, &AllWheelSteeringPlugin::ROSCallback, this);
+			this->sub = this->node->subscribe<lunabotics::AllWheelState>(TOPIC_CMD_EXPLICIT_ALL_WHEEL, 100, &AllWheelSteeringPlugin::ROSCallback, this);
 			
 			if (!this->sub) {
-				ROS_ERROR("Could not instantiate subscriber for /lunabotics/all_wheel!");
+				ROS_ERROR("Could not instantiate subscriber for %s!", TOPIC_CMD_EXPLICIT_ALL_WHEEL);
 			}
 			
 			// ROS Publisher
-			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelState>("all_wheel_feeback", sizeof(float)*8);
+			this->wheelStatePublisher = this->node->advertise<lunabotics::AllWheelState>(TOPIC_TM_ALL_WHEEL, sizeof(float)*8);
 		}
 		else {
 			ROS_WARN("Could not load the model!");

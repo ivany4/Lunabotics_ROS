@@ -4,6 +4,7 @@
 #include <physics/physics.hh>
 #include <common/common.hh>
 #include <stdio.h>
+#include "../../src/topics.h"
 
 namespace gazebo
 {   
@@ -29,10 +30,10 @@ namespace gazebo
 		this->node = new ros::NodeHandle("~");
 
 		// ROS Publisher
-		this->pub = this->node->advertise<nav_msgs::Odometry>("/odom", 1000);
+		this->pub = this->node->advertise<nav_msgs::Odometry>(TOPIC_TM_ODOMETRY, 1000);
 		
 		if (!pub) {
-			ROS_ERROR("Could not advertise /odom!");
+			ROS_ERROR("Could not advertise %s!", TOPIC_TM_ODOMETRY);
 		}
 	}
 	

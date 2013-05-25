@@ -12,6 +12,7 @@
 #include "std_msgs/Empty.h"
 #include "tf/tf.h"
 #include "types.h"
+#include "topics.h"
 #include <boost/asio.hpp>
 #include "../protos_gen/Telemetry.pb.h"
 
@@ -113,19 +114,19 @@ int main(int argc, char **argv)
 	
 	ros::init(argc, argv, "luna_gui_gw");
 	
-	boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(), argv[1], "44325"); 
+	boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(), argv[1], "44326"); 
 	
 	ros::NodeHandle nodeHandle("lunabotics");
-	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
-	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe("map_update", 0, mapUpdateCallback);
-	ros::Subscriber pathSubscriber = nodeHandle.subscribe("path", 256, pathCallback);
-	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe("control_mode", 1, controlModeCallback);
-	ros::Subscriber pathFollowingMsgSubscriber = nodeHandle.subscribe("control_params", 1, pathFollowingMsgCallback);
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 1, visionCallback);
-	ros::Subscriber ICRSubscriber = nodeHandle.subscribe("icr_state", sizeof(float)*2, ICRCallback);
-	ros::Subscriber AllWheelStateSubscriber = nodeHandle.subscribe("all_wheel_feeback", sizeof(float)*8, AllWheelStateCallback);
-	ros::Subscriber geometrySubscriber = nodeHandle.subscribe("geometry", sizeof(float)*4*2, geometryCallback);
-	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>("map");
+	ros::Subscriber stateSubscriber = nodeHandle.subscribe(TOPIC_TM_ROBOT_STATE, 256, stateCallback);
+	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe(TOPIC_EMERGENCY, 0, mapUpdateCallback);
+	ros::Subscriber pathSubscriber = nodeHandle.subscribe(TOPIC_TM_PATH, 256, pathCallback);
+	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe(TOPIC_STEERING_MODE, 1, controlModeCallback);
+	ros::Subscriber pathFollowingMsgSubscriber = nodeHandle.subscribe(TOPIC_TM_PATH_FOLLOWING, 1, pathFollowingMsgCallback);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe(TOPIC_TM_VISION, 1, visionCallback);
+	ros::Subscriber ICRSubscriber = nodeHandle.subscribe(TOPIC_TM_ICR, sizeof(float)*2, ICRCallback);
+	ros::Subscriber AllWheelStateSubscriber = nodeHandle.subscribe(TOPIC_TM_ALL_WHEEL, sizeof(float)*8, AllWheelStateCallback);
+	ros::Subscriber geometrySubscriber = nodeHandle.subscribe(TOPIC_TM_ROBOT_GEOMETRY, sizeof(float)*4*2, geometryCallback);
+	ros::ServiceClient mapClient = nodeHandle.serviceClient<nav_msgs::GetMap>(SERVICE_MAP);
 	nav_msgs::GetMap mapService;
 	ICR.x = 0;
 	ICR.y = 0;

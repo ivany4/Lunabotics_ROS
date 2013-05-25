@@ -5,6 +5,7 @@
 #include <sensors/sensors.hh>
 #include <common/common.hh>
 #include <stdio.h>
+#include "../../src/topics.h"
 
 #define DEFAULT_TORQUE	5.0
 
@@ -35,10 +36,10 @@ namespace gazebo
 			this->node = new ros::NodeHandle("~");
 	
 			// ROS Listener
-			this->sub = this->node->subscribe<geometry_msgs::Twist>("/cmd_vel", 100, &LunaboticsDiffDrivePlugin::ROSCallback, this);
+			this->sub = this->node->subscribe<geometry_msgs::Twist>(TOPIC_CMD_TWIST, 100, &LunaboticsDiffDrivePlugin::ROSCallback, this);
 			
 			if (!sub) {
-				ROS_ERROR("Could not instantiate subscriber for /cmd_vel!");
+				ROS_ERROR("Could not instantiate subscriber for %s!", TOPIC_CMD_TWIST);
 			}
 		}
 		else {

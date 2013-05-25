@@ -15,12 +15,12 @@ sequence(0), mapFromFile(false), mapFilename()
 	this->parseArgs();
 	
 	//Subscribers
-	this->subscriberVision = this->nodeHandle->subscribe("vision", 256, &Cartographer::callbackVision, this);
-	this->subscriberState = this->nodeHandle->subscribe("state", 1, &Cartographer::callbackState, this);
+	this->subscriberVision = this->nodeHandle->subscribe(TOPIC_TM_VISION, 256, &Cartographer::callbackVision, this);
+	this->subscriberState = this->nodeHandle->subscribe(TOPIC_TM_ROBOT_STATE, 1, &Cartographer::callbackState, this);
 	
 	//Services
-	this->serverMap = this->nodeHandle->advertiseService("map", &Cartographer::callbackGetMap, this);
-	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>("/dynamic_map");
+	this->serverMap = this->nodeHandle->advertiseService(SERVICE_MAP, &Cartographer::callbackGetMap, this);
+	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>(SERVICE_MAP_GMAPPING);
 }
 
 Cartographer::~Cartographer()

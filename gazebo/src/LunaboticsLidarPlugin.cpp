@@ -6,6 +6,7 @@
 #include <common/common.hh>
 #include <stdio.h>
 #include <sensor_msgs/LaserScan.h>
+#include "../../src/topics.h"
 
 uint32_t seq = 0;
 
@@ -32,10 +33,10 @@ namespace gazebo
 		this->node = new ros::NodeHandle("~");
 
 		// ROS Publisher
-		this->pub = this->node->advertise<sensor_msgs::LaserScan>("/base_scan", 1000);
+		this->pub = this->node->advertise<sensor_msgs::LaserScan>(TOPIC_TM_LIDAR, 1000);
 		
 		if (!pub) {
-			ROS_ERROR("Could not advertise /base_scan!");
+			ROS_ERROR("Could not advertise %s!", TOPIC_TM_LIDAR);
 		}
 	}
 	

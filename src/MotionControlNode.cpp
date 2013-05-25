@@ -59,29 +59,29 @@ ackermannJustStarted(false)
 	this->trajectory = new Trajectory();	
 	
 	//Create subscribers
-	this->subscriberEmergency = this->nodeHandle->subscribe("emergency", 256, &MotionControlNode::callbackEmergency, this);
-	this->subscriberAutonomy = this->nodeHandle->subscribe("autonomy", 1, &MotionControlNode::callbackAutonomy, this);
-	this->subscriberState = this->nodeHandle->subscribe("state", 1, &MotionControlNode::callbackState, this);
-	this->subscriberGoal = this->nodeHandle->subscribe("goal", 256, &MotionControlNode::callbackGoal, this);
-	this->subscriberPID = this->nodeHandle->subscribe("pid", sizeof(float)*3, &MotionControlNode::callbackPID, this);
-	this->subscriberSteeringMode = this->nodeHandle->subscribe("control_mode", 1, &MotionControlNode::callbackSteeringMode, this);
-	this->subscriberICR = this->nodeHandle->subscribe("icr", sizeof(float)*3, &MotionControlNode::callbackICR, this);
-	this->subscriberCrab = this->nodeHandle->subscribe("crab", sizeof(float)*2, &MotionControlNode::callbackCrab, this);
-	this->subscriberAllWheelCommon = this->nodeHandle->subscribe("all_wheel_common", 256, &MotionControlNode::callbackAllWheelCommon, this);
-	this->subscriberAllWheelFeedback = this->nodeHandle->subscribe("all_wheel_feeback", sizeof(float)*8, &MotionControlNode::callbackAllWheelFeedback, this);
+	this->subscriberEmergency = this->nodeHandle->subscribe(TOPIC_EMERGENCY, 256, &MotionControlNode::callbackEmergency, this);
+	this->subscriberAutonomy = this->nodeHandle->subscribe(TOPIC_CMD_AUTONOMY, 1, &MotionControlNode::callbackAutonomy, this);
+	this->subscriberState = this->nodeHandle->subscribe(TOPIC_TM_ROBOT_STATE, 1, &MotionControlNode::callbackState, this);
+	this->subscriberGoal = this->nodeHandle->subscribe(TOPIC_CMD_GOAL, 256, &MotionControlNode::callbackGoal, this);
+	this->subscriberPID = this->nodeHandle->subscribe(TOPIC_CMD_PATH_FOLLOWING, sizeof(float)*3, &MotionControlNode::callbackPID, this);
+	this->subscriberSteeringMode = this->nodeHandle->subscribe(TOPIC_STEERING_MODE, 1, &MotionControlNode::callbackSteeringMode, this);
+	this->subscriberICR = this->nodeHandle->subscribe(TOPIC_CMD_ICR, sizeof(float)*3, &MotionControlNode::callbackICR, this);
+	this->subscriberCrab = this->nodeHandle->subscribe(TOPIC_CMD_CRAB, sizeof(float)*2, &MotionControlNode::callbackCrab, this);
+	this->subscriberAllWheelCommon = this->nodeHandle->subscribe(TOPIC_CMD_ALL_WHEEL, 256, &MotionControlNode::callbackAllWheelCommon, this);
+	this->subscriberAllWheelFeedback = this->nodeHandle->subscribe(TOPIC_TM_ALL_WHEEL, sizeof(float)*8, &MotionControlNode::callbackAllWheelFeedback, this);
 	
 	//Create publishers
-	this->publisherDiffDriveMotion = this->nodeHandle->advertise<geometry_msgs::Twist>("/cmd_vel", 256);
-	this->publisherPath = this->nodeHandle->advertise<lunabotics::PathTopic>("path", 256);
-	this->publisherICR = this->nodeHandle->advertise<geometry_msgs::Point>("icr_state", sizeof(float)*2);
-	this->publisherAllWheelMotion = this->nodeHandle->advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
-	this->publisherPathFollowingTelemetry = this->nodeHandle->advertise<lunabotics::PathFollowingTelemetry>("control_params", 256);
-	this->publisherGeometry = this->nodeHandle->advertise<lunabotics::RobotGeometry>("geometry", sizeof(float)*2*4);
-	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(uint32_t));
+	this->publisherDiffDriveMotion = this->nodeHandle->advertise<geometry_msgs::Twist>(TOPIC_CMD_TWIST, 256);
+	this->publisherPath = this->nodeHandle->advertise<lunabotics::PathTopic>(TOPIC_TM_PATH, 256);
+	this->publisherICR = this->nodeHandle->advertise<geometry_msgs::Point>(TOPIC_TM_ICR, sizeof(float)*2);
+	this->publisherAllWheelMotion = this->nodeHandle->advertise<lunabotics::AllWheelState>(TOPIC_CMD_EXPLICIT_ALL_WHEEL, sizeof(float)*8);
+	this->publisherPathFollowingTelemetry = this->nodeHandle->advertise<lunabotics::PathFollowingTelemetry>(TOPIC_TM_PATH_FOLLOWING, 256);
+	this->publisherGeometry = this->nodeHandle->advertise<lunabotics::RobotGeometry>(TOPIC_TM_ROBOT_GEOMETRY, sizeof(float)*2*4);
+	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(uint32_t));
 	
 	
 	//Create service clients
-	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>("map");
+	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>(SERVICE_MAP);
 	
 	ROS_INFO("Motion Control Ready");
 }

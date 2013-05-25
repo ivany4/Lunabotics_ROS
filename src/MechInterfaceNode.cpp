@@ -13,14 +13,14 @@ MechInterfaceNode::MechInterfaceNode(int argc, char **argv, std::string name, in
 ROSNode(argc, argv, name, frequency)
 {
 	//Create publishers
-	this->publisherTwist = this->nodeHandle->advertise<geometry_msgs::Twist>("/cmd_vel", 256);
-	this->publisherState = this->nodeHandle->advertise<lunabotics::State>("state", 256);
-	this->publisherICRControl = this->nodeHandle->advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);
-	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
+	this->publisherTwist = this->nodeHandle->advertise<geometry_msgs::Twist>(TOPIC_CMD_TWIST, 256);
+	this->publisherState = this->nodeHandle->advertise<lunabotics::State>(TOPIC_TM_ROBOT_STATE, 256);
+	this->publisherICRControl = this->nodeHandle->advertise<lunabotics::ICRControl>(TOPIC_CMD_ICR, sizeof(float)*3);
+	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(int32_t));
 	
 	//Create subscribers
-	this->subscriberOdometry = this->nodeHandle->subscribe("/odom", 256, &MechInterfaceNode::callbackOdometry, this);
-	this->subscriberTeleoperation = this->nodeHandle->subscribe("control", 256, &MechInterfaceNode::callbackTeleoperation, this);
+	this->subscriberOdometry = this->nodeHandle->subscribe(TOPIC_TM_ODOMETRY, 256, &MechInterfaceNode::callbackOdometry, this);
+	this->subscriberTeleoperation = this->nodeHandle->subscribe(TOPIC_CMD_TELEOP, 256, &MechInterfaceNode::callbackTeleoperation, this);
 }
 
 MechInterfaceNode::~MechInterfaceNode()

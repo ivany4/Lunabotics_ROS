@@ -2,6 +2,7 @@
 #include "lunabotics/Emergency.h"
 #include "lunabotics/State.h"
 #include "lunabotics/Vision.h"
+#include "topics.h"
 
 lunabotics::Emergency emergencyMsg;
 
@@ -18,9 +19,9 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "luna_fear");
 	ros::NodeHandle nodeHandle("lunabotics");
-	ros::Subscriber visionSubscriber = nodeHandle.subscribe("vision", 256, visionCallback);
-	ros::Subscriber stateSubscriber = nodeHandle.subscribe("state", 256, stateCallback);
-	ros::Publisher emergencyPublisher = nodeHandle.advertise<lunabotics::Emergency>("emergency", 256);
+	ros::Subscriber visionSubscriber = nodeHandle.subscribe(TOPIC_TM_VISION, 256, visionCallback);
+	ros::Subscriber stateSubscriber = nodeHandle.subscribe(TOPIC_TM_ROBOT_STATE, 256, stateCallback);
+	ros::Publisher emergencyPublisher = nodeHandle.advertise<lunabotics::Emergency>(TOPIC_EMERGENCY, 256);
 	ros::Rate loop_rate(50);
 	
 	ROS_INFO("Emergency behavior ready"); 

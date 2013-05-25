@@ -2,6 +2,8 @@
 #define _NODE_ASSISTANT_H_
 
 #include "ros/ros.h"
+#include "topics.h"
+
 namespace lunabotics {
 
 class ROSNode {

@@ -15,6 +15,7 @@
 #include <string>
 #include <signal.h>
 #include "types.h"
+#include "topics.h"
 #include "../protos_gen/Telecommand.pb.h"
 #include "../protos_gen/AllWheelControl.pb.h"
 
@@ -236,16 +237,16 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_gui_listener");
 		
 	ros::NodeHandle nodeHandle("lunabotics");
-	teleoperationPublisher = nodeHandle.advertise<lunabotics::Teleoperation>("control", 256);
-	pidPublisher = nodeHandle.advertise<lunabotics::PID>("pid", sizeof(float)*3);
-	autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>("autonomy", 1);
-	controlModePublisher = nodeHandle.advertise<lunabotics::SteeringMode>("control_mode", 1);
-	goalPublisher = nodeHandle.advertise<lunabotics::Goal>("goal", 1);
-	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelState>("all_wheel", sizeof(float)*8);
-	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>("all_wheel_common", sizeof(int32_t));
-	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>("map_update", 1);
-	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>("icr", sizeof(float)*3);
-	CrabPublisher = nodeHandle.advertise<lunabotics::CrabControl>("crab", sizeof(float)*3);
+	teleoperationPublisher = nodeHandle.advertise<lunabotics::Teleoperation>(TOPIC_CMD_TELEOP, 256);
+	pidPublisher = nodeHandle.advertise<lunabotics::PID>(TOPIC_CMD_PATH_FOLLOWING, sizeof(float)*3);
+	autonomyPublisher = nodeHandle.advertise<std_msgs::Bool>(TOPIC_CMD_AUTONOMY, 1);
+	controlModePublisher = nodeHandle.advertise<lunabotics::SteeringMode>(TOPIC_STEERING_MODE, 1);
+	goalPublisher = nodeHandle.advertise<lunabotics::Goal>(TOPIC_CMD_GOAL, 1);
+	allWheelPublisher = nodeHandle.advertise<lunabotics::AllWheelState>(TOPIC_CMD_EXPLICIT_ALL_WHEEL, sizeof(float)*8);
+	allWheelCommonPublisher = nodeHandle.advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(int32_t));
+	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>(TOPIC_CMD_UPDATE_MAP, 1);
+	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>(TOPIC_CMD_ICR, sizeof(float)*3);
+	CrabPublisher = nodeHandle.advertise<lunabotics::CrabControl>(TOPIC_CMD_CRAB, sizeof(float)*3);
 	
   	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 

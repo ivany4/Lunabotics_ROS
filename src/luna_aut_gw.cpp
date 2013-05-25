@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "lunabotics/Vision.h"
 #include "sensor_msgs/LaserScan.h"
+#include "topics.h"
 
 lunabotics::Vision visionMsg;
 bool publishVision = false;
@@ -32,13 +33,8 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "luna_aut_gw");
 	ros::NodeHandle nodeHandle("lunabotics");
 	
-	ros::Publisher visionPublisher = nodeHandle.advertise<lunabotics::Vision>("vision", 256);
-	
-	//Stageros subscriptions
-	ros::Subscriber stageLaserSubscriber = nodeHandle.subscribe("/base_scan", 256, stageLaserCallback);
-	
-	//Pioneer subscriptions
-	ros::Subscriber pioneerLaserSubscriber = nodeHandle.subscribe("/scan", 256, pioneerLaserCallback);
+	ros::Publisher visionPublisher = nodeHandle.advertise<lunabotics::Vision>(TOPIC_TM_VISION, 256);
+	ros::Subscriber stageLaserSubscriber = nodeHandle.subscribe(TOPIC_TM_LIDAR, 256, stageLaserCallback);
 	
 	ROS_INFO("AutSys Gateway ready"); 
 	
