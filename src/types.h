@@ -5,6 +5,7 @@
 #include "geometry_msgs/Pose.h"
 #include "../protos_gen/SteeringModeType.pb.h"
 #include "tf/tf.h"
+#include <iostream>
 
 enum ROTATION_DIRECTION {
 	CW = 1,
@@ -30,6 +31,7 @@ struct Point {
 	float y;
 	bool operator==(const Point &b) const {return x == b.x && y == b.y;}
 	bool operator!=(const Point &b) const {return x != b.x || y != b.y;}
+	//std::ostream &operator<<(std::ostream &, const Point &p) { output << "(" << p.x << "," << p.y << ")"; return output; }
 };
 
 struct Pose {

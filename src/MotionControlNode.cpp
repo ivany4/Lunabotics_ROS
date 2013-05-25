@@ -11,14 +11,18 @@ using namespace lunabotics;
 #define PID_P_DIFF	0.05
 #define PID_I_DIFF	0.1
 #define PID_D_DIFF	0.18
-#define VEC_OFFSET_DIFF	0.5
-#define VEC_MULTI_DIFF	1
+#define FB_OFFSET_DIFF	0.5
+#define FB_MX_DIFF		1
+#define FF_OFFSET_DIFF	0
+#define FF_FRAC_DIFF	0
 
 #define PID_P_ALL	2
 #define PID_I_ALL	0.1
 #define PID_D_ALL	1.5
-#define VEC_OFFSET_ALL	0.5
-#define VEC_MULTI_ALL 0.2
+#define FB_OFFSET_ALL	0.05
+#define FB_MX_ALL		0.25
+#define FF_OFFSET_ALL	0.05
+#define FF_FRAC_ALL		0.5
 
 
 
@@ -46,11 +50,11 @@ ackermannJustStarted(false)
 	
 	if (this->isDiffDriveRobot) {
 		this->ackermannPID = new PIDController(PID_P_DIFF, PID_I_DIFF, PID_D_DIFF);
-		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, VEC_OFFSET_DIFF, VEC_MULTI_DIFF);
+		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, FB_OFFSET_DIFF, FB_MX_DIFF, FF_OFFSET_DIFF, FF_FRAC_DIFF);
 	}
 	else {
 		this->ackermannPID = new PIDController(PID_P_ALL, PID_I_ALL, PID_D_ALL);
-		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, VEC_OFFSET_ALL, VEC_MULTI_ALL);
+		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, FB_OFFSET_ALL, FB_MX_ALL, FF_OFFSET_ALL, FF_FRAC_ALL);
 	}
 	
 	this->pointTurnPID = new PIDController(1, 0.1, 0.5);
@@ -674,9 +678,10 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		
 		double y_err = this->pathFollowingGeometry->getFeedbackError();
+		double prediction = this->pathFollowingGeometry->getFeedforwardPrediction();
 		lunabotics::PathFollowingTelemetry telemetryMsg;
 		telemetryMsg.feedback_error = y_err;
-		telemetryMsg.feedforward_prediction = this->pathFollowingGeometry->getFeedforwardPrediction();
+		telemetryMsg.feedforward_prediction = prediction;
 		telemetryMsg.feedforward_curve_radius = this->pathFollowingGeometry->getCurveRadius();
 		telemetryMsg.feedback_path_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPoint());
 		telemetryMsg.feedback_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPoint());
@@ -701,6 +706,10 @@ void MotionControlNode::controlAckermannAllWheel()
 		double signal;
 		if (this->ackermannPID->control(y_err, signal)) {
 			signal *= 10.0;
+			
+			if (!isnan(prediction) && !isinf(prediction)) {
+				signal += prediction;
+			}
 			//ROS_WARN("DW %.2f", signal);
 			
 			double gamma = -signal/2;

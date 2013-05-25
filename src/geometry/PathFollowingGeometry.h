@@ -58,6 +58,8 @@ class PathFollowingGeometry {
 		AllWheelGeometryPtr robotGeometry;
 		
 		double velocity;
+		
+		
 		double getReferenceAngle(Point point1, Point point2, Point point3); //Angle at point1 
 		double getReferenceAngle(double edge1, double edge2, double edge3); //Angle between edge1 and edge2
 		void updateLocalFrame();
@@ -69,7 +71,7 @@ class PathFollowingGeometry {
 		Point localFramePoint(Point globalFramePoint);
 	public:
 		PathFollowingGeometry(AllWheelGeometryPtr geometry);
-		PathFollowingGeometry(AllWheelGeometryPtr geometry, float velocityOffset, float velocityMultiplier);
+		PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset, float feedback_multiplier, float feedforward_offset, float feedforward_fraction);
 		~PathFollowingGeometry();
 		Point getFeedbackPoint();
 		Point getFeedbackPointInLocalFrame();

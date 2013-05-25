@@ -7,19 +7,78 @@ using namespace lunabotics;
 
 //---------------- Contructors / Destructor ---------------------//
 
-PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry): current_pose(), feedback_point(),
-has_feedback_point(false), path(), has_feedback_path_point(false),
-feedback_path_point(), feedback_path_point_in_local_frame(), feedback_point_in_local_frame(),
-feedback_error(0), has_local_frame(false), velocity(0), feedback_point_offset_min(0.05),
-feedback_point_offset_multiplier(0.25), robotGeometry(geometry)
+PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry):
+feedback_point(),
+feedback_point_in_local_frame(),
+has_feedback_point(false),
+feedback_point_offset_min(0.05),
+feedback_point_offset_multiplier(0.25),
+feedback_look_ahead_distance(0),
+has_feedback_look_ahead_distance(false),
+feedback_error(0),
+has_feedback_error(false),
+feedback_path_point(),
+feedback_path_point_in_local_frame(),
+has_feedback_path_point(false),
+feedforward_point(),
+feedforward_point_in_local_frame(),
+has_feedforward_point(false),
+feedforward_point_offset_fraction(0),
+feedforward_curvature_detection_start(0),
+feedforward_look_ahead_distance(0),
+has_feedforward_look_ahead_distance(false),
+feedforward_prediction(0),
+has_feedforward_prediction(false),
+curvature_detection_points(),
+curvature_detection_points_in_local_frame(),
+has_curvature_detection_points(false),
+feedforward_center(),
+has_feedforward_center(false),
+curve_radius(0),
+has_curve_radius(false),
+current_pose(),
+path(),
+has_local_frame(false),
+robotGeometry(geometry),
+velocity(0)
 {
 }
 
-PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry, float velocityOffset, float velocityMultiplier):
-current_pose(), feedback_point(), has_feedback_point(false), path(), has_feedback_path_point(true),
-feedback_path_point(), feedback_path_point_in_local_frame(), feedback_point_in_local_frame(),
-feedback_error(0), has_local_frame(false), velocity(0), feedback_point_offset_min(velocityOffset),
-feedback_point_offset_multiplier(velocityMultiplier), robotGeometry(geometry)
+PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset,
+float feedback_multiplier, float feedforward_offset, float feedforward_fraction):
+feedback_point(),
+feedback_point_in_local_frame(),
+has_feedback_point(false),
+feedback_point_offset_min(feedback_offset),
+feedback_point_offset_multiplier(feedback_multiplier),
+feedback_look_ahead_distance(0),
+has_feedback_look_ahead_distance(false),
+feedback_error(0),
+has_feedback_error(false),
+feedback_path_point(),
+feedback_path_point_in_local_frame(),
+has_feedback_path_point(false),
+feedforward_point(),
+feedforward_point_in_local_frame(),
+has_feedforward_point(false),
+feedforward_point_offset_fraction(feedforward_fraction),
+feedforward_curvature_detection_start(feedforward_offset),
+feedforward_look_ahead_distance(0),
+has_feedforward_look_ahead_distance(false),
+feedforward_prediction(0),
+has_feedforward_prediction(false),
+curvature_detection_points(),
+curvature_detection_points_in_local_frame(),
+has_curvature_detection_points(false),
+feedforward_center(),
+has_feedforward_center(false),
+curve_radius(0),
+has_curve_radius(false),
+current_pose(),
+path(),
+has_local_frame(false),
+robotGeometry(geometry),
+velocity(0)
 {
 }
 
@@ -278,6 +337,13 @@ PointArr PathFollowingGeometry::getCurvatureDetectionPoints()
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d2), p2) &&
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d4), p4) &&
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d5), p5)) {
+			ROS_INFO("Detection p1 %.2f,%.2f", p1.x, p1.y);
+			ROS_INFO("Detection p2 %.2f,%.2f", p2.x, p2.y);
+			ROS_INFO("Detection p3 %.2f,%.2f", p3.x, p3.y);
+			ROS_INFO("Detection p4 %.2f,%.2f", p4.x, p4.y);
+			ROS_INFO("Detection p5 %.2f,%.2f", p5.x, p5.y);
+			
+			
 			this->curvature_detection_points.clear();
 			this->curvature_detection_points.push_back(p1);
 			this->curvature_detection_points.push_back(p2);
@@ -285,6 +351,9 @@ PointArr PathFollowingGeometry::getCurvatureDetectionPoints()
 			this->curvature_detection_points.push_back(p4);
 			this->curvature_detection_points.push_back(p5);
 			this->has_curvature_detection_points = true;
+		}
+		else {
+			ROS_WARN("Can't get curvature detection points");
 		}
 	}
 	return this->curvature_detection_points;
@@ -307,6 +376,8 @@ Point PathFollowingGeometry::getFeedforwardCurveCenterPoint()
 			Point p2 = points.at(2);
 			Point p3 = points.at(4);
 			
+			ROS_INFO("p1 %.2f,%2.f; p2 %.2f,%2.f; p3 %.2f,%2.f", p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+			
 			//Equation 12
 			double l12 = (p2.y-p1.y)/(p2.x-p1.x);
 			double l23 = (p3.y-p2.y)/(p3.x-p2.x);
@@ -320,6 +391,9 @@ Point PathFollowingGeometry::getFeedforwardCurveCenterPoint()
 			this->feedforward_center.y = -(p2.y+p3.y)/2-this->feedforward_center.x/l23*this->feedforward_center.x+(p2.x+p3.x)/(2*l23);
 			
 			this->has_feedforward_center = true;
+		}
+		else {
+			ROS_WARN("Can't get curve center. Expected 5 detection points.");
 		}
 	}
 	return this->feedforward_center;			
@@ -340,8 +414,15 @@ double PathFollowingGeometry::getCurveRadius()
 			radius /= points.size();
 			this->curve_radius = radius;
 			
+			//std::stringstream sstr;
+			//sstr << center;
+						
+			ROS_INFO("Getting curve radius %f, pts.size %d. %.2f, %.2f", radius, (unsigned int)points.size(), center.x, center.y);
 			
 			this->has_curve_radius = true;
+		}
+		else {
+			ROS_WARN("Failed to calculate radius. Detection points are empty");
 		}
 	}
 	return this->curve_radius;

@@ -1,9 +1,9 @@
 #include "ros/ros.h"
-#include "lunabotics/Control.h"
+#include "lunabotics/Teleoperation.h"
 #include "lunabotics/State.h"
 #include "lunabotics/Vision.h"
 #include "lunabotics/PathFollowingTelemetry.h"
-#include "lunabotics/ControlMode.h"
+#include "lunabotics/SteeringMode.h"
 #include "lunabotics/AllWheelState.h"
 #include "lunabotics/PID.h"
 #include "lunabotics/RobotGeometry.h"
@@ -70,7 +70,7 @@ void mapUpdateCallback(const std_msgs::Empty& msg)
 	sendMap = true;
 }
 
-void controlModeCallback(const lunabotics::ControlMode& msg)
+void controlModeCallback(const lunabotics::SteeringMode& msg)
 {
 	controlMode = (lunabotics::proto::SteeringModeType)msg.mode;					
 }
