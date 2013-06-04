@@ -535,48 +535,32 @@
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>left_front_connector</link_name>
-            </parent>
-            <child>
-                <link_name>left_front_wheel</link_name>
-            </child>
+            <parent>left_front_connector</parent>
+            <child>left_front_wheel</child>
         </joint>
         <joint type="revolute" name="right_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>right_front_connector</link_name>
-            </parent>
-            <child>
-                <link_name>right_front_wheel</link_name>
-            </child>
+            <parent>right_front_connector</parent>
+            <child>right_front_wheel</child>
         </joint>
         <joint type="revolute" name="left_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>left_rear_connector</link_name>
-            </parent>
-            <child>
-                <link_name>left_rear_wheel</link_name>
-            </child>
+            <parent>left_rear_connector</parent>
+            <child>left_rear_wheel</child>
         </joint>
         <joint type="revolute" name="right_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>
-                <link_name>right_rear_connector</link_name>
-            </parent>
-            <child>
-                <link_name>right_rear_wheel</link_name>
-            </child>
+            <parent>right_rear_connector</parent>
+            <child>right_rear_wheel</child>
         </joint>
         <joint type="revolute" name="left_front_steering_hinge">
             <pose>0 0 0.1 0 0 0</pose>
@@ -587,12 +571,8 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>left_front_connector</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>left_front_connector</child>
         </joint>
         <joint type="revolute" name="right_front_steering_hinge">
             <pose>0 0 0.1 0 0 0</pose>
@@ -603,12 +583,8 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>right_front_connector</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>right_front_connector</child>
         </joint>
         <joint type="revolute" name="left_rear_steering_hinge">
             <pose>0 0 0.1 0 0 0</pose>
@@ -619,12 +595,8 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>left_rear_connector</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>left_rear_connector</child>
         </joint>
         <joint type="revolute" name="right_rear_steering_hinge">
             <pose>0 0 0.1 0 0 0</pose>
@@ -635,24 +607,16 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
-            <child>
-                <link_name>right_rear_connector</link_name>
-            </child>
+            <parent>chassis</parent>
+            <child>right_rear_connector</child>
         </joint>
         <include>
             <uri>model://hokuyo</uri>
             <pose>0.56 0 0.135 0 0 0</pose> 
         </include>
         <joint name="hokuyo_joint" type="revolute">
-            <child>
-                <link_name>hokuyo::link</link_name>
-            </child>
-            <parent>
-                <link_name>chassis</link_name>
-            </parent>
+            <child>hokuyo::link</child>
+            <parent>chassis</parent>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>

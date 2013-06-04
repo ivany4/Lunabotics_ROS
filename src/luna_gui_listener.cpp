@@ -19,8 +19,10 @@
 #include "../protos_gen/Telecommand.pb.h"
 #include "../protos_gen/AllWheelControl.pb.h"
 
+#define PORT	49203
+
 boost::asio::io_service io_service; 
-boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), 44324); 
+boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), PORT); 
 boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint); 
 boost::asio::ip::tcp::socket sock(io_service);
 boost::array<char, 4096> buffer;
@@ -221,7 +223,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 void accept_handler(const boost::system::error_code &ec) 
 {
 	if (!ec) { 	
-		ROS_INFO("Connection accepted on 44324");
+		ROS_INFO("Connection accepted on %d", PORT);
 		sock.async_read_some(boost::asio::buffer(buffer), read_handler); 
 	}
 	else {
@@ -252,7 +254,7 @@ int main(int argc, char **argv)
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 
     
 	acceptor.listen(); 
-	ROS_INFO("Listening on 44324");
+	ROS_INFO("Listening on %d", PORT);
 	acceptor.async_accept(sock, accept_handler); 
 	io_service.run(); 
 	
