@@ -31,14 +31,6 @@
                     </box>
                 </geometry>
             </collision>
-            <collision name="rear_axle">
-                <pose>-0.53 0 0 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.1 0.38 0.1</size>
-                    </box>
-                </geometry>
-            </collision>
             <collision name="bucket">
 				<pose>0.53 0 0.15 1.57 0 3.14</pose>
                 <geometry>
@@ -85,21 +77,6 @@
                     </script>
                 </material>
             </visual>
-            <visual name="rear_axle">
-                <pose>-0.53 0 0 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.1 0.38 0.1</size>
-                    </box>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>model://elias/materials/scripts/elias.material</uri>
-                        <uri>model://elias/materials/textures/steel.jpg</uri>
-                        <name>Lunabotics/Steel</name>
-                    </script>
-                </material>
-            </visual>
             <visual name="bucket">
 				<pose>0.53 0 0.15 1.57 0 3.14</pose>
                 <geometry>
@@ -133,6 +110,31 @@
                 <linear>0</linear>
                 <angular>0</angular>
             </velocity_decay>
+        </link>
+        <link name="rear_axle">
+			<pose>-0.53 0 0 0 0 0</pose>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.1 0.38 0.1</size>
+                    </box>
+                </geometry>
+            </collision>
+			<pose>-0.53 0 0 0 0 0</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.1 0.38 0.1</size>
+                    </box>
+                </geometry>
+                <material>
+                    <script>
+                        <uri>model://elias/materials/scripts/elias.material</uri>
+                        <uri>model://elias/materials/textures/steel.jpg</uri>
+                        <name>Lunabotics/Steel</name>
+                    </script>
+                </material>
+            </visual>
         </link>
         <link name="left_front_wheel">
             <pose>0.53 0.335 -0.0466 0 1.57 1.57</pose>
@@ -595,7 +597,7 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>chassis</parent>
+            <parent>rear_axle</parent>
             <child>left_rear_connector</child>
         </joint>
         <joint type="revolute" name="right_rear_steering_hinge">
@@ -607,8 +609,20 @@
                     <upper>1.57</upper>
                 </limit>
             </axis>
-            <parent>chassis</parent>
+            <parent>rear_axle</parent>
             <child>right_rear_connector</child>
+        </joint>
+        <joint type="revolute" name="rear_axle_pivot">
+            <pose>0.05 0 0 0 0 0</pose>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+                    <lower>-3.14</lower>
+                    <upper>3.14</upper>
+                </limit>
+            </axis>
+            <parent>chassis</parent>
+            <child>rear_axle</child>
         </joint>
         <include>
             <uri>model://hokuyo</uri>
