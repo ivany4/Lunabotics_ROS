@@ -32,7 +32,7 @@ cached_map_up_to_date(false),
 sequence(0), autonomyEnabled(false), steeringMode(lunabotics::proto::ACKERMANN), 
 pointTurnMotionState(lunabotics::proto::Telemetry::STOPPED), currentPose(), segmentsIt(), segments(),
 waypointsIt(), waypoints(), desiredWaypoints(), motionConstraints(), minICRRadius(0.0f),
-ackermannJustStarted(false)
+ackermannJustStarted(false), previousYaw(0), previousYawTime()
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -923,7 +923,12 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 			
 			int direction = sign(theta, this->motionConstraints.point_turn_angle_accuracy);
 			
-			if (direction == 0) {
+			ros::Time now = ros::Time::now();
+			ros::Duration dt = now-this->previousYawTime;
+			double yawRate = (this->currentPose.orientation-this->previousYaw)/dt.toSec();
+			
+			
+			if (direction == 0 && fabs(yawRate) < 0.1) {
 				this->pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
@@ -947,6 +952,8 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 					}
 				}
 			}
+			this->previousYaw = this->currentPose.orientation;
+			this->previousYawTime = now;
 		}
 		break;
 		default: break;

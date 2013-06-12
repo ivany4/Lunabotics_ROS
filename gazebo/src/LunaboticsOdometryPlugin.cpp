@@ -59,15 +59,6 @@ namespace gazebo
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 		nav_msgs::Odometry odom2ros;
 		odom2ros.header.stamp = now;
 		odom2ros.header.frame_id = "odom";

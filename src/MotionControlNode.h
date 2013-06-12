@@ -80,6 +80,8 @@ private:
 	MotionConstraints motionConstraints;
 	double minICRRadius;
 	bool ackermannJustStarted;
+	double previousYaw;
+	ros::Time previousYawTime;
 	
 	lunabotics::PredefinedCmdControllerPtr predefinedControl;
 	lunabotics::PIDControllerPtr ackermannPID;
