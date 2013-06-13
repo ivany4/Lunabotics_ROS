@@ -58,7 +58,7 @@ void Path::appendGoal(Point goal)
 			Node current = open_set.front();
 			sstr.str(std::string());
 			sstr << current;
-			//ROS_INFO("Node with smallest F=%.3f is %s", current.F(), sstr.str().c_str());
+			//ROS_INFO("Node with smallest F=%.3f is %s", current.getF(), sstr.str().c_str());
 	
 	        if (current == goal_node) {
 				ROS_INFO("Found goal %s. Setting essential", sstr.str().c_str());
@@ -80,9 +80,9 @@ void Path::appendGoal(Point goal)
 					continue;
 				}
 				
-				double tentative_G = current.G() + this->distance(current, neighbour);
+				double tentative_G = current.getG() + this->distance(current, neighbour);
 				
-				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.G()) {
+				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.getG()) {
 					came_from.push_back(current);
 					neighbour.parent_x = current.x;
 					neighbour.parent_y = current.y;

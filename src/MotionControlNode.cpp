@@ -802,7 +802,8 @@ void MotionControlNode::controlAckermannAllWheel()
 			signal *= 10.0;
 			
 			if (!isnan(prediction) && !isinf(prediction)) {
-		//		signal += prediction;
+				prediction /= 10;
+				signal += prediction;
 			}
 			//ROS_WARN("DW %.2f", signal);
 			

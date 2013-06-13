@@ -14,10 +14,10 @@ typedef std::list<Node> NodeList;
 	
 class Node {
 private:
-	double _F;
-	double _G;
-	double _H;
-	bool _F_ok;
+	double F;
+	double G;
+	double H;
+	bool has_F;
 public:
 	int x;
 	int y;
@@ -39,9 +39,9 @@ public:
 	Node parent(NodeList parents);
 	void setG(double G);
 	void setH(double H);
-	double F();
-	double G();
-	double H();
+	double getF();
+	double getG();
+	double getH();
 };
 
 }
