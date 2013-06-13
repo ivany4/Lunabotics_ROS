@@ -30,6 +30,8 @@ class PathFollowingGeometry {
 		Point feedback_path_point;
 		Point feedback_path_point_in_local_frame;
 		bool has_feedback_path_point;
+		double heading_error;
+		bool has_heading_error;
 	
 	
 		//Feedforward
@@ -64,11 +66,13 @@ class PathFollowingGeometry {
 		double getReferenceAngle(double edge1, double edge2, double edge3); //Angle between edge1 and edge2
 		void updateLocalFrame();
 		void invalidateCache();
+		bool getTwoPathPointsClosestToPoint(Point referencePoint, Point &closestPoint, Point &secondClosestPoint, bool allowSame, bool &closestIsNext);
 		bool getClosestPathPoint(Point referencePoint, Point &resultPoint);
 		float getFeedbackLookAheadDistance();
 		float getFeedforwardLookAheadDistance();
 		Point getLookAheadPointAtDistance(double distance);
 		Point localFramePoint(Point globalFramePoint);
+		bool getTangentAtPoint(Point point, double &heading);
 	public:
 		PathFollowingGeometry(AllWheelGeometryPtr geometry);
 		PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset, float feedback_multiplier, float feedforward_offset, float feedforward_fraction);
@@ -85,6 +89,7 @@ class PathFollowingGeometry {
 		double getCurveRadius();
 		double getFeedbackError();
 		double getFeedforwardPrediction();
+		double getHeadingError();
 		void setCurrentPose(Pose currentPose);
 		void setVelocity(double velocity);
 		void setPath(PointArr path);

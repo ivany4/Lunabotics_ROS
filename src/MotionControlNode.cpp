@@ -24,7 +24,8 @@ using namespace lunabotics;
 #define FF_OFFSET_ALL	0.05
 #define FF_FRAC_ALL		0.5
 
-
+#define LIN_VEL_ACCURACY	0.02
+#define YAW_RATE_ACCURACY	0.01
 
 MotionControlNode::MotionControlNode(int argc, char **argv, std::string name, int frequency):
 ROSNode(argc, argv, name, frequency), cached_map(),
@@ -32,7 +33,7 @@ cached_map_up_to_date(false),
 sequence(0), autonomyEnabled(false), steeringMode(lunabotics::proto::ACKERMANN), 
 pointTurnMotionState(lunabotics::proto::Telemetry::STOPPED), currentPose(), segmentsIt(), segments(),
 waypointsIt(), waypoints(), desiredWaypoints(), motionConstraints(), minICRRadius(0.0f),
-ackermannJustStarted(false), previousYaw(0), previousYawTime()
+ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0)
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -57,7 +58,7 @@ ackermannJustStarted(false), previousYaw(0), previousYawTime()
 		this->pathFollowingGeometry = new PathFollowingGeometry(this->robotGeometry, FB_OFFSET_ALL, FB_MX_ALL, FF_OFFSET_ALL, FF_FRAC_ALL);
 	}
 	
-	this->pointTurnPID = new PIDController(1, 0.1, 0.5);
+	this->pointTurnPID = new PIDController(1.5, 0.1, 0.2);
 	
 	
 	this->trajectory = new Trajectory();	
@@ -113,7 +114,7 @@ void MotionControlNode::callbackState(const lunabotics::State::ConstPtr &msg)
 	this->currentPose = lunabotics::Pose_from_geometry_msgs_Pose(msg->odometry.pose.pose);
 	this->pathFollowingGeometry->setVelocity(msg->odometry.twist.twist.linear.x);
 	this->pathFollowingGeometry->setCurrentPose(this->currentPose);
-
+	this->linearVelocity = msg->odometry.twist.twist.linear.x;
 }
 
 void MotionControlNode::callbackPID(const lunabotics::PID::ConstPtr &msg)
@@ -551,7 +552,13 @@ void MotionControlNode::controlAckermann()
 			}
 		}
 		else {
-			this->ackermannJustStarted = false;
+			//This line gives all-wheel rover to take time to stop rotation
+			if (!this->isDiffDriveRobot && this->predefinedControl->needsMoreControl()) {
+				return;
+			}
+			else {
+				this->ackermannJustStarted = false;
+			}
 		}
 	}
 	
@@ -679,8 +686,10 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		double y_err = this->pathFollowingGeometry->getFeedbackError();
 		double prediction = this->pathFollowingGeometry->getFeedforwardPrediction();
+		double heading_error = this->pathFollowingGeometry->getHeadingError();
 		lunabotics::PathFollowingTelemetry telemetryMsg;
 		telemetryMsg.feedback_error = y_err;
+		telemetryMsg.heading_error = heading_error;
 		telemetryMsg.feedforward_prediction = prediction;
 		telemetryMsg.feedforward_curve_radius = this->pathFollowingGeometry->getCurveRadius();
 		telemetryMsg.feedback_path_point = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getFeedbackPathPoint());
@@ -704,11 +713,96 @@ void MotionControlNode::controlAckermannAllWheel()
 		//Control law
 		
 		double signal;
+		
+		
+		//Decoupled control
+		/*
+		if (this->ackermannPID->control(heading_error, signal)) {
+			
+			/*
+			if (!isnan(prediction) && !isinf(prediction)) {
+				signal += prediction;
+			}
+			*//*
+			//ROS_WARN("DW %.2f", signal);
+			
+			double gamma = -signal/2;
+			float gamma_abs = fabs(gamma);
+			
+			if (gamma_abs < 0.00001) {
+				gamma = 0.01;
+			}
+			else if (gamma_abs > M_PI_2) {
+				gamma = M_PI_2 * sign(gamma, 0.00001);
+			}
+			
+			double alpha = M_PI_2-gamma;
+			double offset_x = this->robotGeometry->left_front().x;
+			double offset_y = tan(alpha)*offset_x;
+			
+			Point ICR = CreatePoint(0, offset_y);
+			
+			float abs_offset_y = fabs(offset_y);
+			
+			
+			ICR = this->robotGeometry->point_outside_base_link(ICR);
+			
+			
+			if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
+				this->minICRRadius = abs_offset_y;
+				ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
+				telemetryMsg.min_icr_radius = abs_offset_y;
+				telemetryMsg.has_min_icr_radius = true;
+			}
+			
+			
+			this->publisherICR.publish(geometry_msgs_Point_from_Point(ICR));
+			
+			//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
+			
+			float velocity = this->motionConstraints.lin_velocity_limit;
+			
+			float angle_front_left;
+			float angle_front_right;
+			float angle_rear_left;
+			float angle_rear_right;
+			if (this->robotGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+				
+				//Set angles to the ones outside dead zone
+				validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right);
+				
+				lunabotics::AllWheelState controlMsg;
+				controlMsg.steering.left_front = angle_front_left;
+				controlMsg.steering.right_front = angle_front_right;
+				controlMsg.steering.left_rear = angle_rear_left;
+				controlMsg.steering.right_rear = angle_rear_right;
+				float vel_front_left;
+				float vel_front_right;
+				float vel_rear_left;
+				float vel_rear_right;
+				if (!this->robotGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+					vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+				}
+				controlMsg.driving.left_front = vel_front_left;
+				controlMsg.driving.right_front = vel_front_right;
+				controlMsg.driving.left_rear = vel_rear_left;
+				controlMsg.driving.right_rear = vel_rear_right;
+				
+				this->publisherAllWheelMotion.publish(controlMsg);
+			}
+		}
+		this->publisherPathFollowingTelemetry.publish(telemetryMsg);
+	}
+		
+		*/
+		
+		//Original control
+		//
 		if (this->ackermannPID->control(y_err, signal)) {
 			signal *= 10.0;
 			
 			if (!isnan(prediction) && !isinf(prediction)) {
-				signal += prediction;
+		//		signal += prediction;
 			}
 			//ROS_WARN("DW %.2f", signal);
 			
@@ -779,6 +873,7 @@ void MotionControlNode::controlAckermannAllWheel()
 		}
 		this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 	}
+	//*/
 	else {
 		//No need for curvature, just straight driving
 		this->controlPointTurn();
@@ -875,6 +970,7 @@ void MotionControlNode::controlAckermannDiffDrive()
 void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 {
 	lunabotics::AllWheelCommon msg;
+	msg.wheel_velocity = DEFAULT_WHEEL_VELOCITY;
 
 	lunabotics::PathFollowingTelemetry telemetryMsg;
 	telemetryMsg.is_driving = this->autonomyEnabled;
@@ -898,7 +994,9 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				}
 			}
 			else if (fabs(theta) > this->motionConstraints.point_turn_angle_accuracy) {
-				this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
+				if (fabs(this->linearVelocity) < LIN_VEL_ACCURACY) {
+					this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
+				}
 			}
 			else if (distance > this->motionConstraints.point_turn_distance_accuracy) {
 				this->pointTurnMotionState = lunabotics::proto::Telemetry::DRIVING;
@@ -912,7 +1010,10 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
 			else if (fabs(theta) > 0.3) {
-				this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
+				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
+				if (fabs(this->linearVelocity) < LIN_VEL_ACCURACY) {
+					this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
+				}
 			}	
 			else {
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::DRIVE_FORWARD;
@@ -927,29 +1028,23 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 			ros::Duration dt = now-this->previousYawTime;
 			double yawRate = (this->currentPose.orientation-this->previousYaw)/dt.toSec();
 			
-			
-			if (direction == 0 && fabs(yawRate) < 0.1) {
+			if (direction == 0 && fabs(yawRate) < YAW_RATE_ACCURACY) {
 				this->pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
 			else {
-				float lf, rf, lr, rr;
-				Point p = CreateZeroPoint();
-				if (this->robotGeometry->calculateAngles(p, lf, rf, lr, rr)) {
-					double signal;
-					if (this->pointTurnPID->control(theta, signal)) {
-						publishCommonMsg = false;
-						lunabotics::AllWheelState allWheelMsg;
-						allWheelMsg.steering.left_front = lf;
-						allWheelMsg.steering.right_front = rf;
-						allWheelMsg.steering.left_rear = lr;
-						allWheelMsg.steering.right_rear = rr;
-						allWheelMsg.driving.left_front = -signal;
-						allWheelMsg.driving.right_front = signal;
-						allWheelMsg.driving.left_rear = -signal;
-						allWheelMsg.driving.right_rear = signal;
-						this->publisherAllWheelMotion.publish(allWheelMsg);
+				double signal;
+				if (this->pointTurnPID->control(theta, signal)) {
+					msg.wheel_velocity = MIN(DEFAULT_WHEEL_VELOCITY, fabs(signal));
+					if (signal > 0) {
+						msg.predefined_cmd = lunabotics::proto::AllWheelControl::TURN_CCW;
 					}
+					else {
+						msg.predefined_cmd = lunabotics::proto::AllWheelControl::TURN_CW;
+					}
+				}
+				else {
+					publishCommonMsg = false;
 				}
 			}
 			this->previousYaw = this->currentPose.orientation;

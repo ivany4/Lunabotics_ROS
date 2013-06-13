@@ -1,1 +1,2 @@
 int32 predefined_cmd
+float32 wheel_velocity

@@ -189,6 +189,7 @@ int main(int argc, char **argv)
 							ackermannData->mutable_feedback_point_local()->set_y(pathFollowingMsg.feedback_point_local.y);
 							ackermannData->mutable_feedforward_center()->set_x(pathFollowingMsg.feedforward_center.x);
 							ackermannData->mutable_feedforward_center()->set_y(pathFollowingMsg.feedforward_center.y);
+							ackermannData->set_heading_error(pathFollowingMsg.heading_error);
 							for (unsigned int i = 0; i < pathFollowingMsg.feedforward_points_local.size(); i++) {
 								geometry_msgs::Point pt = pathFollowingMsg.feedforward_points_local.at(i);
 								lunabotics::proto::Point *point = ackermannData->add_feedforward_points_local();

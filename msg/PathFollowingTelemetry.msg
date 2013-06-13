@@ -5,6 +5,7 @@ bool is_driving
 float32 feedback_error
 float32 feedforward_prediction
 float32 feedforward_curve_radius
+float32 heading_error
 geometry_msgs/Point feedback_point
 geometry_msgs/Point feedback_path_point
 geometry_msgs/Point feedback_point_local

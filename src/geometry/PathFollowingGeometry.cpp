@@ -20,6 +20,8 @@ has_feedback_error(false),
 feedback_path_point(),
 feedback_path_point_in_local_frame(),
 has_feedback_path_point(false),
+heading_error(0),
+has_heading_error(false),
 feedforward_point(),
 feedforward_point_in_local_frame(),
 has_feedforward_point(false),
@@ -58,6 +60,8 @@ has_feedback_error(false),
 feedback_path_point(),
 feedback_path_point_in_local_frame(),
 has_feedback_path_point(false),
+heading_error(0),
+has_heading_error(false),
 feedforward_point(),
 feedforward_point_in_local_frame(),
 has_feedforward_point(false),
@@ -171,9 +175,10 @@ double PathFollowingGeometry::getFeedbackError()
 	return this->feedback_error;
 }
 
-bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &resultPoint)
+//Allow same: whether allow closest obstacle point to be same as reference point
+//ClosestIsNext: whether closest path point is in the direction of motion
+bool PathFollowingGeometry::getTwoPathPointsClosestToPoint(Point referencePoint, Point &closestPoint, Point &secondClosestPoint, bool allowSame, bool &closestIsNext)
 {
-	bool result = false;
 	if (this->path.size() >= 2) {
 		PointArrIt closest_waypoint_it = this->path.begin();
 		PointArrIt second_closest_waypoint_it = this->path.begin()+1;
@@ -186,35 +191,58 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 		}
 		for (PointArrIt it = path.begin()+2; it < path.end(); it++) {
 			double dist = distance(referencePoint, *it);
-			if (dist < closest_distance) {
-				second_closest_distance = closest_distance;
-				second_closest_waypoint_it = closest_waypoint_it;
-				closest_distance = dist;
-				closest_waypoint_it = it;
+			bool isSame = fabs(dist) < 0.001;
+			if (!isSame || (isSame && allowSame)) {
+				if (dist < closest_distance) {
+					second_closest_distance = closest_distance;
+					second_closest_waypoint_it = closest_waypoint_it;
+					closest_distance = dist;
+					closest_waypoint_it = it;
+				}
+				else if (dist < second_closest_distance) {
+					second_closest_distance = dist;
+					second_closest_waypoint_it = it;
+				}
 			}
-			else if (dist < second_closest_distance) {
-				second_closest_distance = dist;
-				second_closest_waypoint_it = it;
+		}
+		if (allowSame || fabs(closest_distance) >= 0.001) {
+			closestPoint = *closest_waypoint_it;
+			secondClosestPoint = *second_closest_waypoint_it;
+			
+			closestIsNext = closest_waypoint_it > second_closest_waypoint_it;
+			
+			return true;
+		}
+	}
+	return false;
+}
+
+bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &resultPoint)
+{
+	bool result = false;
+	if (this->path.size() >= 2) {
+		
+		Point closest_point, second_closest_point;
+		bool dummy;
+		
+		if (this->getTwoPathPointsClosestToPoint(referencePoint, closest_point, second_closest_point, true, dummy)) {
+			double angle = this->getReferenceAngle(closest_point, referencePoint, second_closest_point);
+			
+			//Reference point lies not between waypoints 1 and 2 but beyond
+			#pragma message("ALWAYS FALSE FOR TESTING");
+			if (false && fabs(angle) > M_PI_2) {
+				resultPoint = second_closest_point;
 			}
-		}
-		Point closest_point = *closest_waypoint_it;
-		Point second_closest_point = *second_closest_waypoint_it;
-		
-		double length_between_waypoints = distance(closest_point, second_closest_point);
-		double angle = this->getReferenceAngle(length_between_waypoints, closest_distance, second_closest_distance);
-		
-		//Reference point lies not between waypoints 1 and 2 but beyond
-		#pragma message("ALWAYS FALSE FOR TESTING");
-		if (false && fabs(angle) > M_PI_2) {
-			resultPoint = second_closest_point;
-		}
-		else {
-			double closest_waypoint_to_feedback_path_point = closest_distance*cos(angle);
-			double fraction = closest_waypoint_to_feedback_path_point/length_between_waypoints;
-			resultPoint.x = (second_closest_point.x-closest_point.x)*fraction + closest_point.x;
-			resultPoint.y = (second_closest_point.y-closest_point.y)*fraction + closest_point.y;
-		}
-		result = true;
+			else {
+				double length_between_waypoints = distance(closest_point, second_closest_point);
+				double closest_distance = distance(closest_point, referencePoint);
+				double closest_waypoint_to_feedback_path_point = closest_distance*cos(angle);
+				double fraction = closest_waypoint_to_feedback_path_point/length_between_waypoints;
+				resultPoint.x = (second_closest_point.x-closest_point.x)*fraction + closest_point.x;
+				resultPoint.y = (second_closest_point.y-closest_point.y)*fraction + closest_point.y;
+			}
+			result = true;
+		}			
 	}
 	return result;
 }
@@ -227,6 +255,18 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 	}
 	return this->feedback_path_point;
 }
+
+double PathFollowingGeometry::getHeadingError()
+{
+	if (!this->has_heading_error) {
+		double requiredHeading;
+		if (this->has_heading_error = this->getTangentAtPoint(this->getFeedbackPathPoint(), requiredHeading)) {
+			this->heading_error = normalizedAngle(requiredHeading-this->current_pose.orientation);
+		}		
+	}
+	return this->heading_error;
+}
+
 
 void PathFollowingGeometry::setCurrentPose(Pose currentPose)
 {
@@ -270,6 +310,7 @@ void PathFollowingGeometry::setFeedforwardCurvatureDetectionStart(float velocity
 	this->feedforward_curvature_detection_start = velocityOffset;
 }
 
+
 //---------------- Private methods ------------------------------//
 
 //Angle at point1 
@@ -301,6 +342,7 @@ void PathFollowingGeometry::invalidateCache()
 	this->has_feedforward_prediction = false;
 	this->has_feedback_error = false;
 	this->has_feedforward_center = false;
+	this->has_heading_error = false;
 }
 
 void PathFollowingGeometry::updateLocalFrame()
@@ -456,4 +498,25 @@ Point PathFollowingGeometry::localFramePoint(Point globalFramePoint)
 	result.y -= this->current_pose.position.y;
 	result = rotatePoint(result, this->current_pose.orientation, CW);
 	return result;
+}
+
+bool PathFollowingGeometry::getTangentAtPoint(Point point, double &heading)
+{
+	Point closest_point, second_closest_point;
+	bool closestIsNext;
+	
+	if (this->getTwoPathPointsClosestToPoint(point, closest_point, second_closest_point, true, closestIsNext)) {
+		if (!closestIsNext) {
+			std::swap(closest_point, second_closest_point);
+		}
+		double dx = closest_point.x - point.x;
+		double dy = closest_point.y - point.y;
+		double lineHeading = atan2(dy, dx);
+		double angle = this->getReferenceAngle(closest_point, point, second_closest_point);
+		
+		heading = lineHeading + angle;			
+		return true;
+	}
+	return false;
+		
 }

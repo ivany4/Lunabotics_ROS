@@ -617,8 +617,8 @@
             <axis>
                 <xyz>1 0 0</xyz>
                 <limit>
-                    <lower>-3.14</lower>
-                    <upper>3.14</upper>
+                    <lower>-0.52</lower>
+                    <upper>0.52</upper>
                 </limit>
             </axis>
             <parent>chassis</parent>

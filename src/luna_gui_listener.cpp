@@ -18,6 +18,7 @@
 #include "topics.h"
 #include "../protos_gen/Telecommand.pb.h"
 #include "../protos_gen/AllWheelControl.pb.h"
+#include "control/AllWheelPredefinedCmdController.h"
 
 #define PORT	49203
 
@@ -178,6 +179,7 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 					case lunabotics::proto::AllWheelControl::PREDEFINED: {
 						lunabotics::AllWheelCommon msg;
 						msg.predefined_cmd = tc.all_wheel_control_data().predefined_data().command();
+						msg.wheel_velocity = DEFAULT_WHEEL_VELOCITY;
 						allWheelCommonPublisher.publish(msg);
 					}
 					break;
