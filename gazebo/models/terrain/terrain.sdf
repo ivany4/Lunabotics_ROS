@@ -4,6 +4,7 @@
         <pose>0 0 0 0 0 0</pose>
         <static>true</static>
         <link name="terrain">
+			<kinematic>true</kinematic>
             <collision name="terrain">
 				<pose>0 0 0 0 0 0</pose>
                 <geometry>
@@ -11,6 +12,13 @@
                         <uri>model://terrain/meshes/terrain.dae</uri>
                     </mesh>
                 </geometry>
+                <surface>
+					<contact>
+						<ode>
+							<min_depth>0.05</min_depth>
+						</ode>
+					</contact>
+                </surface>
             </collision>
             <visual name="terrain">
 				<pose>0 0 0 0 0 0</pose>

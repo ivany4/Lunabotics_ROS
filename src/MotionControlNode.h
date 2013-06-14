@@ -48,6 +48,7 @@ private:
 	ros::Publisher publisherPathFollowingTelemetry;
 	ros::Publisher publisherGeometry;
 	ros::Publisher publisherAllWheelCommon;
+	ros::Publisher publisherCrab;
 
 	ros::Subscriber subscriberEmergency;
 	ros::Subscriber subscriberAutonomy;

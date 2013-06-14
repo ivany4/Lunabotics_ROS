@@ -83,6 +83,7 @@ ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0
 	this->publisherPathFollowingTelemetry = this->nodeHandle->advertise<lunabotics::PathFollowingTelemetry>(TOPIC_TM_PATH_FOLLOWING, 256);
 	this->publisherGeometry = this->nodeHandle->advertise<lunabotics::RobotGeometry>(TOPIC_TM_ROBOT_GEOMETRY, sizeof(float)*2*4);
 	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(uint32_t));
+	this->publisherCrab = this->nodeHandle->advertise<lunabotics::CrabControl>(TOPIC_CMD_CRAB, sizeof(float)*2);
 	
 	
 	//Create service clients
@@ -714,162 +715,90 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		double signal;
 		
-		
-		//Decoupled control
-		/*
-		if (this->ackermannPID->control(heading_error, signal)) {
-			
-			/*
-			if (!isnan(prediction) && !isinf(prediction)) {
-				signal += prediction;
-			}
-			*//*
-			//ROS_WARN("DW %.2f", signal);
-			
-			double gamma = -signal/2;
-			float gamma_abs = fabs(gamma);
-			
-			if (gamma_abs < 0.00001) {
-				gamma = 0.01;
-			}
-			else if (gamma_abs > M_PI_2) {
-				gamma = M_PI_2 * sign(gamma, 0.00001);
-			}
-			
-			double alpha = M_PI_2-gamma;
-			double offset_x = this->robotGeometry->left_front().x;
-			double offset_y = tan(alpha)*offset_x;
-			
-			Point ICR = CreatePoint(0, offset_y);
-			
-			float abs_offset_y = fabs(offset_y);
-			
-			
-			ICR = this->robotGeometry->point_outside_base_link(ICR);
-			
-			
-			if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
-				this->minICRRadius = abs_offset_y;
-				ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
-				telemetryMsg.min_icr_radius = abs_offset_y;
-				telemetryMsg.has_min_icr_radius = true;
-			}
-			
-			
-			this->publisherICR.publish(geometry_msgs_Point_from_Point(ICR));
-			
-			//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
-			
-			float velocity = this->motionConstraints.lin_velocity_limit;
-			
-			float angle_front_left;
-			float angle_front_right;
-			float angle_rear_left;
-			float angle_rear_right;
-			if (this->robotGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
-				
-				//Set angles to the ones outside dead zone
-				validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right);
-				
-				lunabotics::AllWheelState controlMsg;
-				controlMsg.steering.left_front = angle_front_left;
-				controlMsg.steering.right_front = angle_front_right;
-				controlMsg.steering.left_rear = angle_rear_left;
-				controlMsg.steering.right_rear = angle_rear_right;
-				float vel_front_left;
-				float vel_front_right;
-				float vel_rear_left;
-				float vel_rear_right;
-				if (!this->robotGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
-					vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
-				}
-				controlMsg.driving.left_front = vel_front_left;
-				controlMsg.driving.right_front = vel_front_right;
-				controlMsg.driving.left_rear = vel_rear_left;
-				controlMsg.driving.right_rear = vel_rear_right;
-				
-				this->publisherAllWheelMotion.publish(controlMsg);
-			}
-		}
-		this->publisherPathFollowingTelemetry.publish(telemetryMsg);
-	}
-		
-		*/
-		
 		//Original control
-		//
-		if (this->ackermannPID->control(y_err, signal)) {
-			signal *= 10.0;
-			
-			if (!isnan(prediction) && !isinf(prediction)) {
-				prediction /= 10;
-				signal += prediction;
-			}
-			//ROS_WARN("DW %.2f", signal);
-			
-			double gamma = -signal/2;
-			float gamma_abs = fabs(gamma);
-			
-			if (gamma_abs < 0.00001) {
-				gamma = 0.01;
-			}
-			else if (gamma_abs > M_PI_2) {
-				gamma = M_PI_2 * sign(gamma, 0.00001);
-			}
-			
-			double alpha = M_PI_2-gamma;
-			double offset_x = this->robotGeometry->left_front().x;
-			double offset_y = tan(alpha)*offset_x;
-			
-			Point ICR = CreatePoint(0, offset_y);
-			
-			float abs_offset_y = fabs(offset_y);
-			
-			
-			ICR = this->robotGeometry->point_outside_base_link(ICR);
-			
-			
-			if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
-				this->minICRRadius = abs_offset_y;
-				ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
-				telemetryMsg.min_icr_radius = abs_offset_y;
-				telemetryMsg.has_min_icr_radius = true;
-			}
-			
-			
-			this->publisherICR.publish(geometry_msgs_Point_from_Point(ICR));
-			
-			//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
-			
-			float velocity = this->motionConstraints.lin_velocity_limit;
-			
-			float angle_front_left;
-			float angle_front_right;
-			float angle_rear_left;
-			float angle_rear_right;
-			if (this->robotGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+		
+		if (fabs(heading_error) < 0.001) {
+			lunabotics::CrabControl ctrl;
+			ctrl.velocity = this->linearVelocity;
+			ctrl.heading = std::min(y_err*10, M_PI_4);
+			this->publisherCrab.publish(ctrl);
+		}
+		else {
+		
+			//
+			if (this->ackermannPID->control(y_err, signal)) {
+				signal *= 10.0;
 				
-				//Set angles to the ones outside dead zone
-				validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right);
-				
-				lunabotics::AllWheelState controlMsg;
-				controlMsg.steering.left_front = angle_front_left;
-				controlMsg.steering.right_front = angle_front_right;
-				controlMsg.steering.left_rear = angle_rear_left;
-				controlMsg.steering.right_rear = angle_rear_right;
-				float vel_front_left;
-				float vel_front_right;
-				float vel_rear_left;
-				float vel_rear_right;
-				if (!this->robotGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
-					vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+				if (!isnan(prediction) && !isinf(prediction)) {
+					prediction /= 10;
+					signal += prediction;
 				}
-				controlMsg.driving.left_front = vel_front_left;
-				controlMsg.driving.right_front = vel_front_right;
-				controlMsg.driving.left_rear = vel_rear_left;
-				controlMsg.driving.right_rear = vel_rear_right;
+				//ROS_WARN("DW %.2f", signal);
 				
-				this->publisherAllWheelMotion.publish(controlMsg);
+				double gamma = -signal/2;
+				float gamma_abs = fabs(gamma);
+				
+				if (gamma_abs < 0.00001) {
+					gamma = 0.01;
+				}
+				else if (gamma_abs > M_PI_2) {
+					gamma = M_PI_2 * sign(gamma, 0.00001);
+				}
+				
+				double alpha = M_PI_2-gamma;
+				double offset_x = this->robotGeometry->left_front().x;
+				double offset_y = tan(alpha)*offset_x;
+				
+				Point ICR = CreatePoint(0, offset_y);
+				
+				float abs_offset_y = fabs(offset_y);
+				
+				
+				ICR = this->robotGeometry->point_outside_base_link(ICR);
+				
+				
+				if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
+					this->minICRRadius = abs_offset_y;
+					ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
+					telemetryMsg.min_icr_radius = abs_offset_y;
+					telemetryMsg.has_min_icr_radius = true;
+				}
+				
+				
+				this->publisherICR.publish(geometry_msgs_Point_from_Point(ICR));
+				
+				//ROS_INFO("Alpha %.2f offset %.2f ICR %.2f", alpha, offset_y, ICR.y);
+				
+				float velocity = this->motionConstraints.lin_velocity_limit;
+				
+				float angle_front_left;
+				float angle_front_right;
+				float angle_rear_left;
+				float angle_rear_right;
+				if (this->robotGeometry->calculateAngles(ICR, angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
+					
+					//Set angles to the ones outside dead zone
+					validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right);
+					
+					lunabotics::AllWheelState controlMsg;
+					controlMsg.steering.left_front = angle_front_left;
+					controlMsg.steering.right_front = angle_front_right;
+					controlMsg.steering.left_rear = angle_rear_left;
+					controlMsg.steering.right_rear = angle_rear_right;
+					float vel_front_left;
+					float vel_front_right;
+					float vel_rear_left;
+					float vel_rear_right;
+					if (!this->robotGeometry->calculateVelocities(ICR, velocity, vel_front_left, vel_front_right, vel_rear_left, vel_rear_right)) {
+						vel_front_left = vel_front_right = vel_rear_left = vel_rear_right = 0;			
+					}
+					controlMsg.driving.left_front = vel_front_left;
+					controlMsg.driving.right_front = vel_front_right;
+					controlMsg.driving.left_rear = vel_rear_left;
+					controlMsg.driving.right_rear = vel_rear_right;
+					
+					this->publisherAllWheelMotion.publish(controlMsg);
+				}
 			}
 		}
 		this->publisherPathFollowingTelemetry.publish(telemetryMsg);

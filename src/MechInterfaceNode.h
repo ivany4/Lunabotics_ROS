@@ -17,6 +17,7 @@ private:
 	ros::Publisher publisherState;
 	ros::Publisher publisherICRControl;
 	ros::Publisher publisherAllWheelCommon;
+	ros::Publisher publisherAllWheel;
 	
 	//Subscribers
 	ros::Subscriber subscriberOdometry;

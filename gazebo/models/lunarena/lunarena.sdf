@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="lunarena">
+        <pose>0 0 0 0 0 0</pose>
+        <static>true</static>
+        <link name="lunarena">
+			<kinematic>true</kinematic>
+            <collision name="lunarena">
+				<pose>0 0 0 0 0 0</pose>
+                <geometry>
+                    <mesh>
+                        <uri>model://lunarena/meshes/lunarena.dae</uri>
+                    </mesh>
+                </geometry>
+                <surface>
+					<contact>
+						<ode>
+							<min_depth>0.05</min_depth>
+						</ode>
+					</contact>
+                </surface>
+            </collision>
+            <visual name="lunarena">
+				<pose>0 0 0 0 0 0</pose>
+                <geometry>
+                    <mesh>
+                        <uri>model://lunarena/meshes/lunarena.dae</uri>
+                    </mesh>
+                </geometry>
+                <material>
+                    <script>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Grey</name>
+                    </script>
+                </material>
+            </visual>
+		</link>
+	</model>
+</sdf>

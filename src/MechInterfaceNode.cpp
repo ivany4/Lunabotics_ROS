@@ -3,6 +3,7 @@
 #include "lunabotics/State.h"
 #include "lunabotics/ICRControl.h"
 #include "lunabotics/AllWheelCommon.h"
+#include "lunabotics/AllWheelState.h"
 #include "geometry_msgs/Twist.h"
 
 #include "../protos_gen/AllWheelControl.pb.h"
@@ -16,7 +17,8 @@ ROSNode(argc, argv, name, frequency)
 	this->publisherTwist = this->nodeHandle->advertise<geometry_msgs::Twist>(TOPIC_CMD_TWIST, 256);
 	this->publisherState = this->nodeHandle->advertise<lunabotics::State>(TOPIC_TM_ROBOT_STATE, 256);
 	this->publisherICRControl = this->nodeHandle->advertise<lunabotics::ICRControl>(TOPIC_CMD_ICR, sizeof(float)*3);
-	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(int32_t));
+	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, 256);
+	this->publisherAllWheel = this->nodeHandle->advertise<lunabotics::AllWheelState>(TOPIC_CMD_EXPLICIT_ALL_WHEEL, 256);
 	
 	//Create subscribers
 	this->subscriberOdometry = this->nodeHandle->subscribe(TOPIC_TM_ODOMETRY, 256, &MechInterfaceNode::callbackOdometry, this);
@@ -68,17 +70,27 @@ void MechInterfaceNode::callbackTeleoperation(const lunabotics::Teleoperation::C
 	}
 	else {
 		if ((!msg->left && !msg->right) || (msg->left && msg->right)) {
-			lunabotics::AllWheelCommon controlMsg;
+			lunabotics::AllWheelState controlMsg;
+			controlMsg.steering.left_front = 0;
+			controlMsg.steering.right_front = 0;
+			controlMsg.steering.left_rear = 0;
+			controlMsg.steering.right_rear = 0;
 			if ((msg->forward || msg->backward) && !(msg->forward && msg->backward)) {
 				//Predefined longitudal
 				ROS_INFO("TELEOP: Longitudal");
-				controlMsg.predefined_cmd = msg->forward ? lunabotics::proto::AllWheelControl::DRIVE_FORWARD : lunabotics::proto::AllWheelControl::DRIVE_BACKWARD;
+				controlMsg.driving.left_front = 3;
+				controlMsg.driving.right_front = 3;
+				controlMsg.driving.left_rear = 3;
+				controlMsg.driving.right_rear = 3;
 			}
 			else {
 				ROS_INFO("TELEOP: Stop");
-				controlMsg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
+				controlMsg.driving.left_front = 0;
+				controlMsg.driving.right_front = 0;
+				controlMsg.driving.left_rear = 0;
+				controlMsg.driving.right_rear = 0;
 			}
-			this->publisherAllWheelCommon.publish(controlMsg);
+			this->publisherAllWheel.publish(controlMsg);
 			
 		}
 		else if (!msg->forward && !msg->backward) {

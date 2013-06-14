@@ -18,6 +18,9 @@
             </ode>
             <max_step_size>0.001</max_step_size>
         </physics>
+        <scene>
+			<grid>0</grid>
+        </scene>
         <!-- A global light source -->
         <include>
             <uri>model://sun</uri>
