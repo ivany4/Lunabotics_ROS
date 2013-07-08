@@ -16,6 +16,8 @@
 #include <boost/asio.hpp>
 #include "../protos_gen/Telemetry.pb.h"
 
+#define MAP_CHUNK_SIZE	400
+
 boost::asio::io_service io_service;
 boost::asio::ip::tcp::resolver resolver(io_service);
 boost::asio::ip::tcp::resolver::iterator end; 
@@ -28,6 +30,10 @@ bool sendVision = false;
 bool sendPath = false;
 bool sendAllWheel = false;
 bool sendGeometry = false;
+
+int map_total_chunks = 0;
+int map_current_chunk = 0;
+
 lunabotics::State stateMsg;
 lunabotics::PathFollowingTelemetry pathFollowingMsg;
 lunabotics::Vision vision;
@@ -35,6 +41,7 @@ lunabotics::RobotGeometry geometry;
 lunabotics::AllWheelState allWheelStateMsg;
 lunabotics::PathTopic path;
 geometry_msgs::Point ICR;
+nav_msgs::OccupancyGrid map;
 lunabotics::proto::SteeringModeType controlMode = lunabotics::proto::ACKERMANN;
 
 bool tryConnect(boost::asio::ip::tcp::resolver::query tcp_query)
@@ -67,6 +74,7 @@ void ICRCallback(const geometry_msgs::Point& msg) {
 
 void mapUpdateCallback(const std_msgs::Empty& msg)
 {    
+	ROS_INFO("Will update map");
 	sendMap = true;
 }
 
@@ -118,7 +126,7 @@ int main(int argc, char **argv)
 	
 	ros::NodeHandle nodeHandle("lunabotics");
 	ros::Subscriber stateSubscriber = nodeHandle.subscribe(TOPIC_TM_ROBOT_STATE, 256, stateCallback);
-	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe(TOPIC_EMERGENCY, 0, mapUpdateCallback);
+	ros::Subscriber mapUpdateSubscriber = nodeHandle.subscribe(TOPIC_CMD_UPDATE_MAP, 0, mapUpdateCallback);
 	ros::Subscriber pathSubscriber = nodeHandle.subscribe(TOPIC_TM_PATH, 256, pathCallback);
 	ros::Subscriber controlModeSubscriber = nodeHandle.subscribe(TOPIC_STEERING_MODE, 1, controlModeCallback);
 	ros::Subscriber pathFollowingMsgSubscriber = nodeHandle.subscribe(TOPIC_TM_PATH_FOLLOWING, 1, pathFollowingMsgCallback);
@@ -201,33 +209,43 @@ int main(int argc, char **argv)
 					
 				    sendState = false;
 				}
-				if (sendMap) {
-					nav_msgs::OccupancyGrid map;
-					bool include_map = false;
-					if (sendMap) {
-						if (mapClient.call(mapService)) {
-							map = mapService.response.map;
-							include_map = true;
-						}
-						else {
-							ROS_WARN("Failed to call service /lunabotics/map");
-						}
-					}
-					
-					if (include_map) {
-						lunabotics::proto::Telemetry::World *world = tm.mutable_world_data();
-						world->set_width(map.info.width);
-						world->set_height(map.info.height);
-						world->set_resolution(map.info.resolution);
-						unsigned int mapSize = map.info.width*map.info.height;
-						for (unsigned int i = 0; i < mapSize; i++) {
-							world->add_cell(mapService.response.map.data.at(i));
-						}
-						ROS_INFO("Sending a map (%dx%d)", map.info.width, map.info.height);
-					}
-					
-					sendMap = false;
+				
+				bool include_map = false;
+				if (map_current_chunk < map_total_chunks) {
+					include_map = true;
 				}
+				else if (sendMap) {
+					if (mapClient.call(mapService)) {
+						map = mapService.response.map;
+						map_current_chunk = 0;
+						unsigned int mapSize = map.info.width*map.info.height;
+						map_total_chunks = ceil(mapSize/((float)MAP_CHUNK_SIZE));
+						include_map = true;
+					}
+					else {
+						ROS_WARN("Failed to call service /lunabotics/map");
+					}
+				}
+					
+				if (include_map) {
+					lunabotics::proto::Telemetry::World *world = tm.mutable_world_data();
+					world->set_width(map.info.width);
+					world->set_height(map.info.height);
+					world->set_resolution(map.info.resolution);
+					world->set_total_chunks(map_total_chunks);
+					world->set_chunk_number(map_current_chunk);
+					unsigned int mapSize = map.info.width*map.info.height;
+					for (unsigned int i = map_current_chunk*MAP_CHUNK_SIZE; i < MAP_CHUNK_SIZE*(map_current_chunk+1) && i < mapSize && i < MAP_CHUNK_SIZE*map_total_chunks; i++) {
+						world->add_cell(mapService.response.map.data.at(i));
+					}
+					ROS_INFO("Sending a map chunk %d of %d (%d cells)", map_current_chunk+1, map_total_chunks, world->cell().size());
+					sendMap = false;
+					map_current_chunk++;
+				}
+				
+				
+				
+				
 				if (sendPath) {
 				    for (unsigned int i = 0; i < path.path.poses.size(); i++) {
 						geometry_msgs::PoseStamped pose = path.path.poses.at(i);
