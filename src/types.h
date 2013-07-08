@@ -121,6 +121,11 @@ inline int sign(double value, double accuracy) {
 	if (value < -accuracy) return -1;
 	return 0;
 }
+
+inline int sign(double value) {
+	return sign(value, 0.0001);
+}
+
 }
 
 

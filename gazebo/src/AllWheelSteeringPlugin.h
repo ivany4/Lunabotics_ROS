@@ -17,12 +17,10 @@ namespace gazebo
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		bool LoadParams(sdf::ElementPtr _sdf);
-		bool FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param);
+		bool FindJointByName(sdf::ElementPtr _sdf, physics::JointPtr &_joint, const std::string _name);
 		void ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg);
 		void OnUpdate();
 		double DrivingFromSteeringVelocity(double steeringVel);
-		
-		
 		
 		// Pointer to the model
 		physics::ModelPtr model;
@@ -30,14 +28,14 @@ namespace gazebo
 		// Pointer to the update event connection
 		event::ConnectionPtr updateConnection;
 	
-		physics::JointPtr leftFrontWheelSteeringJoint;
-		physics::JointPtr rightFrontWheelSteeringJoint;
-		physics::JointPtr leftRearWheelSteeringJoint;
-		physics::JointPtr rightRearWheelSteeringJoint;
-		physics::JointPtr leftFrontWheelDrivingJoint;
-		physics::JointPtr rightFrontWheelDrivingJoint;
-		physics::JointPtr leftRearWheelDrivingJoint;
-		physics::JointPtr rightRearWheelDrivingJoint;
+		physics::JointPtr leftFrontSteeringJoint;
+		physics::JointPtr leftRearSteeringJoint;
+		physics::JointPtr rightFrontSteeringJoint;
+		physics::JointPtr rightRearSteeringJoint;
+		physics::JointPtr leftFrontDrivingJoint;
+		physics::JointPtr rightFrontDrivingJoint;
+		physics::JointPtr leftRearDrivingJoint;
+		physics::JointPtr rightRearDrivingJoint;
 		
 		double leftFrontSteeringAngle;
 		double rightFrontSteeringAngle;

@@ -4,7 +4,15 @@
         <pose>0 0 0.035 0 0 0</pose>
         <link name="link">
             <inertial>
-                <mass>0.1</mass>
+                <mass>2</mass>
+                <inertia>
+                    <ixx>1.0</ixx>
+                    <ixy>0.0</ixy>
+                    <ixz>0.0</ixz>
+                    <iyy>1.0</iyy>
+                    <iyz>0.0</iyz>
+                    <izz>1.0</izz>
+                </inertia>
             </inertial>
             <visual name="visual">
                 <geometry>

@@ -18,6 +18,7 @@ namespace gazebo
 	private:
 		bool LoadParams(sdf::ElementPtr _sdf);
 		bool FindLinkByName(sdf::ElementPtr _sdf, physics::LinkPtr &_link, const std::string _name);
+		bool FindJointByName(sdf::ElementPtr _sdf, physics::JointPtr &_joint, const std::string _name);
 		void OnUpdate();
 		
 		tf::Transform leftFrontT;
@@ -27,6 +28,7 @@ namespace gazebo
 		tf::Transform wheelOffsetT;
 		tf::Transform wheelRadiusT;
 		tf::Transform lidarT;
+		tf::Transform odomT;
 		
 		// Pointer to the model
 		physics::ModelPtr model;
@@ -35,11 +37,11 @@ namespace gazebo
 		event::ConnectionPtr updateConnection;
 		
 		physics::LinkPtr lidarLink;
-		physics::LinkPtr leftFrontConnectorLink;
-		physics::LinkPtr leftRearConnectorLink;
-		physics::LinkPtr rightFrontConnectorLink;
-		physics::LinkPtr rightRearConnectorLink;
-		physics::LinkPtr leftFrontWheelLink;
+		physics::JointPtr leftFrontJoint;
+		physics::JointPtr leftRearJoint;
+		physics::JointPtr rightFrontJoint;
+		physics::JointPtr rightRearJoint;
+		physics::JointPtr leftFrontWheelJoint;
 		
 		// ROS Nodehandle
 		ros::NodeHandle* node;

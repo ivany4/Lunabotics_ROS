@@ -36,7 +36,7 @@ void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::
 		ROS_WARN("Can't perform turning command since robot geometry is undefined");
 	}
 	else {
-		if (cmd != this->_current_cmd) {
+		if (cmd != this->_current_cmd || cmd == lunabotics::proto::AllWheelControl::STOP) { //Always allow stop
 			this->_current_cmd = cmd;
 			this->setAwaitingState(AwaitingDriving);
 			this->needPreviousState = true;

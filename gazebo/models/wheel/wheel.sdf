@@ -1,0 +1,64 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="wheel">
+		<link name="link">
+            <inertial>
+                <mass>6.64</mass>
+                <inertia>
+                    <ixx>0.0599</ixx>
+                    <ixy>0.0</ixy>
+                    <ixz>0.0</ixz>
+                    <iyy>0.0599</iyy>
+                    <iyz>0.0</iyz>
+                    <izz>0.1197</izz>
+                </inertia>
+            </inertial>
+            <velocity_decay>
+				<linear>0.0</linear>
+				<angular>0.01</angular>
+            </velocity_decay>
+            <self_collide>true</self_collide>
+            <collision name="collision">
+                <geometry>
+                    <cylinder>
+                        <radius>0.1495</radius>
+                        <length>0.1</length>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.5</mu>
+                            <mu2>0.5</mu2>
+                            <fdir1>1 0 0</fdir1>
+                            <slip1>0.2</slip1>
+                            <slip2>0.2</slip2>
+                        </ode>
+                    </friction>
+	                <contact>
+						<ode>
+							<soft_cfm>0.005</soft_cfm>
+						</ode>
+	                </contact>
+                </surface>
+            </collision>
+            <visual name="visual">
+                <geometry>
+                    <mesh>
+                        <uri>model://wheel/meshes/wheel.dae</uri>
+                    </mesh>
+                </geometry>
+                <material>
+                    <script>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Yellow</name>
+                    </script>
+                </material>
+            </visual>
+            <velocity_decay>
+                <linear>0</linear>
+                <angular>0</angular>
+            </velocity_decay>
+        </link>
+	</model>
+</sdf>

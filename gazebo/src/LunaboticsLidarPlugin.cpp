@@ -49,7 +49,7 @@ namespace gazebo
 		sensor_msgs::LaserScan msg;
 		msg.header.seq = seq++;
 		msg.header.stamp = now;
-		msg.header.frame_id = "lidar";
+		msg.header.frame_id = "base_scan";
 		msg.angle_min = this->sensor->GetAngleMin().Degree();
 		msg.angle_max = this->sensor->GetAngleMax().Degree();
 		msg.angle_increment = this->sensor->GetAngleResolution();

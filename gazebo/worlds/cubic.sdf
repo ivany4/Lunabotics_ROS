@@ -2,7 +2,7 @@
 <sdf version="1.4">
     <world name="cubic">
         <physics type="ode">
-            <gravity>0 0 -98.81</gravity>
+            <gravity>0 0 -9.81</gravity>
             <ode>
                 <solver>
                     <type>quick</type>
@@ -25,6 +25,23 @@
         <!-- A ground plane -->
         <include>
             <uri>model://ground_plane</uri>
+            <collision>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.1</mu>
+                            <mu2>0.1</mu2>
+                            <slip1>0.8</slip1>
+                            <slip2>0.8</slip2>
+                        </ode>
+                    </friction>
+                </surface>
+                <contact>
+					<ode>
+						<soft_cfm>0.005</soft_cfm>
+					</ode>
+                </contact>
+			</collision>
         </include>
         <!-- Robots -->
 		<include>

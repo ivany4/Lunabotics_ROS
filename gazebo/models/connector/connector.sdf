@@ -1,0 +1,70 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="connector">
+        <link name="link">
+            <inertial>
+                <mass>3.44</mass>
+                <inertia>
+                    <ixx>0.0</ixx>
+                    <ixy>0.0</ixy>
+                    <ixz>0.0</ixz>
+                    <iyy>0.149</iyy>
+                    <iyz>0.0</iyz>
+                    <izz>0.149</izz>
+                </inertia>
+            </inertial>
+            <collision name="vertical">
+                <pose>0 -0.065 0.0233 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.0466</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <collision name="horizontal">
+                <pose>0 0 0 1.57 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.13</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="vertical">
+                <pose>0 -0.065 0.0233 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.0466</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/White</name>
+                    </script>
+                </material>
+            </visual>
+            <visual name="horizontal">
+                <pose>0 0 0 1.57 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.13</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/Green</name>
+                    </script>
+                </material>
+            </visual>
+            <velocity_decay>
+                <linear>0</linear>
+                <angular>0</angular>
+            </velocity_decay>
+        </link>
+	</model>
+</sdf>

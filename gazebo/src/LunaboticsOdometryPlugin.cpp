@@ -47,12 +47,12 @@ namespace gazebo
 	
 	
 		//Publish the /base_link to /odom transform needed for gmapping
-	
+	/*
 		tf::Transform transform;
-		transform.setOrigin(tf::Vector3(p.x, p.y, p.z));
-		transform.setRotation(tf::Quaternion(r.x, r.y, r.z, r.w));
-		this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "base_link", "odom"));
-		
+		transform.setOrigin(tf::Vector3(0,0,0));//p.x, p.y, p.z));
+		transform.setRotation(tf::Quaternion(0,0,0,1));//r.x, r.y, r.z, r.w));
+		this->tfBroadcaster.sendTransform(tf::StampedTransform(transform, now, "odom", "base_link"));
+		*/
             
 	
 	

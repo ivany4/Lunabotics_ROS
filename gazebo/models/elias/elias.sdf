@@ -5,7 +5,7 @@
         <static>false</static>
         <link name="chassis">
             <inertial>
-                <mass>1.0</mass>
+                <mass>36.0</mass>
                 <inertia>
                     <ixx>1.0</ixx>
                     <ixy>0.0</ixy>
@@ -15,6 +15,11 @@
                     <izz>1.0</izz>
                 </inertia>
             </inertial>
+            <velocity_decay>
+				<linear>0.0</linear>
+				<angular>0.01</angular>
+            </velocity_decay>
+            <self_collide>true</self_collide>
             <collision name="main_frame">
                 <pose>0 0 0 0 0 0</pose>
                 <geometry>
@@ -113,6 +118,11 @@
         </link>
         <link name="rear_axle">
 			<pose>-0.53 0 0 0 0 0</pose>
+            <velocity_decay>
+				<linear>0.0</linear>
+				<angular>0.01</angular>
+            </velocity_decay>
+            <self_collide>true</self_collide>
             <collision name="collision">
                 <geometry>
                     <box>
@@ -136,481 +146,213 @@
                 </material>
             </visual>
         </link>
-        <link name="left_front_wheel">
+        
+        <include>
+            <uri>model://wheel</uri>
+			<name>left_front_wheel</name> 
             <pose>0.53 0.335 -0.0466 0 1.57 1.57</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="collision">
-                <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>100000.0</mu>
-                            <mu2>100000.0</mu2>
-                            <slip1>0.0</slip1>
-                            <slip2>0.0</slip2>
-                        </ode>
-                    </friction>
-                </surface>
-            </collision>
-            <visual name="visual">
-                <geometry>
-                    <mesh>
-                        <uri>model://elias/meshes/wheel.dae</uri>
-                    </mesh>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Yellow</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="right_front_wheel">
+        </include>
+        
+        <include>
+            <uri>model://wheel</uri>
+			<name>right_front_wheel</name> 
             <pose>0.53 -0.335 -0.0466 0 1.57 1.57</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="collision">
-                <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>100000.0</mu>
-                            <mu2>100000.0</mu2>
-                            <slip1>0.0</slip1>
-                            <slip2>0.0</slip2>
-                        </ode>
-                    </friction>
-                </surface>
-            </collision>
-            <visual name="visual">
-                <geometry>
-                    <mesh>
-                        <uri>model://elias/meshes/wheel.dae</uri>
-                    </mesh>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Yellow</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="left_rear_wheel">
+        </include>
+        
+        <include>
+            <uri>model://wheel</uri>
+			<name>left_rear_wheel</name> 
             <pose>-0.53 0.335 -0.0466 0 1.57 1.57</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="collision">
-                <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>100000.0</mu>
-                            <mu2>100000.0</mu2>
-                            <slip1>0.0</slip1>
-                            <slip2>0.0</slip2>
-                        </ode>
-                    </friction>
-                </surface>
-            </collision>
-            <visual name="visual">
-                <geometry>
-                    <mesh>
-                        <uri>model://elias/meshes/wheel.dae</uri>
-                    </mesh>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Yellow</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="right_rear_wheel">
+        </include>
+        
+        <include>
+            <uri>model://wheel</uri>
+			<name>right_rear_wheel</name> 
             <pose>-0.53 -0.335 -0.0466 0 1.57 1.57</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="collision">
-                <geometry>
-                    <cylinder>
-                        <radius>0.1495</radius>
-                        <length>0.1</length>
-                    </cylinder>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>100000.0</mu>
-                            <mu2>100000.0</mu2>
-                            <slip1>0.0</slip1>
-                            <slip2>0.0</slip2>
-                        </ode>
-                    </friction>
-                </surface>
-            </collision>
-            <visual name="visual">
-                <geometry>
-                    <mesh>
-                        <uri>model://elias/meshes/wheel.dae</uri>
-                    </mesh>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Yellow</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="left_front_connector">
-            <pose>0.53 0.205 -0.0466 0 0 0</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <collision name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <visual name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/White</name>
-                    </script>
-                </material>
-            </visual>
-            <visual name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Green</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="right_front_connector">
-            <pose>0.53 -0.205 -0.0466 0 0 3.14</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <collision name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <visual name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/White</name>
-                    </script>
-                </material>
-            </visual>
-            <visual name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Green</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="left_rear_connector">
-            <pose>-0.53 0.205 -0.0466 0 0 0</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <collision name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <visual name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/White</name>
-                    </script>
-                </material>
-            </visual>
-            <visual name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Green</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
-        <link name="right_rear_connector">
-            <pose>-0.53 -0.205 -0.0466 0 0 3.14</pose>
-            <inertial>
-                <mass>0.1</mass>
-            </inertial>
-            <collision name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <collision name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <visual name="vertical">
-                <pose>0 0 0.0233 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.0466</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/White</name>
-                    </script>
-                </material>
-            </visual>
-            <visual name="horizontal">
-                <pose>0 0.065 0 1.57 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.13</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Green</name>
-                    </script>
-                </material>
-            </visual>
-            <velocity_decay>
-                <linear>0</linear>
-                <angular>0</angular>
-            </velocity_decay>
-        </link>
+        </include>
+        
+        
+        
+        <include>
+            <uri>model://connector</uri>
+			<name>left_front_connector</name> 
+            <pose>0.53 0.27 -0.0466 0 0 0</pose>
+        </include>
+        
+        <include>
+            <uri>model://connector</uri>
+			<name>right_front_connector</name> 
+            <pose>0.53 -0.27 -0.0466 0 0 3.14</pose>
+        </include>
+        
+        <include>
+            <uri>model://connector</uri>
+			<name>left_rear_connector</name> 
+            <pose>-0.53 0.27 -0.0466 0 0 0</pose>
+        </include>
+        
+        <include>
+            <uri>model://connector</uri>
+			<name>right_rear_connector</name> 
+            <pose>-0.53 -0.27 -0.0466 0 0 3.14</pose>
+        </include>
+        
         <joint type="revolute" name="left_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>left_front_connector</parent>
-            <child>left_front_wheel</child>
+            <physics>
+				<ode>
+					<max_force>22</max_force>
+					<velocity>60</velocity>
+				</ode>
+            </physics>
+            <parent>left_front_connector::link</parent>
+            <child>left_front_wheel::link</child>
         </joint>
         <joint type="revolute" name="right_front_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>right_front_connector</parent>
-            <child>right_front_wheel</child>
+            <physics>
+				<ode>
+					<max_force>22</max_force>
+					<velocity>60</velocity>
+				</ode>
+            </physics>
+            <parent>right_front_connector::link</parent>
+            <child>right_front_wheel::link</child>
         </joint>
         <joint type="revolute" name="left_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>left_rear_connector</parent>
-            <child>left_rear_wheel</child>
+            <physics>
+				<ode>
+					<max_force>22</max_force>
+					<velocity>60</velocity>
+				</ode>
+            </physics>
+            <parent>left_rear_connector::link</parent>
+            <child>left_rear_wheel::link</child>
         </joint>
         <joint type="revolute" name="right_rear_driving_hinge">
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 1 0</xyz>
             </axis>
-            <parent>right_rear_connector</parent>
-            <child>right_rear_wheel</child>
+            <physics>
+				<ode>
+					<max_force>22</max_force>
+					<velocity>60</velocity>
+				</ode>
+            </physics>
+            <parent>right_rear_connector::link</parent>
+            <child>right_rear_wheel::link</child>
         </joint>
+        
         <joint type="revolute" name="left_front_steering_hinge">
-            <pose>0 0 0.1 0 0 0</pose>
+            <pose>0 -0.065 0.02 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
+                <dynamics>
+					<damping>0.0</damping>
+					<friction>1000</friction>
+                </dynamics>
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
+            <physics>
+				<ode>
+					<cfm>0.0</cfm>
+					<bounce>0.01</bounce>
+					<max_force>16.5</max_force>
+					<velocity>40</velocity>
+					<limit>
+						<cfm>0.0</cfm>
+						<erp>0.0</erp>
+					</limit>
+				</ode>
+            </physics>
             <parent>chassis</parent>
-            <child>left_front_connector</child>
+            <child>left_front_connector::link</child>
         </joint>
         <joint type="revolute" name="right_front_steering_hinge">
-            <pose>0 0 0.1 0 0 0</pose>
+            <pose>0 -0.065 0.02 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
+                <dynamics>
+					<damping>0.0</damping>
+					<friction>1000</friction>
+                </dynamics>
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
+            <physics>
+				<ode>
+					<cfm>0.0</cfm>
+					<bounce>0.01</bounce>
+					<max_force>16.5</max_force>
+					<velocity>40</velocity>
+				</ode>
+            </physics>
             <parent>chassis</parent>
-            <child>right_front_connector</child>
+            <child>right_front_connector::link</child>
         </joint>
         <joint type="revolute" name="left_rear_steering_hinge">
-            <pose>0 0 0.1 0 0 0</pose>
+            <pose>0 -0.065 0.02 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
+                <dynamics>
+					<damping>0.0</damping>
+					<friction>1000</friction>
+                </dynamics>
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
+            <physics>
+				<ode>
+					<cfm>0.0</cfm>
+					<bounce>0.01</bounce>
+					<max_force>16.5</max_force>
+					<velocity>40</velocity>
+				</ode>
+            </physics>
             <parent>rear_axle</parent>
-            <child>left_rear_connector</child>
+            <child>left_rear_connector::link</child>
         </joint>
         <joint type="revolute" name="right_rear_steering_hinge">
-            <pose>0 0 0.1 0 0 0</pose>
+            <pose>0 -0.065 0.02 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
+                <dynamics>
+					<damping>0.0</damping>
+					<friction>1000</friction>
+                </dynamics>
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
+            <physics>
+				<ode>
+					<cfm>0.0</cfm>
+					<bounce>0.01</bounce>
+					<max_force>16.5</max_force>
+					<velocity>40</velocity>
+				</ode>
+            </physics>
             <parent>rear_axle</parent>
-            <child>right_rear_connector</child>
+            <child>right_rear_connector::link</child>
         </joint>
         <joint type="revolute" name="rear_axle_pivot">
             <pose>0.05 0 0 0 0 0</pose>
@@ -639,16 +381,7 @@
                 </limit>
             </axis>
         </joint>
-        <plugin name="all_wheel_steering_plugin" filename="libAllWheelSteeringPlugin.so">
-            <left_front_driving_hinge>left_front_driving_hinge</left_front_driving_hinge>
-            <right_front_driving_hinge>right_front_driving_hinge</right_front_driving_hinge>
-            <left_rear_driving_hinge>left_rear_driving_hinge</left_rear_driving_hinge>
-            <right_rear_driving_hinge>right_rear_driving_hinge</right_rear_driving_hinge>
-            <left_front_steering_hinge>left_front_steering_hinge</left_front_steering_hinge>
-            <right_front_steering_hinge>right_front_steering_hinge</right_front_steering_hinge>
-            <left_rear_steering_hinge>left_rear_steering_hinge</left_rear_steering_hinge>
-            <right_rear_steering_hinge>right_rear_steering_hinge</right_rear_steering_hinge>
-        </plugin>
+        <plugin name="all_wheel_steering_plugin" filename="libAllWheelSteeringPlugin.so" />
         <plugin name="odometry_plugin" filename="libLunaboticsOdometryPlugin.so" />
         <plugin name="transform_plugin" filename="libTransformServerPlugin.so" />
     </model>
