@@ -19,7 +19,6 @@
 				<linear>0.0</linear>
 				<angular>0.01</angular>
             </velocity_decay>
-            <self_collide>true</self_collide>
             <collision name="main_frame">
                 <pose>0.0825 0 0 0 0 0</pose>
                 <geometry>
@@ -52,7 +51,11 @@
                     </box>
                 </geometry>
                 <material>
-					<diffuse>0.5 0.5 0.5 1.0</diffuse>
+                    <script>
+                        <uri>model://elias/materials/scripts/elias.material</uri>
+                        <uri>model://elias/materials/textures/steel.jpg</uri>
+                        <name>Lunabotics/Steel</name>
+                    </script>
                 </material>
             </visual>
           <!--  <visual name="bucket">
@@ -95,7 +98,6 @@
 				<linear>0.0</linear>
 				<angular>0.01</angular>
             </velocity_decay>
-            <self_collide>true</self_collide>
             <collision name="collision">
                 <geometry>
                     <box>
@@ -110,7 +112,11 @@
                     </box>
                 </geometry>
                 <material>
-					<diffuse>0.5 0.5 0.5 1.0</diffuse>
+                    <script>
+                        <uri>model://elias/materials/scripts/elias.material</uri>
+                        <uri>model://elias/materials/textures/steel.jpg</uri>
+                        <name>Lunabotics/Steel</name>
+                    </script>
                 </material>
             </visual>
         </link>
@@ -254,7 +260,7 @@
         </joint>
         
         <joint type="revolute" name="left_front_steering_hinge">
-            <pose>0 0.008 0 0 0 0</pose>
+            <pose>0 0 0.008 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -282,7 +288,7 @@
             <child>left_front_connector::holder</child>
         </joint>
         <joint type="revolute" name="right_front_steering_hinge">
-            <pose>0 0.008 0 0 0 0</pose>
+            <pose>0 0 0.008 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -306,7 +312,7 @@
             <child>right_front_connector::holder</child>
         </joint>
         <joint type="revolute" name="left_rear_steering_hinge">
-            <pose>0 0.008 0 0 0 0</pose>
+            <pose>0 0 0.008 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -330,7 +336,7 @@
             <child>left_rear_connector::holder</child>
         </joint>
         <joint type="revolute" name="right_rear_steering_hinge">
-            <pose>0 0.008 0 0 0 0</pose>
+            <pose>0 0 0.008 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>

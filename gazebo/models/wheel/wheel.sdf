@@ -17,7 +17,6 @@
 				<linear>0.0</linear>
 				<angular>0.01</angular>
             </velocity_decay>
-            <self_collide>true</self_collide>
             <collision name="collision">
                 <geometry>
                     <cylinder>
