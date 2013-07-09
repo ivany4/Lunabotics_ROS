@@ -7,6 +7,7 @@
 #include "lunabotics/AllWheelCommon.h"
 #include "lunabotics/ICRControl.h"
 #include "lunabotics/CrabControl.h"
+#include "lunabotics/Connection.h"
 #include "geometry/allwheel.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/UInt8.h"
@@ -38,6 +39,7 @@ ros::Publisher goalPublisher;
 ros::Publisher mapRequestPublisher;
 ros::Publisher ICRPublisher;
 ros::Publisher CrabPublisher;
+ros::Publisher connPublisher;
 
 
 void quit(int sig) {
@@ -79,6 +81,11 @@ void read_handler(boost::system::error_code ec, std::size_t bytes_transferred)
 			emergency_stop();
 			return;
 		}
+		
+		lunabotics::Connection connectionMsg;
+		connectionMsg.port = tc.reply_port();
+		connectionMsg.ip = sock.remote_endpoint().address().to_string();
+		connPublisher.publish(connectionMsg);
 		
 		switch(tc.type()) {
 			case lunabotics::proto::Telecommand::SET_AUTONOMY: {
@@ -251,6 +258,7 @@ int main(int argc, char **argv)
 	mapRequestPublisher = nodeHandle.advertise<std_msgs::Empty>(TOPIC_CMD_UPDATE_MAP, 1);
 	ICRPublisher = nodeHandle.advertise<lunabotics::ICRControl>(TOPIC_CMD_ICR, sizeof(float)*3);
 	CrabPublisher = nodeHandle.advertise<lunabotics::CrabControl>(TOPIC_CMD_CRAB, sizeof(float)*3);
+	connPublisher = nodeHandle.advertise<lunabotics::Connection>(TOPIC_CMD_CONN, 256);
 	
   	
     signal(SIGINT,quit);   // Quits program if ctrl + c is pressed 

@@ -464,6 +464,7 @@ void MotionControlNode::runOnce()
 		}
 		else {			
 			lunabotics::RobotGeometry msg;
+			//ROS_INFO("Sending Rover Geometry");
 			msg.left_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->left_front());
 			msg.left_rear_joint = geometry_msgs_Point_from_Point(this->robotGeometry->left_rear());
 			msg.right_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->right_front());
@@ -471,6 +472,9 @@ void MotionControlNode::runOnce()
 			msg.wheel_radius = this->robotGeometry->wheel_radius();
 			msg.wheel_offset = this->robotGeometry->wheel_offset();
 			msg.wheel_width = this->robotGeometry->wheel_width();
+			//ROS_INFO("--> wheel offset %f", msg.wheel_offset);
+			//ROS_INFO("--> wheel radius %f", msg.wheel_radius);
+			//ROS_INFO("--> wheel width %f", msg.wheel_width);
 			this->publisherGeometry.publish(msg);
 		}
 	}
@@ -717,7 +721,7 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		//Original control
 		
-		if (fabs(heading_error) < 0.001) {
+		if (fabs(heading_error) < this->motionConstraints.point_turn_angle_accuracy) {
 			lunabotics::CrabControl ctrl;
 			ctrl.velocity = this->linearVelocity;
 			ctrl.heading = std::min(y_err*10, M_PI_4);

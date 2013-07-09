@@ -7,4 +7,5 @@ killall gzserver
 echo "$(tput bold)$(tput setaf 3)Compiling plugins$(tput sgr0)"
 ./compile_plugins
 echo "$(tput bold)$(tput setaf 3)Launching gazebo$(tput sgr0)"
-lunagazebo
+#lunagazebo
+lunarena

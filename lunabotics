@@ -9,10 +9,11 @@ build=0
 compile_gazebo=0
 compile_protos=0
 diffdrive=""
-out_addr="192.168.218.1"
 profile="VMWare"
 mapfile=""
 use_map_file=0
+correct_x=""
+correct_y=""
 
 
 ################################### Functions ##########################
@@ -68,10 +69,9 @@ clean_target() {
 
 cd $PACKAGE_PATH
 
-while getopts "a:cdDnbr:goOfFw:" opt; 
+while getopts "cdDnbr:goOfFw:x:y:" opt; 
 do	
 	case $opt in
-	a)	out_addr="$OPTARG";;
 	c)	close=1;;
 	d)  clean=1;;
 	D) 	diffdrive="-D";;
@@ -84,7 +84,9 @@ do
 	w)  mapfile="-f `rospack find lunabotics`/$OPTARG"; use_map_file=1;;
 	o)  compile_protos=1;;
 	O)	compile_protos=2;;
-	\?) echo "$(tput bold)Usage: $0 [-bdDcgnhoOfF] [-a=$(tput setaf 4)outgoing IP address$(tput setaf 7)] [-r=$(tput setaf 4)profile$(tput setaf 7)] [-w=$(tput setaf 4)map filename$(tput setaf 7)]$(tput sgr0)" >&2
+	x)	correct_x="-x $OPTARG";;
+	y)	correct_y="-y $OPTARG";;
+	\?) echo "$(tput bold)Usage: $0 [-bdDcgnhoOfF] [-r=$(tput setaf 4)profile$(tput setaf 7)] [-w=$(tput setaf 4)map filename$(tput setaf 7)] [-x=$(tput setaf 4)meters$(tput setaf 7)] [-y=$(tput setaf 4)meters$(tput setaf 7)]$(tput sgr0)" >&2
 		echo ""
 		echo "Options:"
 		echo -e "$(tput bold)-b		$(tput sgr0)\n	Build without running. Omitted when using -O"
@@ -97,9 +99,10 @@ do
 		echo -e "$(tput bold)-n		$(tput sgr0)\n	Do not recompile"
 		echo -e "$(tput bold)-o		$(tput sgr0)\n	Compile protocol buffers"
 		echo -e "$(tput bold)-O		$(tput sgr0)\n	Compile ONLY protocol buffers"
-		echo -e "$(tput bold)-a $(tput setaf 4)outgoing IP address$(tput sgr0)\n	Specify GUI IP address"
 		echo -e "$(tput bold)-w $(tput setaf 4)map filename$(tput sgr0)\n	Specify world map file"
 		echo -e "$(tput bold)-r $(tput setaf 4)profile$(tput sgr0)\n	Specify profile to be used (VMWare/Pioneer/Elias1/Elias2)\n	$(tput bold)VMWare$(tput sgr0) - Default profile, used for VMWare machine setup. Start's up nodes in different terminal windows.\n	$(tput bold)Pioneer$(tput sgr0) - Used for Pioneer proxy robot, has predefined IP address and different local ip address lookup routine.\n	$(tput bold)Elias1$(tput sgr0) - Used on Master elias machine.\n	$(tput bold)Elias2$(tput sgr0) - Used on Slave elias machine."
+		echo -e "$(tput bold)-x $(tput setaf 4)meters$(tput sgr0)\n	Bias odometry by amount of meters in x-direction"
+		echo -e "$(tput bold)-y $(tput setaf 4)meters$(tput sgr0)\n	Bias odometry by amount of meters in y-direction"
 		exit 1;;
 	esac
 done
@@ -155,30 +158,27 @@ elif [ `pgrep -n roscore` ] || [ $build -eq 1 ] || [ $profile = "Elias2" ]; then
 		else
 			in_addr="Unknown"
 			if [ $profile = "Pioneer" ]; then
-				out_addr="192.168.1.113"
 				in_addr=`/sbin/ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 			elif [ $profile = "Elias1" ] || [ $profile = "Elias2" ]; then
-				out_addr="192.168.218.1"
 				in_addr=`ifconfig wlan0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 			else
 				in_addr=`ifconfig eth0 | grep "inet " | cut -d ':' -f2 | awk '{print $1}'`
 			fi
 			
 			clrecho 3 "Launching nodes..."
-			echo "Using remote IP $out_addr"
 			echo "Local IP address is $in_addr"
 			if [ $use_map_file -eq 1 ]; then
 				echo "Using map with command $mapfile"
 			fi
 			if [ $profile = "Pioneer" ]; then
-				roslaunch lunabotics.launch oip:=$out_addr cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose diffdrive:=$diffdrive filename:=$mapfile
+				roslaunch lunabotics.launch cmd_vel:=/RosAria/cmd_vel odom:=/RosAria/pose diffdrive:=$diffdrive filename:=$mapfile
 			elif [ $profile = "Elias1" ]; then
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive'" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive' '$correct_x' '$correct_y'" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"
 			elif [ $profile = "Elias2" ]; then
-				roslaunch comm.launch oip:=$out_addr
+				roslaunch comm.launch
 			else
-				gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw '$out_addr'" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener"
-				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive'" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
+				gnome-terminal --tab -t "GUI Gateway" -e "bash rosrun lunabotics luna_gui_gw" --tab -t "GUI Listener" -e "bash rosrun lunabotics luna_gui_listener"
+				gnome-terminal --tab -t "MECH Gateway" -e "bash rosrun lunabotics luna_mech_gw '$diffdrive' $correct_x $correct_y" --tab -t "SLAM" -e "bash rosrun lunabotics luna_slam $mapfile '$diffdrive'" --tab -t "Driver" -e "bash rosrun lunabotics luna_driver '$diffdrive'"  #--tab -t "AUTSYS Gateway" -e "bash rosrun lunabotics luna_aut_gw" #--tab -t "Emergency behavior" -e "bash rosrun lunabotics luna_fear"
 				if [ $use_map_file -eq 0 ]; then
 					 gnome-terminal --tab -t "Gmapping" -e "bash rosrun gmapping slam_gmapping scan:=base_scan"
 				fi

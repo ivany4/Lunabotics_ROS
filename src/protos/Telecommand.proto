@@ -15,7 +15,8 @@ message Telecommand {
         ADJUST_WHEELS    = 7;
     }
 
-    required Type type = 1;
+    required string reply_port = 1;
+    required Type type = 2;
 
     message Teleoperation {
                 required bool forward = 1;
@@ -23,12 +24,12 @@ message Telecommand {
                 required bool left = 3;
                 required bool right = 4;
     }
-    optional Teleoperation teleoperation_data = 2;
+    optional Teleoperation teleoperation_data = 3;
 
     message Autonomy {
         required bool enabled = 1;
     }
-    optional Autonomy autonomy_data = 3;
+    optional Autonomy autonomy_data = 4;
 
     message SteeringMode {
                 required SteeringModeType type = 1;
@@ -37,16 +38,16 @@ message Telecommand {
                 required float max_linear_velocity = 4;
                 required int32 bezier_curve_segments = 5;
     }
-    optional SteeringMode steering_mode_data = 4;
+    optional SteeringMode steering_mode_data = 5;
 
     message DefineRoute {
                 repeated Point waypoints = 1;
     }
-    optional DefineRoute define_route_data = 5;
+    optional DefineRoute define_route_data = 6;
 
     message RequestMap {
     }
-    optional RequestMap request_map_data = 6;
+    optional RequestMap request_map_data = 7;
 
     message AdjustPID {
                 required float p = 1;
@@ -57,8 +58,8 @@ message Telecommand {
                 required float feedforward_min_offset = 6;
                 required float feedforward_fraction = 7;
     }
-    optional AdjustPID adjust_pid_data = 7;
+    optional AdjustPID adjust_pid_data = 8;
 
-    optional AllWheelControl all_wheel_control_data = 8;
+    optional AllWheelControl all_wheel_control_data = 9;
 }
 

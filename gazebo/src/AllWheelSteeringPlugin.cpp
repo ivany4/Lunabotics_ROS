@@ -42,7 +42,7 @@ namespace gazebo
 		ROS_INFO("Loading All Wheel Steering Model Plugin");
 		this->model = _parent;
 	
-		if (this->LoadParams(_sdf)) {
+		if (this->LoadParams()) {
 			this->node = new ros::NodeHandle("lunabotics");
 	
 			this->leftFrontPID = new lunabotics::PIDController(Kp, Ki, Kd);
@@ -93,37 +93,46 @@ namespace gazebo
 		//ROS_INFO("Steering %.2f %.2f %.2f %.2f  Driving %.2f %.2f %.2f %.2f", msg->steering.left_front, msg->steering.right_front, msg->steering.left_rear, msg->steering.right_rear, msg->driving.left_front, msg->driving.right_front, msg->driving.left_rear, msg->driving.right_rear);
 	}
 	
-	bool AllWheelSteeringPlugin::LoadParams(sdf::ElementPtr _sdf) {
+	bool AllWheelSteeringPlugin::LoadParams() {
 		bool success = false;
 		
-		if (this->FindJointByName(_sdf, this->leftFrontSteeringJoint, "left_front_steering_hinge") &&
-		    this->FindJointByName(_sdf, this->rightFrontSteeringJoint, "right_front_steering_hinge") &&
-		    this->FindJointByName(_sdf, this->leftRearSteeringJoint, "left_rear_steering_hinge") &&
-		    this->FindJointByName(_sdf, this->rightRearSteeringJoint, "right_rear_steering_hinge") &&
-		    this->FindJointByName(_sdf, this->leftFrontDrivingJoint, "left_front_driving_hinge") &&
-		    this->FindJointByName(_sdf, this->rightFrontDrivingJoint, "right_front_driving_hinge") &&
-		    this->FindJointByName(_sdf, this->leftRearDrivingJoint, "left_rear_driving_hinge") &&
-		    this->FindJointByName(_sdf, this->rightRearDrivingJoint, "right_rear_driving_hinge")) {
+		if (this->FindJointByName(this->leftFrontSteeringJoint, "left_front_steering_hinge") &&
+		    this->FindJointByName(this->rightFrontSteeringJoint, "right_front_steering_hinge") &&
+		    this->FindJointByName(this->leftRearSteeringJoint, "left_rear_steering_hinge") &&
+		    this->FindJointByName(this->rightRearSteeringJoint, "right_rear_steering_hinge") &&
+		    this->FindJointByName(this->leftFrontDrivingJoint, "left_front_driving_hinge") &&
+		    this->FindJointByName(this->rightFrontDrivingJoint, "right_front_driving_hinge") &&
+		    this->FindJointByName(this->leftRearDrivingJoint, "left_rear_driving_hinge") &&
+		    this->FindJointByName(this->rightRearDrivingJoint, "right_rear_driving_hinge")) {
 		
 			ROS_INFO("============== Getting transforms ======================\n\n");
+			
+			math::Pose modelPose = this->model->GetRelativePose();
+			
+			ROS_INFO("--> model pose pos %.3f,%.3f,%.3f", modelPose.pos.x, modelPose.pos.y, modelPose.pos.z);
+			ROS_INFO("--> model pose rot %.3f,%.3f,%.3f", modelPose.rot.x, modelPose.rot.y, modelPose.rot.z);
+			
+			this->model->SetRelativePose(math::Pose(math::Vector3(0,0,0), math::Quaternion(0,0,0,1)));
 			
 			//Left front wheel
 			math::Vector3 steeringPos = this->leftFrontSteeringJoint->GetAnchor(0);
 			math::Vector3 drivingPos = this->leftFrontDrivingJoint->GetAnchor(0);
 			math::Vector3 wheelOffset = drivingPos-steeringPos;
-			this->linkShoulder = wheelOffset.y;
+			this->linkShoulder = fabs(wheelOffset.y);
 			math::Box bb = this->leftFrontDrivingJoint->GetJointLink(0)->GetBoundingBox();
 			this->wheelRadius = bb.GetSize().GetMax() * 0.5;
 			
 			ROS_INFO("--> wheel radius %.3f", this->wheelRadius);
 			ROS_INFO("--> link shoulder %.3f", this->linkShoulder);
 			
+			this->model->SetRelativePose(modelPose);
+			
 			success = true;
 		}
 		return success;
 	}
 	
-	bool AllWheelSteeringPlugin::FindJointByName(sdf::ElementPtr _sdf, physics::JointPtr &_joint, const std::string _name) {
+	bool AllWheelSteeringPlugin::FindJointByName(physics::JointPtr &_joint, const std::string _name) {
 		_joint = this->model->GetJoint(_name);
 		if (!_joint) {
 			gzerr << "joint by name [" << _name << "] not found in model\n";

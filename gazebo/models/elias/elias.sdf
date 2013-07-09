@@ -264,7 +264,7 @@
                 </dynamics>
                 <limit>
                     <lower>-1.57</lower>
-                    <upper>1.57</upper>
+                    <upper>1.134</upper>
                 </limit>
             </axis>
             <physics>
@@ -291,7 +291,7 @@
 					<friction>1000</friction>
                 </dynamics>
                 <limit>
-                    <lower>-1.57</lower>
+                    <lower>-1.134</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
@@ -315,7 +315,7 @@
 					<friction>1000</friction>
                 </dynamics>
                 <limit>
-                    <lower>-1.57</lower>
+                    <lower>-1.134</lower>
                     <upper>1.57</upper>
                 </limit>
             </axis>
@@ -340,7 +340,7 @@
                 </dynamics>
                 <limit>
                     <lower>-1.57</lower>
-                    <upper>1.57</upper>
+                    <upper>1.134</upper>
                 </limit>
             </axis>
             <physics>

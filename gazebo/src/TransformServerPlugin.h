@@ -16,9 +16,9 @@ namespace gazebo
 		~TransformServerPlugin();
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
-		bool LoadParams(sdf::ElementPtr _sdf);
-		bool FindLinkByName(sdf::ElementPtr _sdf, physics::LinkPtr &_link, const std::string _name);
-		bool FindJointByName(sdf::ElementPtr _sdf, physics::JointPtr &_joint, const std::string _name);
+		bool LoadParams();
+		bool FindLinkByName(physics::LinkPtr &_link, const std::string _name);
+		bool FindJointByName(physics::JointPtr &_joint, const std::string _name);
 		void OnUpdate();
 		
 		tf::Transform leftFrontT;

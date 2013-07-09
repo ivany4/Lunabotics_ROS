@@ -16,8 +16,8 @@ namespace gazebo
 		~AllWheelSteeringPlugin();
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
-		bool LoadParams(sdf::ElementPtr _sdf);
-		bool FindJointByName(sdf::ElementPtr _sdf, physics::JointPtr &_joint, const std::string _name);
+		bool LoadParams();
+		bool FindJointByName(physics::JointPtr &_joint, const std::string _name);
 		void ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg);
 		void OnUpdate();
 		double DrivingFromSteeringVelocity(double steeringVel);

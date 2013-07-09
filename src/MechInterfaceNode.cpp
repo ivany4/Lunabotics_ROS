@@ -13,6 +13,8 @@ using namespace lunabotics;
 MechInterfaceNode::MechInterfaceNode(int argc, char **argv, std::string name, int frequency):
 ROSNode(argc, argv, name, frequency)
 {
+	this->parseArgs();
+	
 	//Create publishers
 	this->publisherTwist = this->nodeHandle->advertise<geometry_msgs::Twist>(TOPIC_CMD_TWIST, 256);
 	this->publisherState = this->nodeHandle->advertise<lunabotics::State>(TOPIC_TM_ROBOT_STATE, 256);
@@ -35,6 +37,8 @@ void MechInterfaceNode::callbackOdometry(const nav_msgs::Odometry::ConstPtr &msg
 {
 	lunabotics::State stateMsg;
 	stateMsg.odometry = *msg;
+	stateMsg.odometry.pose.pose.position.x -= this->odometryBias.x;
+	stateMsg.odometry.pose.pose.position.y -= this->odometryBias.y;
 	this->publisherState.publish(stateMsg);
 }
 
@@ -122,6 +126,21 @@ void MechInterfaceNode::callbackTeleoperation(const lunabotics::Teleoperation::C
 
 
 //------------------ INHERITED METHODS ----------------------------------
+
+void MechInterfaceNode::parseArgs()
+{
+	this->odometryBias = CreateZeroPoint();
+	if (this->commandOptionExists(this->argv, this->argv + this->argc, "-x")) {
+		char *option = this->getCommandOption(this->argv, this->argv + this->argc, "-x");
+		this->odometryBias.x = atof(option);
+		ROS_INFO("Odometry biased by %f at x", this->odometryBias.x);
+	}
+	if (this->commandOptionExists(this->argv, this->argv + this->argc, "-y")) {
+		char *option = this->getCommandOption(this->argv, this->argv + this->argc, "-y");
+		this->odometryBias.y = atof(option);
+		ROS_INFO("Odometry biased by %f at y", this->odometryBias.y);
+	}
+}
 
 void MechInterfaceNode::runOnce()
 {

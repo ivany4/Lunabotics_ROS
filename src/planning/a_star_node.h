@@ -3,7 +3,7 @@
 
 #include "../types.h"
 
-#define OCC_THRESHOLD	80
+#define OCC_THRESHOLD	50
 
 namespace lunabotics {
 	

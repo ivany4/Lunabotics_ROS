@@ -63,7 +63,7 @@
             </visual>
             <velocity_decay>
                 <linear>0</linear>
-                <angular>0</angular>
+                <angular>0.01</angular>
             </velocity_decay>
         </link>
 	</model>

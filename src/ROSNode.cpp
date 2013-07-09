@@ -72,7 +72,7 @@ void ROSNode::parseArgs(int argc, char **argv)
 		int len = strlen(argv[i]);
 		this->argv[i-1] = new char[len];
 		strcpy(this->argv[i-1], argv[i]);
-		sstr << argv[i];
+		sstr << argv[i] << " ";
 	}
 	
 	ROS_INFO("Parsing command line argument(s): %s", sstr.str().c_str());

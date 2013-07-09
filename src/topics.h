@@ -25,6 +25,7 @@ namespace lunabotics {
 #define TOPIC_CMD_EXPLICIT_ALL_WHEEL	"cmd/explicit_all_wheel" //Define an explicit command for each motor
 #define TOPIC_CMD_TWIST					"/cmd_vel"			//Motion of a differential-drive robot
 #define TOPIC_CMD_TELEOP				"cmd/teleop"		//Control robot from a joystick
+#define TOPIC_CMD_CONN					"cmd/connection"			//Port of the GUI to reply to
 
 //Common topics (work both ways)
 #define TOPIC_EMERGENCY					"emergency"			//To trigger obstacle avoidance routine

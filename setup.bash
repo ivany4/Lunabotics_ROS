@@ -20,6 +20,9 @@ lunamoon() {
 }
 
 lunarena() {
+	elias -w lunarena2.txt -y -3.69 -x -1.94 -n
+	killall gzclient
+	killall gzserver
 	gazebo `rospack find lunabotics`/gazebo/worlds/lunarena.sdf
 }
 

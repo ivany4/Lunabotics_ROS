@@ -12,13 +12,13 @@
                         <uri>model://lunarena/meshes/lunarena.dae</uri>
                     </mesh>
                 </geometry>
-                <surface>
+                <!--<surface>
 					<contact>
 						<ode>
 							<min_depth>0.05</min_depth>
 						</ode>
 					</contact>
-                </surface>
+                </surface>-->
             </collision>
             <visual name="lunarena">
 				<pose>0 0 0 0 0 0</pose>

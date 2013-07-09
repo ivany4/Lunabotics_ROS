@@ -6,11 +6,14 @@
 //Topics and Services
 #include "lunabotics/Teleoperation.h"
 #include "nav_msgs/Odometry.h"
+#include "types.h"
 
 namespace lunabotics {
 
 class MechInterfaceNode : ROSNode {
 private:
+	
+	Point odometryBias;
 	
 	//Publishers
 	ros::Publisher publisherTwist;

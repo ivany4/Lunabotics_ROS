@@ -1,39 +1,32 @@
 <?xml version="1.0" ?>
 <sdf version="1.4">
-    <world name="moon">
+    <world name="slope">
+		<scene>
+			<grid>false</grid>
+		</scene>
         <physics type="ode">
-            <gravity>0 0 -98.81</gravity>
+            <gravity>0 0 -9.81</gravity>
             <ode>
                 <solver>
                     <type>quick</type>
                     <iters>40</iters>
                     <sor>1.0</sor>
                 </solver>
-                <constraints>
-                    <cfm>0.0</cfm>
-                    <erp>0.2</erp>
-                    <contact_max_correcting_vel>100.0</contact_max_correcting_vel>
-                    <contact_surface_layer>0.05</contact_surface_layer>
-                </constraints>
             </ode>
             <max_step_size>0.001</max_step_size>
         </physics>
-        <scene>
-			<grid>0</grid>
-        </scene>
         <!-- A global light source -->
         <include>
             <uri>model://sun</uri>
         </include>
         <!-- A ground plane -->
         <include>
-            <uri>model://lunarena</uri>
-			<pose>0 0 0 0 0 0</pose>
+            <uri>model://slope</uri>
         </include>
         <!-- Robots -->
 		<include>
 			<uri>model://elias</uri>
-			<pose>-1 -2 0.6 0 0 1.57</pose>
+			<pose>0 0 0.3 -0.2 0 0</pose>
 		</include>
         <plugin name="clock" filename="libClockServerPlugin.so" />
     </world>
