@@ -229,8 +229,9 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 			double angle = this->getReferenceAngle(closest_point, referencePoint, second_closest_point);
 			
 			//Reference point lies not between waypoints 1 and 2 but beyond
-			#pragma message("ALWAYS FALSE FOR TESTING");
-			if (false && fabs(angle) > M_PI_2) {
+			//#pragma message("ALWAYS FALSE FOR TESTING");
+			//if (false && fabs(angle) > M_PI_2) {
+			if (fabs(angle) > M_PI_2) {
 				resultPoint = second_closest_point;
 			}
 			else {
