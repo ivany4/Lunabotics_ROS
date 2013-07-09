@@ -1,0 +1,103 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="sandwich">
+		<link name="link">
+            <inertial>
+                <mass>4</mass>
+                <inertia>
+                    <ixx>1</ixx>
+                    <ixy>0.0</ixy>
+                    <ixz>0.0</ixz>
+                    <iyy>1</iyy>
+                    <iyz>0.0</iyz>
+                    <izz>1</izz>
+                </inertia>
+            </inertial>
+			<visual name="cylinder1">
+				<cast_shadows>false</cast_shadows>
+				<pose>0.0175 0.0625 0 0 0 0</pose>
+				<geometry>
+					<cylinder>
+						<radius>0.065</radius>
+						<length>0.06</length>
+					</cylinder>
+				</geometry>
+				<material>
+					<diffuse>0.0 0.0 0.0 1.0</diffuse>
+				</material>
+			</visual>
+			<visual name="cylinder2">
+				<cast_shadows>false</cast_shadows>
+				<pose>-0.0175 0.0625 0 0 0 0</pose>
+				<geometry>
+					<cylinder>
+						<radius>0.065</radius>
+						<length>0.06</length>
+					</cylinder>
+				</geometry>
+				<material>
+					<diffuse>0.0 0.0 0.0 1.0</diffuse>
+				</material>
+			</visual>
+			<visual name="box_center">
+				<cast_shadows>false</cast_shadows>
+				<pose>0 0.095 0 0 0 0</pose>
+				<geometry>
+                    <box>
+                        <size>0.035 0.065 0.06</size>
+                    </box>
+				</geometry>
+				<material>
+					<diffuse>0.0 0.0 0.0 1.0</diffuse>
+				</material>
+			</visual>
+			<visual name="box_big">
+				<cast_shadows>false</cast_shadows>
+				<pose>0 0 0 0 0 0</pose>
+				<geometry>
+                    <box>
+                        <size>0.165 0.125 0.06</size>
+                    </box>
+				</geometry>
+				<material>
+					<diffuse>0.0 0.0 0.0 1.0</diffuse>
+				</material>
+			</visual>
+			
+			<collision name="cylinder1">
+				<pose>0.0175 0.0625 0 0 0 0</pose>
+				<geometry>
+					<cylinder>
+						<radius>0.065</radius>
+						<length>0.06</length>
+					</cylinder>
+				</geometry>
+			</collision>
+			<collision name="cylinder2">
+				<pose>-0.0175 0.0625 0 0 0 0</pose>
+				<geometry>
+					<cylinder>
+						<radius>0.065</radius>
+						<length>0.06</length>
+					</cylinder>
+				</geometry>
+			</collision>
+			<collision name="box_center">
+				<pose>0 0.095 0 0 0 0</pose>
+				<geometry>
+                    <box>
+                        <size>0.035 0.065 0.06</size>
+                    </box>
+				</geometry>
+			</collision>
+			<collision name="box_big">
+				<pose>0 0 0 0 0 0</pose>
+				<geometry>
+                    <box>
+                        <size>0.165 0.125 0.06</size>
+                    </box>
+				</geometry>
+			</collision>
+		</link>
+	</model>
+</sdf>

@@ -5,7 +5,7 @@
         <static>false</static>
         <link name="chassis">
             <inertial>
-                <mass>36.0</mass>
+                <mass>20.0</mass>
                 <inertia>
                     <ixx>1.0</ixx>
                     <ixy>0.0</ixy>
@@ -21,18 +21,10 @@
             </velocity_decay>
             <self_collide>true</self_collide>
             <collision name="main_frame">
-                <pose>0 0 0 0 0 0</pose>
+                <pose>0.0825 0 0 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>1.05 0.1 0.1</size>
-                    </box>
-                </geometry>
-            </collision>
-            <collision name="front_axle">
-                <pose>0.53 0 0 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.1 0.38 0.1</size>
+                        <size>1.06 0.16 0.16</size>
                     </box>
                 </geometry>
             </collision>
@@ -53,36 +45,17 @@
                 </geometry>
             </collision>
             <visual name="main_frame">
-                <pose>0 0 0 0 0 0</pose>
+                <pose>0.0825 0 0 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.96 0.1 0.1</size>
+                        <size>1.06 0.16 0.16</size>
                     </box>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>model://elias/materials/scripts/elias.material</uri>
-                        <uri>model://elias/materials/textures/steel.jpg</uri>
-                        <name>Lunabotics/Steel</name>
-                    </script>
+					<diffuse>0.5 0.5 0.5 1.0</diffuse>
                 </material>
             </visual>
-            <visual name="front_axle">
-                <pose>0.53 0 0 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.1 0.38 0.1</size>
-                    </box>
-                </geometry>
-                <material>
-                    <script>
-                        <uri>model://elias/materials/scripts/elias.material</uri>
-                        <uri>model://elias/materials/textures/steel.jpg</uri>
-                        <name>Lunabotics/Steel</name>
-                    </script>
-                </material>
-            </visual>
-            <visual name="bucket">
+          <!--  <visual name="bucket">
 				<pose>0.53 0 0.15 1.57 0 3.14</pose>
                 <geometry>
                     <mesh>
@@ -95,7 +68,7 @@
                         <name>Gazebo/White</name>
                     </script>
                 </material>
-            </visual>
+            </visual>-->
             <visual name="lidar_platform">
                 <pose>0.56 0 0.075 0 0 0</pose>
                 <geometry>
@@ -126,26 +99,46 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.1 0.38 0.1</size>
+                        <size>0.165 0.16 0.16</size>
                     </box>
                 </geometry>
             </collision>
-			<pose>-0.53 0 0 0 0 0</pose>
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.1 0.38 0.1</size>
+                        <size>0.165 0.16 0.16</size>
                     </box>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>model://elias/materials/scripts/elias.material</uri>
-                        <uri>model://elias/materials/textures/steel.jpg</uri>
-                        <name>Lunabotics/Steel</name>
-                    </script>
+					<diffuse>0.5 0.5 0.5 1.0</diffuse>
                 </material>
             </visual>
         </link>
+        
+        <include>
+            <uri>model://sandwich</uri>
+			<name>left_front_sandwich</name> 
+            <pose>0.53 0.1425 0.02 0 0 0</pose>
+        </include>
+        
+        <include>
+            <uri>model://sandwich</uri>
+			<name>right_front_sandwich</name> 
+            <pose>0.53 -0.1425 0.02 0 0 3.14</pose>
+        </include>
+        
+        <include>
+            <uri>model://sandwich</uri>
+			<name>left_rear_sandwich</name> 
+            <pose>-0.53 0.1425 0.02 0 0 0</pose>
+        </include>
+        <include>
+            <uri>model://sandwich</uri>
+			<name>right_rear_sandwich</name> 
+            <pose>-0.53 -0.1425 0.02 0 0 3.14</pose>
+        </include>
+        
+        
         
         <include>
             <uri>model://wheel</uri>
@@ -176,25 +169,31 @@
         <include>
             <uri>model://connector</uri>
 			<name>left_front_connector</name> 
-            <pose>0.53 0.27 -0.0466 0 0 0</pose>
+            <pose>0.53 0.205 -0.0466 0 0 0</pose>
         </include>
         
         <include>
             <uri>model://connector</uri>
 			<name>right_front_connector</name> 
-            <pose>0.53 -0.27 -0.0466 0 0 3.14</pose>
+            <pose>0.53 -0.205 -0.0466 0 0 3.14</pose>
         </include>
         
         <include>
             <uri>model://connector</uri>
 			<name>left_rear_connector</name> 
-            <pose>-0.53 0.27 -0.0466 0 0 0</pose>
+            <pose>-0.53 0.205 -0.0466 0 0 0</pose>
         </include>
         
         <include>
             <uri>model://connector</uri>
 			<name>right_rear_connector</name> 
-            <pose>-0.53 -0.27 -0.0466 0 0 3.14</pose>
+            <pose>-0.53 -0.205 -0.0466 0 0 3.14</pose>
+        </include>
+        
+        
+        <include>
+            <uri>model://hokuyo</uri>
+            <pose>0.56 0 0.135 0 0 0</pose> 
         </include>
         
         <joint type="revolute" name="left_front_driving_hinge">
@@ -208,7 +207,7 @@
 					<velocity>60</velocity>
 				</ode>
             </physics>
-            <parent>left_front_connector::link</parent>
+            <parent>left_front_connector::holder</parent>
             <child>left_front_wheel::link</child>
         </joint>
         <joint type="revolute" name="right_front_driving_hinge">
@@ -222,7 +221,7 @@
 					<velocity>60</velocity>
 				</ode>
             </physics>
-            <parent>right_front_connector::link</parent>
+            <parent>right_front_connector::holder</parent>
             <child>right_front_wheel::link</child>
         </joint>
         <joint type="revolute" name="left_rear_driving_hinge">
@@ -236,7 +235,7 @@
 					<velocity>60</velocity>
 				</ode>
             </physics>
-            <parent>left_rear_connector::link</parent>
+            <parent>left_rear_connector::holder</parent>
             <child>left_rear_wheel::link</child>
         </joint>
         <joint type="revolute" name="right_rear_driving_hinge">
@@ -250,12 +249,12 @@
 					<velocity>60</velocity>
 				</ode>
             </physics>
-            <parent>right_rear_connector::link</parent>
+            <parent>right_rear_connector::holder</parent>
             <child>right_rear_wheel::link</child>
         </joint>
         
         <joint type="revolute" name="left_front_steering_hinge">
-            <pose>0 -0.065 0.02 0 0 0</pose>
+            <pose>0 0.008 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -279,11 +278,11 @@
 					</limit>
 				</ode>
             </physics>
-            <parent>chassis</parent>
-            <child>left_front_connector::link</child>
+            <parent>left_front_sandwich::link</parent>
+            <child>left_front_connector::holder</child>
         </joint>
         <joint type="revolute" name="right_front_steering_hinge">
-            <pose>0 -0.065 0.02 0 0 0</pose>
+            <pose>0 0.008 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -303,11 +302,11 @@
 					<velocity>40</velocity>
 				</ode>
             </physics>
-            <parent>chassis</parent>
-            <child>right_front_connector::link</child>
+            <parent>right_front_sandwich::link</parent>
+            <child>right_front_connector::holder</child>
         </joint>
         <joint type="revolute" name="left_rear_steering_hinge">
-            <pose>0 -0.065 0.02 0 0 0</pose>
+            <pose>0 0.008 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -327,11 +326,11 @@
 					<velocity>40</velocity>
 				</ode>
             </physics>
-            <parent>rear_axle</parent>
-            <child>left_rear_connector::link</child>
+            <parent>left_rear_sandwich::link</parent>
+            <child>left_rear_connector::holder</child>
         </joint>
         <joint type="revolute" name="right_rear_steering_hinge">
-            <pose>0 -0.065 0.02 0 0 0</pose>
+            <pose>0 0.008 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -351,11 +350,11 @@
 					<velocity>40</velocity>
 				</ode>
             </physics>
-            <parent>rear_axle</parent>
-            <child>right_rear_connector::link</child>
+            <parent>right_rear_sandwich::link</parent>
+            <child>right_rear_connector::holder</child>
         </joint>
         <joint type="revolute" name="rear_axle_pivot">
-            <pose>0.05 0 0 0 0 0</pose>
+            <pose>0.0825 0 0 0 0 0</pose>
             <axis>
                 <xyz>1 0 0</xyz>
                 <limit>
@@ -366,15 +365,59 @@
             <parent>chassis</parent>
             <child>rear_axle</child>
         </joint>
-        <include>
-            <uri>model://hokuyo</uri>
-            <pose>0.56 0 0.135 0 0 0</pose> 
-        </include>
         <joint name="hokuyo_joint" type="revolute">
             <child>hokuyo::link</child>
             <parent>chassis</parent>
             <axis>
                 <xyz>0 0 1</xyz>
+                <limit>
+                    <upper>0</upper>
+                    <lower>0</lower>
+                </limit>
+            </axis>
+        </joint>
+        <joint name="left_front_sandwich" type="revolute">
+            <pose>0 -0.0625 0 0 0 0</pose>
+            <child>left_front_sandwich::link</child>
+            <parent>chassis</parent>
+            <axis>
+                <xyz>0 1 0</xyz>
+                <limit>
+                    <upper>0</upper>
+                    <lower>0</lower>
+                </limit>
+            </axis>
+        </joint>
+        <joint name="right_front_sandwich" type="revolute">
+            <pose>0 -0.0625 0 0 0 0</pose>
+            <child>right_front_sandwich::link</child>
+            <parent>chassis</parent>
+            <axis>
+                <xyz>0 1 0</xyz>
+                <limit>
+                    <upper>0</upper>
+                    <lower>0</lower>
+                </limit>
+            </axis>
+        </joint>
+        <joint name="left_rear_sandwich" type="revolute">
+            <pose>0 -0.0625 0 0 0 0</pose>
+            <child>left_rear_sandwich::link</child>
+            <parent>rear_axle</parent>
+            <axis>
+                <xyz>0 1 0</xyz>
+                <limit>
+                    <upper>0</upper>
+                    <lower>0</lower>
+                </limit>
+            </axis>
+        </joint>
+        <joint name="right_rear_sandwich" type="revolute">
+            <pose>0 -0.0625 0 0 0 0</pose>
+            <child>right_rear_sandwich::link</child>
+            <parent>rear_axle</parent>
+            <axis>
+                <xyz>0 1 0</xyz>
                 <limit>
                     <upper>0</upper>
                     <lower>0</lower>
