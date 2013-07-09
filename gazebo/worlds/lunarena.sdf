@@ -33,7 +33,7 @@
         <!-- Robots -->
 		<include>
 			<uri>model://elias</uri>
-			<pose>-1 -2 0.7 0 0 1.57</pose>
+			<pose>-1 -2 0.5 0 0 1.57</pose>
 		</include>
         <plugin name="clock" filename="libClockServerPlugin.so" />
     </world>

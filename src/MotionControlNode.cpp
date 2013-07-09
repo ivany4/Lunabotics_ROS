@@ -723,8 +723,8 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		if (fabs(heading_error) < this->motionConstraints.point_turn_angle_accuracy) {
 			lunabotics::CrabControl ctrl;
-			ctrl.velocity = this->linearVelocity;
-			ctrl.heading = std::min(y_err*10, M_PI_4);
+			ctrl.velocity = std::max(this->linearVelocity, 1.0);
+			ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*10, M_PI_4);
 			this->publisherCrab.publish(ctrl);
 		}
 		else {
