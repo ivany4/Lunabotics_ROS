@@ -17,8 +17,6 @@ namespace gazebo
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		bool LoadParams();
-		bool FindLinkByName(physics::LinkPtr &_link, const std::string _name);
-		bool FindJointByName(physics::JointPtr &_joint, const std::string _name);
 		void OnUpdate();
 		
 		tf::Transform leftFrontT;

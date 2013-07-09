@@ -5,6 +5,7 @@
 #include <sensors/sensors.hh>
 #include <common/common.hh>
 #include <stdio.h>
+#include "GazeboUtils.h"
 #include "../../src/topics.h"
 
 #define DEFAULT_TORQUE	5.0
@@ -67,7 +68,8 @@ namespace gazebo
 	bool LunaboticsDiffDrivePlugin::LoadParams(sdf::ElementPtr _sdf) {
 		bool success = false;
 		
-		if (this->FindJointByParam(_sdf, this->leftWheelJoint, "left_wheel_hinge") && this->FindJointByParam(_sdf, this->rightWheelJoint, "right_wheel_hinge")) {
+		if (findJointByName(this->model, this->leftWheelJoint, "left_wheel_hinge") &&
+		    findJointByName(this->model, this->rightWheelJoint, "right_wheel_hinge")) {
 			if (_sdf->HasElement("torque")) {
 				this->torque = _sdf->GetElement("torque")->GetValueDouble();
 			}
@@ -90,22 +92,6 @@ namespace gazebo
 			success = true;
 		}
 		return success;
-	}
-	
-	bool LunaboticsDiffDrivePlugin::FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param) {
-		if (!_sdf->HasElement(_param)) {
-		  gzerr << "param [" << _param << "] not found\n";
-		  return false;
-		}
-		else {
-			_joint = this->model->GetJoint(_sdf->GetElement(_param)->GetValueString());
-	
-			if (!_joint) {
-				gzerr << "joint by name [" << _sdf->GetElement(_param)->GetValueString() << "] not found in model\n";
-				return false;
-			}
-		}
-		return true;
 	}
 	
 	// Called by the world update start event

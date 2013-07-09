@@ -17,7 +17,6 @@ namespace gazebo
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		bool LoadParams();
-		bool FindJointByName(physics::JointPtr &_joint, const std::string _name);
 		void ROSCallback(const lunabotics::AllWheelState::ConstPtr& msg);
 		void OnUpdate();
 		double DrivingFromSteeringVelocity(double steeringVel);

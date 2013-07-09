@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <numeric>
 #include "std_msgs/Empty.h"
+#include "GazeboUtils.h"
 #include "../../src/topics.h"
 #include "../../src/types.h"
 
@@ -96,14 +97,14 @@ namespace gazebo
 	bool AllWheelSteeringPlugin::LoadParams() {
 		bool success = false;
 		
-		if (this->FindJointByName(this->leftFrontSteeringJoint, "left_front_steering_hinge") &&
-		    this->FindJointByName(this->rightFrontSteeringJoint, "right_front_steering_hinge") &&
-		    this->FindJointByName(this->leftRearSteeringJoint, "left_rear_steering_hinge") &&
-		    this->FindJointByName(this->rightRearSteeringJoint, "right_rear_steering_hinge") &&
-		    this->FindJointByName(this->leftFrontDrivingJoint, "left_front_driving_hinge") &&
-		    this->FindJointByName(this->rightFrontDrivingJoint, "right_front_driving_hinge") &&
-		    this->FindJointByName(this->leftRearDrivingJoint, "left_rear_driving_hinge") &&
-		    this->FindJointByName(this->rightRearDrivingJoint, "right_rear_driving_hinge")) {
+		if (findJointByName(this->model, this->leftFrontSteeringJoint, "left_front_steering_hinge") &&
+		    findJointByName(this->model, this->rightFrontSteeringJoint, "right_front_steering_hinge") &&
+		    findJointByName(this->model, this->leftRearSteeringJoint, "left_rear_steering_hinge") &&
+		    findJointByName(this->model, this->rightRearSteeringJoint, "right_rear_steering_hinge") &&
+		    findJointByName(this->model, this->leftFrontDrivingJoint, "left_front_driving_hinge") &&
+		    findJointByName(this->model, this->rightFrontDrivingJoint, "right_front_driving_hinge") &&
+		    findJointByName(this->model, this->leftRearDrivingJoint, "left_rear_driving_hinge") &&
+		    findJointByName(this->model, this->rightRearDrivingJoint, "right_rear_driving_hinge")) {
 		
 			ROS_INFO("============== Getting transforms ======================\n\n");
 			
@@ -130,15 +131,6 @@ namespace gazebo
 			success = true;
 		}
 		return success;
-	}
-	
-	bool AllWheelSteeringPlugin::FindJointByName(physics::JointPtr &_joint, const std::string _name) {
-		_joint = this->model->GetJoint(_name);
-		if (!_joint) {
-			gzerr << "joint by name [" << _name << "] not found in model\n";
-			return false;
-		}
-		return true;
 	}
 	
 	// Called by the world update start event

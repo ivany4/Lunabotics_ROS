@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.4">
-    <world name="moon">
+    <world name="arena">
         <physics type="ode">
             <gravity>0 0 -9.81</gravity>
             <ode>
@@ -13,13 +13,13 @@
                     <cfm>0.0</cfm>
                     <erp>0.2</erp>
                     <contact_max_correcting_vel>100.0</contact_max_correcting_vel>
-                    <contact_surface_layer>0.05</contact_surface_layer>
+                    <contact_surface_layer>0.0</contact_surface_layer>
                 </constraints>
             </ode>
             <max_step_size>0.001</max_step_size>
         </physics>
         <scene>
-			<grid>0</grid>
+			<grid>false</grid>
         </scene>
         <!-- A global light source -->
         <include>

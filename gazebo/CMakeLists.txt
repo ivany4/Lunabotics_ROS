@@ -27,6 +27,13 @@ if (PKG_CONFIG_FOUND)
 	link_directories(${tf_LIBRARY_DIRS})
 	set(CMAKE_INSTALL_RPATH "${roscpp_LIBRARY_DIRS}")
 	
+	#add_library(GazeboUtils SHARED src/GazeboUtils.cpp)
+	#set_target_properties(GazeboUtils PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
+	#set_target_properties(GazeboUtils PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
+	#target_link_libraries(GazeboUtils ${roscpp_LIBRARIES})
+	#install (TARGETS GazeboUtils DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
+	#set(GazeboUtils_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/libGazeboUtils.so")
+	
 	#Clock server
 	add_library(ClockServerPlugin SHARED src/ClockServerPlugin.cpp)
 	set_target_properties(ClockServerPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
@@ -35,28 +42,28 @@ if (PKG_CONFIG_FOUND)
 	install (TARGETS ClockServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 	
 	#Transform server
-	add_library(TransformServerPlugin SHARED src/TransformServerPlugin.cpp)
+	add_library(TransformServerPlugin SHARED src/TransformServerPlugin.cpp src/GazeboUtils.cpp)
 	set_target_properties(TransformServerPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${tf_CFLAGS_OTHER}")
 	set_target_properties(TransformServerPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${tf_LDFLAGS_OTHER}")
 	target_link_libraries(TransformServerPlugin ${roscpp_LIBRARIES} ${tf_LIBRARIES})
 	install (TARGETS TransformServerPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 	
 	#All wheel drive controller
-	add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp ../src/control/PIDController.cpp)
+	add_library(AllWheelSteeringPlugin SHARED src/AllWheelSteeringPlugin.cpp ../src/control/PIDController.cpp src/GazeboUtils.cpp)
 	set_target_properties(AllWheelSteeringPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${lunabotics_CFLAGS_OTHER}")
 	set_target_properties(AllWheelSteeringPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${lunabotics_LDFLAGS_OTHER}")
 	target_link_libraries(AllWheelSteeringPlugin ${roscpp_LIBRARIES} ${lunabotics_LIBRARIES})
 	install (TARGETS AllWheelSteeringPlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 	
 	#Differential drive controller
-	add_library(LunaboticsDiffDrivePlugin SHARED src/LunaboticsDiffDrivePlugin.cpp)
+	add_library(LunaboticsDiffDrivePlugin SHARED src/LunaboticsDiffDrivePlugin.cpp src/GazeboUtils.cpp)
 	set_target_properties(LunaboticsDiffDrivePlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER}")
 	set_target_properties(LunaboticsDiffDrivePlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER}")
 	target_link_libraries(LunaboticsDiffDrivePlugin ${roscpp_LIBRARIES})
 	install (TARGETS LunaboticsDiffDrivePlugin DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/gazebo_plugins/)
 	
 	#Odometry publisher
-	add_library(LunaboticsOdometryPlugin SHARED src/LunaboticsOdometryPlugin.cpp)
+	add_library(LunaboticsOdometryPlugin SHARED src/LunaboticsOdometryPlugin.cpp src/GazeboUtils.cpp)
 	set_target_properties(LunaboticsOdometryPlugin PROPERTIES COMPILE_FLAGS "${roscpp_CFLAGS_OTHER} ${tf_CFLAGS_OTHER}")
 	set_target_properties(LunaboticsOdometryPlugin PROPERTIES LINK_FLAGS "${roscpp_LDFLAGS_OTHER} ${tf_LDFLAGS_OTHER}")
 	target_link_libraries(LunaboticsOdometryPlugin ${roscpp_LIBRARIES} ${tf_LIBRARIES})

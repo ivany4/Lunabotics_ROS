@@ -20,6 +20,10 @@ namespace gazebo
 		
 		// Pointer to the model
 		physics::ModelPtr model;
+		physics::LinkPtr baseLink;
+		ros::Time previousTime;
+		
+		math::Pose previousPose;
 	
 		// Pointer to the update event connection
 		event::ConnectionPtr updateConnection;

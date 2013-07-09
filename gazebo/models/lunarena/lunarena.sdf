@@ -19,6 +19,21 @@
 						</ode>
 					</contact>
                 </surface>-->
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>3</mu>
+                            <mu2>3</mu2>
+                            <slip1>0.0</slip1>
+                            <slip2>0.0</slip2>
+                        </ode>
+                    </friction>
+	                <contact>
+						<ode>
+							<soft_cfm>0.005</soft_cfm>
+						</ode>
+	                </contact>
+                </surface>
             </collision>
             <visual name="lunarena">
 				<pose>0 0 0 0 0 0</pose>

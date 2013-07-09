@@ -16,7 +16,6 @@ namespace gazebo
 		void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 	private:
 		bool LoadParams(sdf::ElementPtr _sdf);
-		bool FindJointByParam(sdf::ElementPtr _sdf, physics::JointPtr &_joint, std::string _param);
 		void ROSCallback(const geometry_msgs::Twist::ConstPtr& msg);
 		void OnUpdate();
 	

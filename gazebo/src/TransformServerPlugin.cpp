@@ -4,6 +4,7 @@
 #include <physics/physics.hh>
 #include <stdio.h>
 #include <numeric>
+#include "GazeboUtils.h"
 
 namespace gazebo
 {   
@@ -36,12 +37,12 @@ namespace gazebo
 	bool TransformServerPlugin::LoadParams() {
 		bool success = false;
 		
-		if (this->FindLinkByName(this->lidarLink, "hokuyo::link") &&
-		    this->FindJointByName(this->leftFrontJoint, "left_front_steering_hinge") &&
-		    this->FindJointByName(this->leftRearJoint, "left_rear_steering_hinge") &&
-		    this->FindJointByName(this->rightFrontJoint, "right_front_steering_hinge") &&
-		    this->FindJointByName(this->rightRearJoint, "right_rear_steering_hinge") &&
-		    this->FindJointByName(this->leftFrontWheelJoint, "left_front_driving_hinge")) {
+		if (findLinkByName(this->model, this->lidarLink, "hokuyo::link") &&
+		    findJointByName(this->model, this->leftFrontJoint, "left_front_steering_hinge") &&
+		    findJointByName(this->model, this->leftRearJoint, "left_rear_steering_hinge") &&
+		    findJointByName(this->model, this->rightFrontJoint, "right_front_steering_hinge") &&
+		    findJointByName(this->model, this->rightRearJoint, "right_rear_steering_hinge") &&
+		    findJointByName(this->model, this->leftFrontWheelJoint, "left_front_driving_hinge")) {
 			
 			
 			ROS_INFO("============== Getting transforms ======================\n\n");
@@ -115,24 +116,6 @@ namespace gazebo
 			success = true;
 		}
 		return success;
-	}
-	
-	bool TransformServerPlugin::FindLinkByName(physics::LinkPtr &_link, const std::string _name) {
-		_link = this->model->GetLink(_name);
-		if (!_link) {
-			gzerr << "link by name [" << _name << "] not found in model\n";
-			return false;
-		}
-		return true;
-	}
-	
-	bool TransformServerPlugin::FindJointByName(physics::JointPtr &_joint, const std::string _name) {
-		_joint = this->model->GetJoint(_name);
-		if (!_joint) {
-			gzerr << "joint by name [" << _name << "] not found in model\n";
-			return false;
-		}
-		return true;
 	}
 	
 	// Called by the world update start event
