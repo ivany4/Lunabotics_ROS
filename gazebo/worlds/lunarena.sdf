@@ -2,7 +2,7 @@
 <sdf version="1.4">
     <world name="moon">
         <physics type="ode">
-            <gravity>0 0 -98.81</gravity>
+            <gravity>0 0 -9.81</gravity>
             <ode>
                 <solver>
                     <type>quick</type>
@@ -33,7 +33,7 @@
         <!-- Robots -->
 		<include>
 			<uri>model://elias</uri>
-			<pose>-1 -2 0.6 0 0 1.57</pose>
+			<pose>-1 -2 0.7 0 0 1.57</pose>
 		</include>
         <plugin name="clock" filename="libClockServerPlugin.so" />
     </world>
