@@ -39,6 +39,9 @@ message Telemetry {
 
                 message PointTurnTelemetry {
 					required PointTurnState state = 1;
+					optional float lateral_deviation = 2;
+					optional Point deviation_path_point = 3;
+					optional Point deviation_path_point_local = 4;
 				}
 				optional PointTurnTelemetry point_turn_telemetry = 11;
     }

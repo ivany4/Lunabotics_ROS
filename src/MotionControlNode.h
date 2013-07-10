@@ -84,6 +84,7 @@ private:
 	double previousYaw;
 	ros::Time previousYawTime;
 	double linearVelocity;
+	bool crabbedBefore;
 	
 	lunabotics::PredefinedCmdControllerPtr predefinedControl;
 	lunabotics::PIDControllerPtr ackermannPID;

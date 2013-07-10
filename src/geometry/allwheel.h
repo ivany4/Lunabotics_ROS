@@ -4,7 +4,7 @@
 #include "../types.h"
 
 #define GEOMETRY_OUTER_ANGLE_MAX	M_PI_2		
-#define GEOMETRY_INNER_ANGLE_MAX	M_PI/180*65
+#define GEOMETRY_INNER_ANGLE_MAX	M_PI/180*64
 
 namespace lunabotics {
 	class AllWheelGeometry {

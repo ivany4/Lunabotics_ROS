@@ -3,11 +3,18 @@
 #include "tf/tf.h"
 #include <algorithm>
 
+#define INTERPOLATION_PTS_PER_M 100
+
 using namespace lunabotics;
 
 //---------------- Contructors / Destructor ---------------------//
 
 PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry):
+has_lateral_deviation(false),
+lateral_deviation(0),
+deviation_path_point(),
+deviation_path_point_in_local_frame(),
+has_deviation_path_point(false),
 feedback_point(),
 feedback_point_in_local_frame(),
 has_feedback_point(false),
@@ -48,6 +55,11 @@ velocity(0)
 
 PathFollowingGeometry::PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset,
 float feedback_multiplier, float feedforward_offset, float feedforward_fraction):
+has_lateral_deviation(false),
+lateral_deviation(0),
+deviation_path_point(),
+deviation_path_point_in_local_frame(),
+has_deviation_path_point(false),
 feedback_point(),
 feedback_point_in_local_frame(),
 has_feedback_point(false),
@@ -137,6 +149,14 @@ Point PathFollowingGeometry::getFeedbackPointInLocalFrame()
 	return this->feedback_point_in_local_frame;
 }
 
+Point PathFollowingGeometry::getDeviationPathPointInLocalFrame()
+{
+	if (!this->has_local_frame) {
+		this->updateLocalFrame();
+	}
+	return this->deviation_path_point_in_local_frame;
+}
+
 Point PathFollowingGeometry::getFeedforwardPoint()
 {
 	if (!this->has_feedforward_point) {
@@ -168,11 +188,36 @@ double PathFollowingGeometry::getFeedbackError()
 		if (!this->has_local_frame) {
 			this->updateLocalFrame();
 		}
-		int multiplier = this->feedback_path_point_in_local_frame.y >= 0 ? -1 : 1;
-		this->feedback_error = distance(this->feedback_path_point_in_local_frame, this->feedback_point_in_local_frame) * multiplier;
-		this->has_feedback_error = true;
+		if (this->has_feedback_path_point) {
+			int multiplier = this->feedback_path_point_in_local_frame.y >= 0 ? -1 : 1;
+			this->feedback_error = distance(this->feedback_path_point_in_local_frame, this->feedback_point_in_local_frame) * multiplier;
+			this->has_feedback_error = true;
+		}
+		else {
+			this->feedback_error = 0;
+		}
 	}		
 	return this->feedback_error;
+}
+
+double PathFollowingGeometry::getLateralDeviation()
+{
+	if (!this->has_lateral_deviation) {
+		if (!this->has_local_frame) {
+			this->updateLocalFrame();
+		}
+		if (this->has_deviation_path_point) {
+			int multiplier = this->deviation_path_point_in_local_frame.y >= 0 ? -1 : 1;
+			this->lateral_deviation = distance(this->deviation_path_point_in_local_frame, CreateZeroPoint()) * multiplier;
+			this->has_lateral_deviation = true;
+			//ROS_INFO("Getting lateral deviation %f", this->lateral_deviation);
+		}
+		else {
+			this->lateral_deviation = 0;
+			//ROS_WARN("Can't get lateral deviation");
+		}
+	}		
+	return this->lateral_deviation;
 }
 
 //Allow same: whether allow closest obstacle point to be same as reference point
@@ -217,33 +262,98 @@ bool PathFollowingGeometry::getTwoPathPointsClosestToPoint(Point referencePoint,
 	return false;
 }
 
+PointArr PathFollowingGeometry::interpolate(Point p1, Point p2)
+{
+	PointArr result;
+	double length_between_waypoints = distance(p1, p2);
+	int temp = round(length_between_waypoints*INTERPOLATION_PTS_PER_M);
+	unsigned int num_points = std::max(1, temp);
+	double step = (double)(length_between_waypoints/num_points);
+	
+	//ROS_INFO("Interpolating %f with %d pts", length_between_waypoints, num_points);
+	
+	result.push_back(p1);
+	for (unsigned int i = 1; i < num_points-1; i++) {
+		double fraction = (double)(i/(double)num_points);
+		//ROS_INFO("Fraction %f", fraction);
+		double x = p1.x+(p2.x-p1.x)*fraction;
+		double y = p1.y+(p2.y-p1.y)*fraction;
+		result.push_back(CreatePoint(x, y));
+	}
+	result.push_back(p2);
+	return result;
+}
+
+
+Point PathFollowingGeometry::getClosestPointFromSet(Point referencePoint, PointArr pointSet)
+{
+	Point result;
+	if (pointSet.size() > 0) {
+		result = pointSet.at(0);
+		double closest_distance = distance(referencePoint, result);
+		for (PointArrIt it = pointSet.begin()+1; it < pointSet.end(); it++) {
+			double new_distance = distance(referencePoint, *it);
+			
+			//ROS_INFO("%.2f,%.2f -> %.2f,%.2f = %.4f", referencePoint.x, referencePoint.y, (*it).x, (*it).y, new_distance);
+			if (new_distance < closest_distance) {
+				closest_distance = new_distance;
+				result = *it;
+			}
+		}
+		
+	//	ROS_WARN("Shortest %.2f,%.2f -> %.2f,%.2f = %.4f", referencePoint.x, referencePoint.y, result.x, result.y, closest_distance);
+	}
+	else {
+		result = referencePoint;
+	}
+	return result;
+}
+
 bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &resultPoint)
 {
 	bool result = false;
 	if (this->path.size() >= 2) {
 		
 		Point closest_point, second_closest_point;
+		bool closest_is_next;
+		if (this->getTwoPathPointsClosestToPoint(referencePoint, closest_point, second_closest_point, true, closest_is_next)) {
+			PointArr candidates = this->interpolate(closest_point, second_closest_point);
+			resultPoint = this->getClosestPointFromSet(referencePoint, candidates);
+			result = true;			
+		}
+		
+		/*
+		Point closest_point, second_closest_point;
 		bool dummy;
 		
 		if (this->getTwoPathPointsClosestToPoint(referencePoint, closest_point, second_closest_point, true, dummy)) {
-			double angle = this->getReferenceAngle(closest_point, referencePoint, second_closest_point);
+			double angle = angleFromTriangle(closest_point, referencePoint, second_closest_point);
 			
 			//Reference point lies not between waypoints 1 and 2 but beyond
-			//#pragma message("ALWAYS FALSE FOR TESTING");
-			//if (false && fabs(angle) > M_PI_2) {
-			if (fabs(angle) > M_PI_2) {
+			#pragma message("ALWAYS FALSE FOR TESTING");
+			if (false && fabs(angle) > M_PI_2) {
+			//if (fabs(angle) > M_PI_2) {
 				resultPoint = second_closest_point;
+				result = true;
 			}
 			else {
 				double length_between_waypoints = distance(closest_point, second_closest_point);
 				double closest_distance = distance(closest_point, referencePoint);
-				double closest_waypoint_to_feedback_path_point = closest_distance*cos(angle);
-				double fraction = closest_waypoint_to_feedback_path_point/length_between_waypoints;
+				double closest_waypoint_to_path_point = closest_distance*cos(angle);
+				double fraction = closest_waypoint_to_path_point/length_between_waypoints;
 				resultPoint.x = (second_closest_point.x-closest_point.x)*fraction + closest_point.x;
 				resultPoint.y = (second_closest_point.y-closest_point.y)*fraction + closest_point.y;
+				result = true;
 			}
-			result = true;
-		}			
+		}	*/
+			
+	}
+	else if (this->path.size() == 1) {
+		resultPoint = this->path.at(0);
+		ROS_WARN("Path size is 1. Assigning it as the closest point");
+	}	
+	else {
+		ROS_WARN("PAth size is less than 1. Not able to find closest path point");
 	}
 	return result;
 }
@@ -255,6 +365,18 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 															this->feedback_path_point);
 	}
 	return this->feedback_path_point;
+}
+
+Point PathFollowingGeometry::getDeviationPathPoint()
+{
+	if (!this->has_deviation_path_point) {
+		this->has_deviation_path_point = this->getClosestPathPoint(this->current_pose.position, 
+															this->deviation_path_point);
+		if (!this->has_deviation_path_point) {
+			ROS_ERROR("Failed to get deviation path point");
+		}
+	}
+	return this->deviation_path_point;
 }
 
 double PathFollowingGeometry::getHeadingError()
@@ -314,22 +436,6 @@ void PathFollowingGeometry::setFeedforwardCurvatureDetectionStart(float velocity
 
 //---------------- Private methods ------------------------------//
 
-//Angle at point1 
-double PathFollowingGeometry::getReferenceAngle(Point point1, Point point2, Point point3)
-{
-	double edge1 = distance(point1, point3);
-	double edge2 = distance(point1, point2);
-	double edge3 = distance(point2, point3);
-	return this->getReferenceAngle(edge1, edge2, edge3);
-}
-
-//Angle between edge1 and edge2
-double PathFollowingGeometry::getReferenceAngle(double edge1, double edge2, double edge3)
-{
-	//Cosine rule
-	return acos((pow(edge2,2)+pow(edge1,2)-pow(edge3,2))/(2*edge2*edge1));
-}
-
 void PathFollowingGeometry::invalidateCache()
 {
 	this->has_feedback_point = false;
@@ -344,6 +450,8 @@ void PathFollowingGeometry::invalidateCache()
 	this->has_feedback_error = false;
 	this->has_feedforward_center = false;
 	this->has_heading_error = false;
+	this->has_lateral_deviation = false;
+	this->has_deviation_path_point = false;
 }
 
 void PathFollowingGeometry::updateLocalFrame()
@@ -356,6 +464,7 @@ void PathFollowingGeometry::updateLocalFrame()
 	this->feedback_path_point_in_local_frame = this->localFramePoint(this->getFeedbackPathPoint());
 	this->feedback_point_in_local_frame = this->localFramePoint(this->getFeedbackPoint());
 	this->feedforward_point_in_local_frame = this->localFramePoint(this->getFeedforwardPoint());
+	this->deviation_path_point_in_local_frame = this->localFramePoint(this->getDeviationPathPoint());
 	
 	PointArr points = this->getCurvatureDetectionPoints();
 	this->curvature_detection_points_in_local_frame.clear();
@@ -380,12 +489,12 @@ PointArr PathFollowingGeometry::getCurvatureDetectionPoints()
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d2), p2) &&
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d4), p4) &&
 		this->getClosestPathPoint(this->getLookAheadPointAtDistance(d5), p5)) {
-			ROS_INFO("Detection p1 %.2f,%.2f", p1.x, p1.y);
+			/*ROS_INFO("Detection p1 %.2f,%.2f", p1.x, p1.y);
 			ROS_INFO("Detection p2 %.2f,%.2f", p2.x, p2.y);
 			ROS_INFO("Detection p3 %.2f,%.2f", p3.x, p3.y);
 			ROS_INFO("Detection p4 %.2f,%.2f", p4.x, p4.y);
 			ROS_INFO("Detection p5 %.2f,%.2f", p5.x, p5.y);
-			
+			*/
 			
 			this->curvature_detection_points.clear();
 			this->curvature_detection_points.push_back(p1);
@@ -396,7 +505,7 @@ PointArr PathFollowingGeometry::getCurvatureDetectionPoints()
 			this->has_curvature_detection_points = true;
 		}
 		else {
-			ROS_WARN("Can't get curvature detection points");
+		//	ROS_WARN("Can't get curvature detection points");
 		}
 	}
 	return this->curvature_detection_points;
@@ -419,7 +528,7 @@ Point PathFollowingGeometry::getFeedforwardCurveCenterPoint()
 			Point p2 = points.at(2);
 			Point p3 = points.at(4);
 			
-			ROS_INFO("p1 %.2f,%2.f; p2 %.2f,%2.f; p3 %.2f,%2.f", p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+			//ROS_INFO("p1 %.2f,%2.f; p2 %.2f,%2.f; p3 %.2f,%2.f", p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
 			
 			//Equation 12
 			double l12 = (p2.y-p1.y)/(p2.x-p1.x);
@@ -460,7 +569,7 @@ double PathFollowingGeometry::getCurveRadius()
 			//std::stringstream sstr;
 			//sstr << center;
 						
-			ROS_INFO("Getting curve radius %f, pts.size %d. %.2f, %.2f", radius, (unsigned int)points.size(), center.x, center.y);
+			//ROS_INFO("Getting curve radius %f, pts.size %d. %.2f, %.2f", radius, (unsigned int)points.size(), center.x, center.y);
 			
 			this->has_curve_radius = true;
 		}
@@ -475,18 +584,25 @@ double PathFollowingGeometry::getFeedforwardPrediction()
 {
 	if (!this->has_feedforward_prediction) {
 		
-		float l1 = this->robotGeometry->left_front().x;
-		float l2 = fabs(this->robotGeometry->left_rear().x);
+		this->getCurveRadius();
+		if (this->has_curve_radius) {
 		
-		//Equation 15
-		double A = -(MASS*l1*C_ALPHA_F-l2*C_ALPHA_R)/(2*pow((l1+l2), 2)*C_ALPHA_F*C_ALPHA_R);
-		
-		//Curvature
-		double k = 1.0/this->getCurveRadius();
-		
-		//Equation 14
-		this->feedforward_prediction = k*(1+A*pow(this->velocity, 2))/(1/l1+l2);
-		this->has_feedforward_prediction = true;
+			float l1 = this->robotGeometry->left_front().x;
+			float l2 = fabs(this->robotGeometry->left_rear().x);
+			
+			//Equation 15
+			double A = -(MASS*l1*C_ALPHA_F-l2*C_ALPHA_R)/(2*pow((l1+l2), 2)*C_ALPHA_F*C_ALPHA_R);
+			
+			//Curvature
+			double k = 1.0/this->curve_radius;
+			
+			//Equation 14
+			this->feedforward_prediction = k*(1+A*pow(this->velocity, 2))/(1/l1+l2);
+			this->has_feedforward_prediction = true;
+		}
+		else {
+			this->feedforward_prediction = 0;
+		}
 	}
 	return this->feedforward_prediction;	
 }
@@ -513,7 +629,7 @@ bool PathFollowingGeometry::getTangentAtPoint(Point point, double &heading)
 		double dx = closest_point.x - point.x;
 		double dy = closest_point.y - point.y;
 		double lineHeading = atan2(dy, dx);
-		double angle = this->getReferenceAngle(closest_point, point, second_closest_point);
+		double angle = angleFromTriangle(closest_point, point, second_closest_point);
 		
 		heading = lineHeading + angle;			
 		return true;

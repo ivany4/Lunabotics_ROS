@@ -33,7 +33,7 @@ cached_map_up_to_date(false),
 sequence(0), autonomyEnabled(false), steeringMode(lunabotics::proto::ACKERMANN), 
 pointTurnMotionState(lunabotics::proto::Telemetry::STOPPED), currentPose(), segmentsIt(), segments(),
 waypointsIt(), waypoints(), desiredWaypoints(), motionConstraints(), minICRRadius(0.0f),
-ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0)
+ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0), crabbedBefore(false)
 {
 	
 	Point zeroPoint = CreatePoint(0, 0);
@@ -82,7 +82,7 @@ ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0
 	this->publisherAllWheelMotion = this->nodeHandle->advertise<lunabotics::AllWheelState>(TOPIC_CMD_EXPLICIT_ALL_WHEEL, sizeof(float)*8);
 	this->publisherPathFollowingTelemetry = this->nodeHandle->advertise<lunabotics::PathFollowingTelemetry>(TOPIC_TM_PATH_FOLLOWING, 256);
 	this->publisherGeometry = this->nodeHandle->advertise<lunabotics::RobotGeometry>(TOPIC_TM_ROBOT_GEOMETRY, sizeof(float)*2*4);
-	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, sizeof(uint32_t));
+	this->publisherAllWheelCommon = this->nodeHandle->advertise<lunabotics::AllWheelCommon>(TOPIC_CMD_ALL_WHEEL, 256);
 	this->publisherCrab = this->nodeHandle->advertise<lunabotics::CrabControl>(TOPIC_CMD_CRAB, sizeof(float)*2);
 	
 	
@@ -149,7 +149,13 @@ void MotionControlNode::callbackAllWheelFeedback(const lunabotics::AllWheelState
 
 void MotionControlNode::callbackAllWheelCommon(const lunabotics::AllWheelCommon::ConstPtr &msg)
 {
-	this->predefinedControl->setNewCommand((lunabotics::proto::AllWheelControl::PredefinedControlType)msg->predefined_cmd);
+	if (msg->force_cmd) {
+		lunabotics::AllWheelState ctrlMsg = this->predefinedControl->stateForCommand((lunabotics::proto::AllWheelControl::PredefinedControlType)msg->predefined_cmd);
+		this->publisherAllWheelMotion.publish(ctrlMsg);
+	}
+	else {
+		this->predefinedControl->setNewCommand((lunabotics::proto::AllWheelControl::PredefinedControlType)msg->predefined_cmd);
+	}
 }
 
 void MotionControlNode::callbackAutonomy(const std_msgs::Bool::ConstPtr &msg)
@@ -171,6 +177,9 @@ void MotionControlNode::callbackCrab(const lunabotics::CrabControl::ConstPtr &ms
 	float angle_front_right = msg->heading;
 	float angle_rear_left = msg->heading;
 	float angle_rear_right = msg->heading;
+	
+	//ROS_INFO("Crabbing at angle %f", msg->heading);
+	
 	if (validateAngles(angle_front_left, angle_front_right, angle_rear_left, angle_rear_right)) {
 		double min_angle = std::min(fabs(angle_front_left), fabs(angle_front_right));
 		min_angle = std::min(min_angle, fabs(angle_rear_left));
@@ -244,6 +253,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	this->ackermannJustStarted = true;
 	this->waypoints.clear();
 	this->minICRRadius = 0;
+	this->predefinedControl->abort();
 	
 	lunabotics::PathTopic pathMsg;
 	pathMsg.path.header.stamp = ros::Time::now();
@@ -567,6 +577,8 @@ void MotionControlNode::controlAckermann()
 		}
 	}
 	
+	this->predefinedControl->abort();
+	
 	if (this->isDiffDriveRobot) {
 		this->controlAckermannDiffDrive();
 	}
@@ -688,7 +700,6 @@ void MotionControlNode::controlAckermannAllWheel()
 			}
 		}
 		
-		
 		double y_err = this->pathFollowingGeometry->getFeedbackError();
 		double prediction = this->pathFollowingGeometry->getFeedforwardPrediction();
 		double heading_error = this->pathFollowingGeometry->getHeadingError();
@@ -721,10 +732,12 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		//Original control
 		
-		if (fabs(heading_error) < this->motionConstraints.point_turn_angle_accuracy) {
+		if (fabs(heading_error) < this->motionConstraints.point_turn_angle_accuracy &&
+			fabs(y_err) > 0.05 && 
+			fabs(angleFromTriangle(this->currentPose.position, this->pathFollowingGeometry->getFeedbackPathPoint(), *this->waypointsIt)) > M_PI/12.0) {
 			lunabotics::CrabControl ctrl;
 			ctrl.velocity = std::max(this->linearVelocity, 1.0);
-			ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*10, M_PI_4);
+			ctrl.heading = -sign(y_err)*std::min(fabs(y_err), GEOMETRY_INNER_ANGLE_MAX);
 			this->publisherCrab.publish(ctrl);
 		}
 		else {
@@ -912,8 +925,11 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 	
 	switch (this->pointTurnMotionState) {
 		case lunabotics::proto::Telemetry::STOPPED: {
+			this->crabbedBefore = false;
 			//ROS_INFO("SKID: stopped dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
+			//msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
+				
 			if (distance <= this->motionConstraints.point_turn_distance_accuracy) {
 				this->waypointsIt++;
 				if (this->waypointsIt >= this->waypoints.end()) {
@@ -938,7 +954,9 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 		}	
 		break;
 		case lunabotics::proto::Telemetry::DRIVING: {	
-			//ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
+			telemetryMsg.heading_error = theta;
+			
+		//	ROS_INFO("SKID: driving        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			if (distance < this->motionConstraints.point_turn_distance_accuracy) {
 				this->pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
@@ -950,12 +968,44 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				}
 			}	
 			else {
-				msg.predefined_cmd = lunabotics::proto::AllWheelControl::DRIVE_FORWARD;
+				
+				double y_err = this->pathFollowingGeometry->getLateralDeviation();
+				Point deviationPoint = this->pathFollowingGeometry->getDeviationPathPoint();
+				
+				//Crab only when deviation point is on the side and not on the front
+				if (fabs(y_err) > 0.05 && fabs(angleFromTriangle(this->currentPose.position, deviationPoint, *this->waypointsIt)) > M_PI/12.0) {
+					
+					lunabotics::CrabControl ctrl;
+					ctrl.velocity = DEFAULT_WHEEL_VELOCITY;
+					ctrl.heading = -sign(y_err)*std::min(fabs(y_err), GEOMETRY_INNER_ANGLE_MAX);
+					
+					//ROS_INFO("Crabbing with heading %f", ctrl.heading);
+					
+					this->publisherCrab.publish(ctrl);
+					publishCommonMsg = false;
+					this->crabbedBefore = true;
+					this->predefinedControl->abort();
+				}
+				else {
+					
+					//ROS_INFO("Driving straight");
+					
+					msg.predefined_cmd = lunabotics::proto::AllWheelControl::DRIVE_FORWARD;
+					msg.force_cmd = this->crabbedBefore;
+				}
+			
+				telemetryMsg.lateral_deviation = y_err;
+				telemetryMsg.deviation_path_point = geometry_msgs_Point_from_Point(deviationPoint);
+				telemetryMsg.deviation_path_point_local = geometry_msgs_Point_from_Point(this->pathFollowingGeometry->getDeviationPathPointInLocalFrame());
+				telemetryMsg.has_lateral_deviation = true;
 			}
 		}
 		break;
 		case lunabotics::proto::Telemetry::TURNING: {
+			this->crabbedBefore = false;
 			
+			telemetryMsg.heading_error = theta;
+		
 			int direction = sign(theta, this->motionConstraints.point_turn_angle_accuracy);
 			
 			ros::Time now = ros::Time::now();

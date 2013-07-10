@@ -12,6 +12,7 @@ has_final_state(false),
 _current_cmd(),
 is_final_state(true),
 state_reached(false),
+force_state(false),
 _geometry(NULL),
 previousState(),
 angular_velocity(DEFAULT_WHEEL_VELOCITY),
@@ -27,10 +28,15 @@ PredefinedCmdController::~PredefinedCmdController()
 
 bool PredefinedCmdController::needsMoreControl()
 {
-	return !this->is_final_state;
+	return this->force_state || !this->is_final_state;
 }
 
 void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
+{
+	this->setNewCommand(cmd, true);
+}
+
+void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd, bool safeSwitch)
 {
 	if ((cmd == lunabotics::proto::AllWheelControl::TURN_CCW || cmd == lunabotics::proto::AllWheelControl::TURN_CW) && !this->_geometry) {
 		ROS_WARN("Can't perform turning command since robot geometry is undefined");
@@ -38,13 +44,25 @@ void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::
 	else {
 		if (cmd != this->_current_cmd || cmd == lunabotics::proto::AllWheelControl::STOP) { //Always allow stop
 			this->_current_cmd = cmd;
-			this->setAwaitingState(AwaitingDriving);
-			this->needPreviousState = true;
-			this->is_final_state = false;
-			this->removeFinalState();
-			this->state_reached = false;
+			if (safeSwitch) {
+				this->setAwaitingState(AwaitingDriving);
+				this->needPreviousState = true;
+				this->is_final_state = false;
+				this->removeFinalState();
+				this->state_reached = false;
+				this->force_state = false;
+			}
+			else {
+				this->force_state = true;
+			}
 		}
 	}
+}
+
+void PredefinedCmdController::abort()
+{
+	this->_current_cmd = lunabotics::proto::AllWheelControl::STOP;
+	this->is_final_state = true;
 }
 
 void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
@@ -93,7 +111,10 @@ void PredefinedCmdController::setWheelVelocity(double velocity)
 
 bool PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 {	
-	if (this->needsMoreControl()) {
+	if (this->force_state) {
+		signal = this->stateForCommand(this->_current_cmd);
+	}
+	else if (this->needsMoreControl()) {
 				
 		if (this->awaitingState == AwaitingDriving || this->awaitingState == AwaitingSteering) {
 			signal.driving.left_front = 0;
@@ -101,137 +122,16 @@ bool PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 			signal.driving.left_rear = 0;
 			signal.driving.right_rear = 0;
 			if (this->awaitingState == AwaitingDriving) {
-				signal.steering.left_front = this->previousState.steering.left_front;
-				signal.steering.right_front = this->previousState.steering.right_front;
-				signal.steering.left_rear = this->previousState.steering.left_rear;
-				signal.steering.right_rear = this->previousState.steering.right_rear;
+				this->copySteeringAngles(this->previousState, signal);
 			}
 		}
-		
-		switch (this->_current_cmd) {
-			case lunabotics::proto::AllWheelControl::CRAB_LEFT: {
-				if (this->awaitingState != AwaitingDriving) {
-					signal.steering.left_front = -M_PI_2;
-					signal.steering.right_front = M_PI_2;
-					signal.steering.left_rear = M_PI_2;
-					signal.steering.right_rear = -M_PI_2;
-				}
-				if (this->awaitingState == AwaitingNone) {
-					signal.driving.left_front = -this->angular_velocity;
-					signal.driving.right_front = this->angular_velocity;
-					signal.driving.left_rear = this->angular_velocity;
-					signal.driving.right_rear = -this->angular_velocity;
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::CRAB_RIGHT: {
-				if (this->awaitingState != AwaitingDriving) {
-					signal.steering.left_front = -M_PI_2;
-					signal.steering.right_front = M_PI_2;
-					signal.steering.left_rear = M_PI_2;
-					signal.steering.right_rear = -M_PI_2;
-				}
-				if (this->awaitingState == AwaitingNone) {
-					signal.driving.left_front = this->angular_velocity;
-					signal.driving.right_front = -this->angular_velocity;
-					signal.driving.left_rear = -this->angular_velocity;
-					signal.driving.right_rear = this->angular_velocity;
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::TURN_CCW: {
-				float lf, rf, lr, rr;
-				Point ICR; ICR.x = 0; ICR.y = 0;
-				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
-					
-					if (this->awaitingState != AwaitingDriving) {
-						signal.steering.left_front = lf;
-						signal.steering.right_front = rf;
-						signal.steering.left_rear = lr;
-						signal.steering.right_rear = rr;
-					}
-					if (this->awaitingState == AwaitingNone) {
-						signal.driving.left_front = -this->angular_velocity;
-						signal.driving.right_front = this->angular_velocity;
-						signal.driving.left_rear = -this->angular_velocity;
-						signal.driving.right_rear = this->angular_velocity;
-					}
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::TURN_CW: {
-				float lf, rf, lr, rr;
-				Point ICR; ICR.x = 0; ICR.y = 0;
-				if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
-					if (this->awaitingState != AwaitingDriving) {
-						signal.steering.left_front = lf;
-						signal.steering.right_front = rf;
-						signal.steering.left_rear = lr;
-						signal.steering.right_rear = rr;
-					}
-					if (this->awaitingState == AwaitingNone) {
-						signal.driving.left_front = this->angular_velocity;
-						signal.driving.right_front = -this->angular_velocity;
-						signal.driving.left_rear = this->angular_velocity;
-						signal.driving.right_rear = -this->angular_velocity;
-					}
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::DRIVE_FORWARD: {
-				if (this->awaitingState != AwaitingDriving) {
-					signal.steering.left_front = 0;
-					signal.steering.right_front = 0;
-					signal.steering.left_rear = 0;
-					signal.steering.right_rear = 0;
-				}
-				if (this->awaitingState == AwaitingNone) {
-					signal.driving.left_front = this->angular_velocity;
-					signal.driving.right_front = this->angular_velocity;
-					signal.driving.left_rear = this->angular_velocity;
-					signal.driving.right_rear = this->angular_velocity;
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::DRIVE_BACKWARD: {
-				if (this->awaitingState != AwaitingDriving) {
-					signal.steering.left_front = 0;
-					signal.steering.right_front = 0;
-					signal.steering.left_rear = 0;
-					signal.steering.right_rear = 0;
-				}
-				if (this->awaitingState == AwaitingNone) {
-					signal.driving.left_front = -this->angular_velocity;
-					signal.driving.right_front = -this->angular_velocity;
-					signal.driving.left_rear = -this->angular_velocity;
-					signal.driving.right_rear = -this->angular_velocity;
-				}
-			}
-			break;
-			
-			case lunabotics::proto::AllWheelControl::STOP: {
-				if (this->awaitingState != AwaitingDriving) {
-					signal.steering.left_front = 0;
-					signal.steering.right_front = 0;
-					signal.steering.left_rear = 0;
-					signal.steering.right_rear = 0;
-				}
-				if (this->awaitingState == AwaitingNone) {
-					signal.driving.left_front = 0;
-					signal.driving.right_front = 0;
-					signal.driving.left_rear = 0;
-					signal.driving.right_rear = 0;
-				}
-			}
-			break;
-			
-			default:
-			break;
+				
+		lunabotics::AllWheelState desiredState = this->stateForCommand(this->_current_cmd);
+		if (this->awaitingState != AwaitingDriving) {
+			this->copySteeringAngles(desiredState, signal);
+		}
+		if (this->awaitingState == AwaitingNone) {
+			this->copyDrivingVelocities(desiredState, signal);
 		}
 		
 		if (this->awaitingState == AwaitingDriving) {
@@ -280,4 +180,123 @@ void PredefinedCmdController::removeFinalState()
 		//ROS_INFO("Removing final state");
 		this->has_final_state = false;
 	}
+}
+
+
+lunabotics::AllWheelState PredefinedCmdController::stateForCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
+{
+	lunabotics::AllWheelState result;
+	switch (cmd) {
+		case lunabotics::proto::AllWheelControl::CRAB_LEFT: {
+			result.steering.left_front = -M_PI_2;
+			result.steering.right_front = M_PI_2;
+			result.steering.left_rear = M_PI_2;
+			result.steering.right_rear = -M_PI_2;
+			result.driving.left_front = -this->angular_velocity;
+			result.driving.right_front = this->angular_velocity;
+			result.driving.left_rear = this->angular_velocity;
+			result.driving.right_rear = -this->angular_velocity;
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::CRAB_RIGHT: {
+			result.steering.left_front = -M_PI_2;
+			result.steering.right_front = M_PI_2;
+			result.steering.left_rear = M_PI_2;
+			result.steering.right_rear = -M_PI_2;
+			result.driving.left_front = this->angular_velocity;
+			result.driving.right_front = -this->angular_velocity;
+			result.driving.left_rear = -this->angular_velocity;
+			result.driving.right_rear = this->angular_velocity;
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::TURN_CCW: {
+			float lf, rf, lr, rr;
+			Point ICR; ICR.x = 0; ICR.y = 0;
+			if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
+				result.steering.left_front = lf;
+				result.steering.right_front = rf;
+				result.steering.left_rear = lr;
+				result.steering.right_rear = rr;
+				result.driving.left_front = -this->angular_velocity;
+				result.driving.right_front = this->angular_velocity;
+				result.driving.left_rear = -this->angular_velocity;
+				result.driving.right_rear = this->angular_velocity;
+			}
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::TURN_CW: {
+			float lf, rf, lr, rr;
+			Point ICR; ICR.x = 0; ICR.y = 0;
+			if (this->_geometry->calculateAngles(ICR, lf, rf, lr, rr)) {
+				result.steering.left_front = lf;
+				result.steering.right_front = rf;
+				result.steering.left_rear = lr;
+				result.steering.right_rear = rr;
+				result.driving.left_front = this->angular_velocity;
+				result.driving.right_front = -this->angular_velocity;
+				result.driving.left_rear = this->angular_velocity;
+				result.driving.right_rear = -this->angular_velocity;
+			}
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::DRIVE_FORWARD: {
+			result.steering.left_front = 0;
+			result.steering.right_front = 0;
+			result.steering.left_rear = 0;
+			result.steering.right_rear = 0;			
+			result.driving.left_front = this->angular_velocity;
+			result.driving.right_front = this->angular_velocity;
+			result.driving.left_rear = this->angular_velocity;
+			result.driving.right_rear = this->angular_velocity;
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::DRIVE_BACKWARD: {
+			result.steering.left_front = 0;
+			result.steering.right_front = 0;
+			result.steering.left_rear = 0;
+			result.steering.right_rear = 0;
+			result.driving.left_front = -this->angular_velocity;
+			result.driving.right_front = -this->angular_velocity;
+			result.driving.left_rear = -this->angular_velocity;
+			result.driving.right_rear = -this->angular_velocity;
+		}
+		break;
+		
+		case lunabotics::proto::AllWheelControl::STOP: {
+			result.steering.left_front = 0;
+			result.steering.right_front = 0;
+			result.steering.left_rear = 0;
+			result.steering.right_rear = 0;
+			result.driving.left_front = 0;
+			result.driving.right_front = 0;
+			result.driving.left_rear = 0;
+			result.driving.right_rear = 0;
+		}
+		break;
+		
+		default:
+		break;
+	}
+	return result;
+}
+
+void PredefinedCmdController::copySteeringAngles(lunabotics::AllWheelState source, lunabotics::AllWheelState &destination)
+{
+	destination.steering.left_front = source.steering.left_front;
+	destination.steering.right_front = source.steering.right_front;
+	destination.steering.left_rear = source.steering.left_rear;
+	destination.steering.right_rear = source.steering.right_rear;
+}
+
+void PredefinedCmdController::copyDrivingVelocities(lunabotics::AllWheelState source, lunabotics::AllWheelState &destination)
+{
+	destination.driving.left_front = source.driving.left_front;
+	destination.driving.right_front = source.driving.right_front;
+	destination.driving.left_rear = source.driving.left_rear;
+	destination.driving.right_rear = source.driving.right_rear;
 }

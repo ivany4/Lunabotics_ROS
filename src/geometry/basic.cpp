@@ -46,3 +46,20 @@ bool lunabotics::in_triangle(Point p, double edge1, double edge2, double theta)
 	bool condition_3 = p.y*(edge1 + edge2*cos(theta)) + p.x*edge2*sin(theta) - edge1*edge2*sin(theta) < 0;
 	return condition_1 && condition_2 && condition_3;
 }
+
+
+//Angle at point1 
+double lunabotics::angleFromTriangle(Point point1, Point point2, Point point3)
+{
+	double edge1 = distance(point1, point3);
+	double edge2 = distance(point1, point2);
+	double edge3 = distance(point2, point3);
+	return angleFromTriangle(edge1, edge2, edge3);
+}
+
+//Angle between edge1 and edge2
+double lunabotics::angleFromTriangle(double edge1, double edge2, double edge3)
+{
+	//Cosine rule
+	return acos((pow(edge2,2)+pow(edge1,2)-pow(edge3,2))/(2*edge2*edge1));
+}

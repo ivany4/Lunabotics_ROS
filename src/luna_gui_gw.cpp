@@ -192,8 +192,16 @@ int main(int argc, char **argv)
 								state->set_min_icr_offset(pathFollowingMsg.min_icr_radius);
 							}
 							if (pathFollowingMsg.has_point_turn_state) {
+								lunabotics::proto::Telemetry::State::PointTurnTelemetry *pointTurnData = state->mutable_point_turn_telemetry();
 								lunabotics::proto::Telemetry::PointTurnState st = (lunabotics::proto::Telemetry::PointTurnState)pathFollowingMsg.point_turn_state;
-								state->mutable_point_turn_telemetry()->set_state(st);
+								pointTurnData->set_state(st);
+								if (pathFollowingMsg.has_lateral_deviation) {
+									pointTurnData->set_lateral_deviation(pathFollowingMsg.lateral_deviation);
+									pointTurnData->mutable_deviation_path_point()->set_x(pathFollowingMsg.deviation_path_point.x);
+									pointTurnData->mutable_deviation_path_point()->set_y(pathFollowingMsg.deviation_path_point.y);
+									pointTurnData->mutable_deviation_path_point_local()->set_x(pathFollowingMsg.deviation_path_point_local.x);
+									pointTurnData->mutable_deviation_path_point_local()->set_y(pathFollowingMsg.deviation_path_point_local.y);
+								}
 							}
 							if (pathFollowingMsg.has_path_parts_enumeration) {
 								state->set_next_waypoint_idx(pathFollowingMsg.next_waypoint_idx);

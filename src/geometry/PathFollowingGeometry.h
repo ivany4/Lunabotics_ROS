@@ -15,6 +15,13 @@ namespace lunabotics {
 class PathFollowingGeometry {
 	private:
 	
+		//Centered deviation
+		bool has_lateral_deviation;
+		double lateral_deviation;
+		Point deviation_path_point;
+		Point deviation_path_point_in_local_frame;
+		bool has_deviation_path_point;
+	
 		//Look-ahead points
 		
 		//Feedback
@@ -61,9 +68,6 @@ class PathFollowingGeometry {
 		
 		double velocity;
 		
-		
-		double getReferenceAngle(Point point1, Point point2, Point point3); //Angle at point1 
-		double getReferenceAngle(double edge1, double edge2, double edge3); //Angle between edge1 and edge2
 		void updateLocalFrame();
 		void invalidateCache();
 		bool getTwoPathPointsClosestToPoint(Point referencePoint, Point &closestPoint, Point &secondClosestPoint, bool allowSame, bool &closestIsNext);
@@ -73,6 +77,8 @@ class PathFollowingGeometry {
 		Point getLookAheadPointAtDistance(double distance);
 		Point localFramePoint(Point globalFramePoint);
 		bool getTangentAtPoint(Point point, double &heading);
+		PointArr interpolate(Point p1, Point p2);
+		Point getClosestPointFromSet(Point referencePoint, PointArr pointSet);
 	public:
 		PathFollowingGeometry(AllWheelGeometryPtr geometry);
 		PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset, float feedback_multiplier, float feedforward_offset, float feedforward_fraction);
@@ -84,10 +90,13 @@ class PathFollowingGeometry {
 		Point getFeedbackPathPoint();
 		Point getFeedbackPathPointInLocalFrame();
 		Point getFeedforwardCurveCenterPoint();
+		Point getDeviationPathPoint();
+		Point getDeviationPathPointInLocalFrame();
 		PointArr getCurvatureDetectionPoints();
 		PointArr getCurvatureDetectionPointsInLocalFrame();
 		double getCurveRadius();
 		double getFeedbackError();
+		double getLateralDeviation();
 		double getFeedforwardPrediction();
 		double getHeadingError();
 		void setCurrentPose(Pose currentPose);

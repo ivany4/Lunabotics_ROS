@@ -22,6 +22,7 @@ class PredefinedCmdController {
 		lunabotics::proto::AllWheelControl::PredefinedControlType _current_cmd;
 		bool is_final_state;
 		bool state_reached;
+		bool force_state;
 		AllWheelGeometryPtr _geometry;
 		lunabotics::AllWheelState previousState;
 		double angular_velocity;
@@ -30,16 +31,21 @@ class PredefinedCmdController {
 		void setAwaitingState(AwaitingState newState);
 		void setFinalState(lunabotics::AllWheelState finalState);
 		void removeFinalState();
-		
+		void copySteeringAngles(lunabotics::AllWheelState source, lunabotics::AllWheelState &destination);
+		void copyDrivingVelocities(lunabotics::AllWheelState source, lunabotics::AllWheelState &destination);
 	public:
 		PredefinedCmdController();
 		~PredefinedCmdController();
 		bool needsMoreControl();
 		bool control(lunabotics::AllWheelState &signal);
+		void abort();
 		void setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd);
+		void setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd, bool safeSwitch);
 		void giveFeedback(lunabotics::AllWheelState state);
 		void setGeometry(AllWheelGeometryPtr geometry);
 		void setWheelVelocity(double velocity);
+		void setCrabAngle(double angle);
+		lunabotics::AllWheelState stateForCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd);
 };
 typedef PredefinedCmdController * PredefinedCmdControllerPtr;
 

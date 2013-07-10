@@ -24,3 +24,9 @@ uint8 point_turn_state
 bool has_point_turn_state
 float32 min_icr_radius
 bool has_min_icr_radius
+
+#Lateral deviation for point-turn crab maneuvers
+float32 lateral_deviation
+geometry_msgs/Point deviation_path_point
+geometry_msgs/Point deviation_path_point_local
+bool has_lateral_deviation
