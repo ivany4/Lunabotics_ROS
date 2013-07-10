@@ -80,12 +80,14 @@ void MechInterfaceNode::callbackTeleoperation(const lunabotics::Teleoperation::C
 			controlMsg.steering.left_rear = 0;
 			controlMsg.steering.right_rear = 0;
 			if ((msg->forward || msg->backward) && !(msg->forward && msg->backward)) {
+				double speed = msg->forward ? 3 : -3;
+				
 				//Predefined longitudal
 				ROS_INFO("TELEOP: Longitudal");
-				controlMsg.driving.left_front = 3;
-				controlMsg.driving.right_front = 3;
-				controlMsg.driving.left_rear = 3;
-				controlMsg.driving.right_rear = 3;
+				controlMsg.driving.left_front = speed;
+				controlMsg.driving.right_front = speed;
+				controlMsg.driving.left_rear = speed;
+				controlMsg.driving.right_rear = speed;
 			}
 			else {
 				ROS_INFO("TELEOP: Stop");
@@ -117,7 +119,7 @@ void MechInterfaceNode::callbackTeleoperation(const lunabotics::Teleoperation::C
 			lunabotics::ICRControl controlMsg;
 			controlMsg.ICR.x = 0;
 			controlMsg.ICR.y = msg->left ? 1 : -1;
-			controlMsg.velocity = 0.3;
+			controlMsg.velocity = msg->forward ? 0.3 : -0.3;
 			this->publisherICRControl.publish(controlMsg);
 		}
 	}

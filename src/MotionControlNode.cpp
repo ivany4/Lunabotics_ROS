@@ -395,15 +395,9 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 				
 			int poseSeq = 0;
 			this->waypoints = pts;
+			pathMsg.path.poses.push_back(PoseStamped_from_Point(this->currentPose.position, poseSeq, "map"));
 			for (PointArr::iterator it = pts.begin(); it != pts.end(); it++) {
-				Point pt = *it;
-				geometry_msgs::PoseStamped pose;
-				pose.header.seq = poseSeq++;
-				pose.header.stamp = ros::Time::now();
-				pose.header.frame_id = "map";
-				pose.pose.position = geometry_msgs_Point_from_Point(pt);
-				pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-				pathMsg.path.poses.push_back(pose);
+				pathMsg.path.poses.push_back(PoseStamped_from_Point(*it, poseSeq, "map"));
 			}
 			this->pathFollowingGeometry->setPath(this->waypoints);
 			
@@ -555,7 +549,7 @@ void MotionControlNode::controlAckermann()
 		double angle = normalizedAngle(atan2(dy, dx)-this->currentPose.orientation);
 		
 		//Turn in place only if facing more than 30 deg away from the trajectory
-		if (fabs(angle) > M_PI/6) {
+		if (fabs(angle) > this->motionConstraints.point_turn_angle_accuracy) {
 			this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
 			this->controlPointTurn();
 			if (this->pointTurnMotionState != lunabotics::proto::Telemetry::TURNING) {

@@ -110,6 +110,18 @@ inline Line CreateLine(float x1, float y1, float x2, float y2)
 	return CreateLine(CreatePoint(x1, y1), CreatePoint(x2, y2));
 }
 
+
+inline geometry_msgs::PoseStamped PoseStamped_from_Point(Point p, int &seq, std::string frame_id)
+{
+	geometry_msgs::PoseStamped pose;
+	pose.header.seq = seq++;
+	pose.header.stamp = ros::Time::now();
+	pose.header.frame_id = frame_id;
+	pose.pose.position = geometry_msgs_Point_from_Point(p);
+	pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+	return pose;
+}
+
 typedef std::vector<Point> PointArr;
 typedef std::vector<Pose> PoseArr;
 typedef std::vector<int8_t> OccupancyArr;
