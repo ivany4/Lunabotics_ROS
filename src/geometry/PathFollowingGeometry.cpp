@@ -277,7 +277,7 @@ PointArr PathFollowingGeometry::interpolate(Point p1, Point p2)
 	int temp = round(length_between_waypoints*INTERPOLATION_PTS_PER_M);
 	unsigned int num_points = std::max(1, temp);
 	
-	ROS_INFO("Interpolating %f with %d pts", length_between_waypoints, num_points);
+	//ROS_INFO("Interpolating %f with %d pts", length_between_waypoints, num_points);
 	
 	result.push_back(p1);
 	for (unsigned int i = 1; i < num_points-1; i++) {
@@ -395,11 +395,17 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 			if (this->has_previous_feedback_path_point && this->has_next_waypoint) {
 				double previous_distance = distance(this->previous_feedback_path_point, *this->next_waypoint);
 				double current_distance = distance(this->feedback_path_point, *this->next_waypoint);
+				//ROS_INFO("Curr %f Prev %f", current_distance, previous_distance);
 				if (previous_distance < current_distance) {
 					this->feedback_path_point = this->previous_feedback_path_point;
+					//ROS_INFO("Roll back");
 				}
 			}
 			this->previous_feedback_path_point = this->feedback_path_point;
+			this->has_previous_feedback_path_point = true;
+		}
+		else {
+			ROS_WARN("failed to get feedback path point");
 		}
 	}
 	return this->feedback_path_point;
