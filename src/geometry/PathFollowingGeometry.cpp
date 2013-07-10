@@ -29,6 +29,8 @@ feedback_path_point_in_local_frame(),
 has_feedback_path_point(false),
 heading_error(0),
 has_heading_error(false),
+previous_feedback_path_point(),
+has_previous_feedback_path_point(false),
 feedforward_point(),
 feedforward_point_in_local_frame(),
 has_feedforward_point(false),
@@ -47,6 +49,8 @@ curve_radius(0),
 has_curve_radius(false),
 current_pose(),
 path(),
+next_waypoint(),
+has_next_waypoint(false),
 has_local_frame(false),
 robotGeometry(geometry),
 velocity(0)
@@ -74,6 +78,8 @@ feedback_path_point_in_local_frame(),
 has_feedback_path_point(false),
 heading_error(0),
 has_heading_error(false),
+previous_feedback_path_point(),
+has_previous_feedback_path_point(false),
 feedforward_point(),
 feedforward_point_in_local_frame(),
 has_feedforward_point(false),
@@ -92,6 +98,8 @@ curve_radius(0),
 has_curve_radius(false),
 current_pose(),
 path(),
+next_waypoint(),
+has_next_waypoint(false),
 has_local_frame(false),
 robotGeometry(geometry),
 velocity(0)
@@ -268,9 +276,8 @@ PointArr PathFollowingGeometry::interpolate(Point p1, Point p2)
 	double length_between_waypoints = distance(p1, p2);
 	int temp = round(length_between_waypoints*INTERPOLATION_PTS_PER_M);
 	unsigned int num_points = std::max(1, temp);
-	double step = (double)(length_between_waypoints/num_points);
 	
-	//ROS_INFO("Interpolating %f with %d pts", length_between_waypoints, num_points);
+	ROS_INFO("Interpolating %f with %d pts", length_between_waypoints, num_points);
 	
 	result.push_back(p1);
 	for (unsigned int i = 1; i < num_points-1; i++) {
@@ -314,13 +321,34 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 	bool result = false;
 	if (this->path.size() >= 2) {
 		
+		Point closest_point = this->getClosestPointFromSet(referencePoint, this->path);
+		Point second_closest_point = this->path.at(0);
+		if (this->has_next_waypoint) {
+			second_closest_point = *this->next_waypoint;
+			if (closest_point == (*this->next_waypoint)) {
+				if (this->next_waypoint != this->path.begin()) {
+					PointArrIt previous_waypoint = this->next_waypoint-1;
+					second_closest_point = *previous_waypoint;
+				}
+				else {
+					PointArrIt later_waypoint = this->next_waypoint+1;
+					second_closest_point = *later_waypoint;
+				}
+			}					
+		}
+		
+		PointArr candidates = this->interpolate(closest_point, second_closest_point);
+		resultPoint = this->getClosestPointFromSet(referencePoint, candidates);
+		result = true;
+		
+		/*
 		Point closest_point, second_closest_point;
 		bool closest_is_next;
 		if (this->getTwoPathPointsClosestToPoint(referencePoint, closest_point, second_closest_point, true, closest_is_next)) {
 			PointArr candidates = this->interpolate(closest_point, second_closest_point);
 			resultPoint = this->getClosestPointFromSet(referencePoint, candidates);
 			result = true;			
-		}
+		}*/
 		
 		/*
 		Point closest_point, second_closest_point;
@@ -363,6 +391,16 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 	if (!this->has_feedback_path_point) {
 		this->has_feedback_path_point = this->getClosestPathPoint(this->getFeedbackPoint(), 
 															this->feedback_path_point);
+		if (this->has_feedback_path_point) {
+			if (this->has_previous_feedback_path_point && this->has_next_waypoint) {
+				double previous_distance = distance(this->previous_feedback_path_point, *this->next_waypoint);
+				double current_distance = distance(this->feedback_path_point, *this->next_waypoint);
+				if (previous_distance < current_distance) {
+					this->feedback_path_point = this->previous_feedback_path_point;
+				}
+			}
+			this->previous_feedback_path_point = this->feedback_path_point;
+		}
 	}
 	return this->feedback_path_point;
 }
@@ -383,7 +421,7 @@ double PathFollowingGeometry::getHeadingError()
 {
 	if (!this->has_heading_error) {
 		double requiredHeading;
-		if (this->has_heading_error = this->getTangentAtPoint(this->getFeedbackPathPoint(), requiredHeading)) {
+		if ((this->has_heading_error = this->getTangentAtPoint(this->getFeedbackPathPoint(), requiredHeading))) {
 			this->heading_error = normalizedAngle(requiredHeading-this->current_pose.orientation);
 		}		
 	}
@@ -405,8 +443,16 @@ void PathFollowingGeometry::setVelocity(double velocity)
 
 void PathFollowingGeometry::setPath(PointArr path)
 {
+	this->has_previous_feedback_path_point = false;
 	this->invalidateCache();
 	this->path = path;
+}
+
+void PathFollowingGeometry::setNextWaypoint(PointArrIt waypoint)
+{
+	this->invalidateCache();
+	this->next_waypoint = waypoint;
+	this->has_next_waypoint = true;
 }
 
 void PathFollowingGeometry::setFeedbackPointOffsetMultiplier(float velocityMultiplier)
@@ -535,7 +581,6 @@ Point PathFollowingGeometry::getFeedforwardCurveCenterPoint()
 			double l23 = (p3.y-p2.y)/(p3.x-p2.x);
 			
 			//Equation 10
-			Point center;
 			this->feedforward_center.x = -(p1.y+p2.y)/2+(p2.y+p3.y)/2
 							  -(p1.x+p2.x)/(2*l12)+(p2.x+p3.x)/(2*l23);
 							  

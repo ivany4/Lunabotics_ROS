@@ -29,8 +29,8 @@ namespace lunabotics {
 struct Point {
 	float x;
 	float y;
-	bool operator==(const Point &b) const {return x == b.x && y == b.y;}
-	bool operator!=(const Point &b) const {return x != b.x || y != b.y;}
+	bool operator==(const Point &b) const {return fabs(x-b.x) < 0.00001 && fabs(y-b.y) < 0.00001;}
+	bool operator!=(const Point &b) const {return fabs(x-b.x) >= 0.00001 || fabs(y-b.y) >= 0.00001;}
 	//std::ostream &operator<<(std::ostream &, const Point &p) { output << "(" << p.x << "," << p.y << ")"; return output; }
 };
 

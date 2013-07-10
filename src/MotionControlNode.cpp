@@ -411,7 +411,8 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->trajectory->maxCurvature(), 1/this->trajectory->maxCurvature());
 			}
 			
-			 this->waypointsIt = this->waypoints.begin()+1;		
+			 this->waypointsIt = this->waypoints.begin()+1;
+			 this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);		
 		//	ROS_INFO("Returned path: %s", sstr.str().c_str());
 			//Point waypoint = this->waypoints.at(0);
 			//ROS_INFO("Heading towards (%.1f,%.1f)", (*this->waypointsIt).x, (*this->waypointsIt).y);
@@ -672,11 +673,13 @@ void MotionControlNode::controlAckermannAllWheel()
 		if (newDist < dist) {
 			this->waypointsIt = it;
 			dist = newDist;
+			this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 		}
 	}
 	
 	if (dist < this->motionConstraints.point_turn_distance_accuracy) {
 		this->waypointsIt++;
+		this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 	}
 	if (this->waypointsIt >= this->waypoints.end()) {
 		this->finalizeRoute();
@@ -692,6 +695,7 @@ void MotionControlNode::controlAckermannAllWheel()
 		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
 		if (this->waypointsIt < this->waypoints.begin()+2) {
 			this->waypointsIt = this->waypoints.begin()+1;
+			this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 			double angle = normalizedAngle(atan2(dy, dx)-this->currentPose.orientation);
 			if (fabs(angle) > this->motionConstraints.point_turn_angle_accuracy) {
 				//ROS_WARN("Facing away from the trajectory. Turning in place");
@@ -841,11 +845,13 @@ void MotionControlNode::controlAckermannDiffDrive()
 		if (newDist < dist) {
 			this->waypointsIt = it;
 			dist = newDist;
+			this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 		}
 	}
 	
 	if (dist < this->motionConstraints.point_turn_distance_accuracy) {
 		this->waypointsIt++;
+		this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 	}
 	if (this->waypointsIt >= this->waypoints.end()) {
 		this->finalizeRoute();
@@ -861,6 +867,7 @@ void MotionControlNode::controlAckermannDiffDrive()
 		//In the beginning turn in place towards the second waypoint (first waypoint is at the robot's position). It helps to solve problems with pid
 		if (this->waypointsIt < this->waypoints.begin()+2) {
 			this->waypointsIt = this->waypoints.begin()+1;
+			this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 			double angle = normalizedAngle(atan2(dy, dx)-this->currentPose.orientation);
 			if (fabs(angle) > this->motionConstraints.point_turn_angle_accuracy) {
 				//ROS_WARN("Facing away from the trajectory. Turning in place");
@@ -932,6 +939,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				
 			if (distance <= this->motionConstraints.point_turn_distance_accuracy) {
 				this->waypointsIt++;
+				this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 				if (this->waypointsIt >= this->waypoints.end()) {
 					this->finalizeRoute();
 				}
@@ -1065,7 +1073,8 @@ void MotionControlNode::controlPointTurnDiffDrive(double distance, double theta)
 			//ROS_INFO("SKID: stopped        dx: %.5f dy: %.5f angle: %.5f", dx, dy, angle);
 			
 			if (distance < this->motionConstraints.point_turn_distance_accuracy) {
-				 this->waypointsIt++;
+				this->waypointsIt++;
+				this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);
 				if ( this->waypointsIt >= this->waypoints.end()) {
 					this->finalizeRoute();
 				}

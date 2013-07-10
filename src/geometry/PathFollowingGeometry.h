@@ -39,6 +39,8 @@ class PathFollowingGeometry {
 		bool has_feedback_path_point;
 		double heading_error;
 		bool has_heading_error;
+		Point previous_feedback_path_point;
+		bool has_previous_feedback_path_point;
 	
 	
 		//Feedforward
@@ -61,6 +63,8 @@ class PathFollowingGeometry {
 	
 		Pose current_pose;
 		PointArr path;
+		PointArrIt next_waypoint;
+		bool has_next_waypoint;
 		
 		bool has_local_frame;
 		
@@ -102,6 +106,7 @@ class PathFollowingGeometry {
 		void setCurrentPose(Pose currentPose);
 		void setVelocity(double velocity);
 		void setPath(PointArr path);
+		void setNextWaypoint(PointArrIt waypoint);
 		void setFeedbackPointOffsetMin(float velocityOffset);
 		void setFeedbackPointOffsetMultiplier(float velocityMultiplier);
 		void setFeedforwardPointOffsetFraction(float fraction);
