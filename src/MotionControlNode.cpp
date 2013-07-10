@@ -742,12 +742,17 @@ void MotionControlNode::controlAckermannAllWheel()
 		
 		//Original control
 		
+		double angle_at_deviation = fabs(angleFromTriangle(this->pathFollowingGeometry->getDeviationPathPoint(), this->currentPose.position, *this->waypointsIt));
+		
 		if (fabs(heading_error) < this->motionConstraints.point_turn_angle_accuracy &&
-			fabs(y_err) > 0.05 && 
-			fabs(angleFromTriangle(this->currentPose.position, this->pathFollowingGeometry->getFeedbackPathPoint(), *this->waypointsIt)) > M_PI/12.0) {
+			//fabs(y_err) > 0.05 && 
+			(angle_at_deviation > M_PI/3.0*2 || angle_at_deviation < M_PI/3.0)) {
+				
+			double lateral_deviation = this->pathFollowingGeometry->getLateralDeviation();
+				
 			lunabotics::CrabControl ctrl;
 			ctrl.velocity = std::max(this->linearVelocity, 1.0);
-			ctrl.heading = -sign(y_err)*std::min(fabs(y_err), GEOMETRY_INNER_ANGLE_MAX);
+			ctrl.heading = -sign(lateral_deviation)*std::min(fabs(lateral_deviation)*5.0, GEOMETRY_INNER_ANGLE_MAX);
 			this->publisherCrab.publish(ctrl);
 		}
 		else {
@@ -756,7 +761,7 @@ void MotionControlNode::controlAckermannAllWheel()
 			double offset_y;
 		
 			//Do not oscillate when heading towards feedback path point
-			if (fabs(angleFromTriangle(this->currentPose.position, this->pathFollowingGeometry->getFeedbackPathPoint(), this->pathFollowingGeometry->getFeedbackPoint())) <= M_PI/20.0) {
+			if (angle_at_deviation > M_PI*170.0/180.0) {
 				offset_y = 50000;
 				offset_y_exists = true;
 			}
@@ -985,7 +990,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				this->pointTurnMotionState = lunabotics::proto::Telemetry::STOPPED;
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 			}
-			else if (fabs(theta) > 0.3) {
+			else if (fabs(theta) >= M_PI_2) {
 				msg.predefined_cmd = lunabotics::proto::AllWheelControl::STOP;
 				if (fabs(this->linearVelocity) < LIN_VEL_ACCURACY) {
 					this->pointTurnMotionState = lunabotics::proto::Telemetry::TURNING;
@@ -999,14 +1004,14 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				if (this->predefinedControl->isFinalState()) {
 					ROS_WARN("Driving is in final state");
 				}
-				if (this->predefinedControl->isFinalState() &&  //Wait for the transition to the driving state before starting to crab
+				if ((this->predefinedControl->isFinalState() || this->crabbedBefore) &&  //Wait for the transition to the driving state before starting to crab
 					// fabs(y_err) > 0.05 &&
 					//Crab only when deviation point is on the side and not on the front
 					 fabs(angleFromTriangle(this->currentPose.position, deviationPoint, *this->waypointsIt)) > M_PI/12.0) {
 					
 					lunabotics::CrabControl ctrl;
 					ctrl.velocity = DEFAULT_WHEEL_VELOCITY;
-					ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*10.0, GEOMETRY_INNER_ANGLE_MAX);
+					ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*5.0, GEOMETRY_INNER_ANGLE_MAX);
 					
 					ROS_INFO("Crabbing with heading %f", ctrl.heading);
 					
@@ -1016,8 +1021,12 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 					this->predefinedControl->abort();
 				}
 				else {
-					
-					//ROS_INFO("Driving straight");
+					if (this->crabbedBefore) {
+						ROS_WARN("Continuing to driving straight");
+					}
+					else {					
+						ROS_WARN("Starting to driving straight");
+					}
 					
 					msg.predefined_cmd = lunabotics::proto::AllWheelControl::DRIVE_FORWARD;
 					msg.force_cmd = this->crabbedBefore;

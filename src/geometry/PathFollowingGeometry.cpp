@@ -395,10 +395,10 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 			if (this->has_previous_feedback_path_point && this->has_next_waypoint) {
 				double previous_distance = distance(this->previous_feedback_path_point, *this->next_waypoint);
 				double current_distance = distance(this->feedback_path_point, *this->next_waypoint);
-				ROS_INFO("Curr %f Prev %f", current_distance, previous_distance);
+				//ROS_INFO("Curr %f Prev %f", current_distance, previous_distance);
 				if (previous_distance < current_distance) {
 					this->feedback_path_point = this->previous_feedback_path_point;
-					ROS_INFO("Roll back");
+					//ROS_INFO("Roll back");
 				}
 			}
 			this->previous_feedback_path_point = this->feedback_path_point;
@@ -432,7 +432,7 @@ double PathFollowingGeometry::getHeadingError()
 {
 	if (!this->has_heading_error) {
 		double requiredHeading;
-		if ((this->has_heading_error = this->getTangentAtPoint(this->getFeedbackPathPoint(), requiredHeading))) {
+		if ((this->has_heading_error = this->getTangentAtPoint(this->getDeviationPathPoint(), requiredHeading))) {
 			this->heading_error = normalizedAngle(requiredHeading-this->current_pose.orientation);
 		}		
 	}
@@ -684,8 +684,11 @@ bool PathFollowingGeometry::getTangentAtPoint(Point point, double &heading)
 		}
 		double dx = closest_point.x - point.x;
 		double dy = closest_point.y - point.y;
-		double lineHeading = atan2(dy, dx);
-		double angle = angleFromTriangle(closest_point, point, second_closest_point);
+		double lineHeading = normalizedAngle(atan2(dy, dx));
+		double angle = normalizedAngle(angleFromTriangle(closest_point, point, second_closest_point));
+		if (isnan(angle) || isinf(angle)) {
+			angle = 0;
+		}
 		
 		heading = lineHeading + angle;			
 		return true;

@@ -93,19 +93,6 @@ void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 		}
 		break;
 		
-		case AwaitingDrive: {
-			this->state_reached = this->has_final_state &&
-				fabs(state.steering.left_front-this->final_state.steering.left_front) <= STEERING_ACCURACY &&
-				fabs(state.steering.right_front-this->final_state.steering.right_front) <= STEERING_ACCURACY &&
-				fabs(state.steering.left_rear-this->final_state.steering.left_rear) <= STEERING_ACCURACY &&
-				fabs(state.steering.right_rear-this->final_state.steering.right_rear) <= STEERING_ACCURACY &&
-				fabs(state.driving.left_front-this->final_state.driving.left_front) <= DRIVING_ACCURACY &&
-				fabs(state.driving.right_front-this->final_state.driving.right_front) <= DRIVING_ACCURACY &&
-				fabs(state.driving.left_rear-this->final_state.driving.left_rear) <= DRIVING_ACCURACY &&
-				fabs(state.driving.right_rear-this->final_state.driving.right_rear) <= DRIVING_ACCURACY;
-		}
-		break;
-		
 		default: break;
 	}
 	this->previousState = state;
@@ -147,7 +134,8 @@ bool PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 			
 			case AwaitingDrive:
 				signal = desiredState;
-				this->setFinalState(signal);
+				this->state_reached = true;
+				this->removeFinalState();
 			break;
 				
 			case AwaitingNothing:
