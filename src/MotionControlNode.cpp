@@ -666,10 +666,16 @@ void MotionControlNode::controlAckermannAllWheel()
 		return;
 	}
 	
+	//The waypoint iterator should be moved by comparing the feedback point, as it determines the motion
+	//However, when it is the last waypoint, using feedback lookeahed point will make the system to finalize the route too early
+	//Thus, use robot position instead for the last waypoint
+	
+	Point referencePoint = this->waypointsIt == this->waypoints.end()-1 ? this->currentPose.position : this->pathFollowingGeometry->getFeedbackPoint();
+	
 	//If suddenly skipped a waypoint, proceed with the next ones, don't get stuck with current
-	double dist = distance(*this->waypointsIt, this->currentPose.position);
+	double dist = distance(*this->waypointsIt, referencePoint);
 	for (PointArr::iterator it = this->waypointsIt+1; it < this->waypoints.end(); it++) {
-		double newDist = distance(*it, this->currentPose.position);
+		double newDist = distance(*it, referencePoint);
 		if (newDist < dist) {
 			this->waypointsIt = it;
 			dist = newDist;
@@ -745,9 +751,16 @@ void MotionControlNode::controlAckermannAllWheel()
 			this->publisherCrab.publish(ctrl);
 		}
 		else {
+			
+			bool offset_y_exists = false;
+			double offset_y;
 		
-			//
-			if (this->ackermannPID->control(y_err, signal)) {
+			//Do not oscillate when heading towards feedback path point
+			if (fabs(angleFromTriangle(this->currentPose.position, this->pathFollowingGeometry->getFeedbackPathPoint(), this->pathFollowingGeometry->getFeedbackPoint())) <= M_PI/20.0) {
+				offset_y = 50000;
+				offset_y_exists = true;
+			}
+			else if (this->ackermannPID->control(y_err, signal)) {
 				signal *= 10.0;
 				
 				if (!isnan(prediction) && !isinf(prediction)) {
@@ -768,8 +781,11 @@ void MotionControlNode::controlAckermannAllWheel()
 				
 				double alpha = M_PI_2-gamma;
 				double offset_x = this->robotGeometry->left_front().x;
-				double offset_y = tan(alpha)*offset_x;
+				offset_y = tan(alpha)*offset_x;
+				offset_y_exists = true;
+			}
 				
+			if (offset_y_exists) {
 				Point ICR = CreatePoint(0, offset_y);
 				
 				float abs_offset_y = fabs(offset_y);
@@ -980,14 +996,19 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				double y_err = this->pathFollowingGeometry->getLateralDeviation();
 				Point deviationPoint = this->pathFollowingGeometry->getDeviationPathPoint();
 				
-				//Crab only when deviation point is on the side and not on the front
-				if (fabs(y_err) > 0.05 && fabs(angleFromTriangle(this->currentPose.position, deviationPoint, *this->waypointsIt)) > M_PI/12.0) {
+				if (this->predefinedControl->isFinalState()) {
+					ROS_WARN("Driving is in final state");
+				}
+				if (this->predefinedControl->isFinalState() &&  //Wait for the transition to the driving state before starting to crab
+					// fabs(y_err) > 0.05 &&
+					//Crab only when deviation point is on the side and not on the front
+					 fabs(angleFromTriangle(this->currentPose.position, deviationPoint, *this->waypointsIt)) > M_PI/12.0) {
 					
 					lunabotics::CrabControl ctrl;
 					ctrl.velocity = DEFAULT_WHEEL_VELOCITY;
-					ctrl.heading = -sign(y_err)*std::min(fabs(y_err), GEOMETRY_INNER_ANGLE_MAX);
+					ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*10.0, GEOMETRY_INNER_ANGLE_MAX);
 					
-					//ROS_INFO("Crabbing with heading %f", ctrl.heading);
+					ROS_INFO("Crabbing with heading %f", ctrl.heading);
 					
 					this->publisherCrab.publish(ctrl);
 					publishCommonMsg = false;

@@ -326,13 +326,13 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 		if (this->has_next_waypoint) {
 			second_closest_point = *this->next_waypoint;
 			if (closest_point == (*this->next_waypoint)) {
-				if (this->next_waypoint != this->path.begin()) {
-					PointArrIt previous_waypoint = this->next_waypoint-1;
-					second_closest_point = *previous_waypoint;
-				}
-				else {
+				if (this->next_waypoint < this->path.end()-1) {
 					PointArrIt later_waypoint = this->next_waypoint+1;
 					second_closest_point = *later_waypoint;
+				}
+				else if (this->next_waypoint != this->path.begin()) {
+					PointArrIt previous_waypoint = this->next_waypoint-1;
+					second_closest_point = *previous_waypoint;
 				}
 			}					
 		}
@@ -340,7 +340,7 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 		PointArr candidates = this->interpolate(closest_point, second_closest_point);
 		resultPoint = this->getClosestPointFromSet(referencePoint, candidates);
 		result = true;
-		
+		//*/
 		/*
 		Point closest_point, second_closest_point;
 		bool closest_is_next;
@@ -359,10 +359,9 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 			
 			//Reference point lies not between waypoints 1 and 2 but beyond
 			#pragma message("ALWAYS FALSE FOR TESTING");
-			if (false && fabs(angle) > M_PI_2) {
-			//if (fabs(angle) > M_PI_2) {
-				resultPoint = second_closest_point;
-				result = true;
+			//if (false && fabs(angle) > M_PI_2) {
+			if (fabs(angle) > M_PI_2) {
+				resultPoint = closest_point;
 			}
 			else {
 				double length_between_waypoints = distance(closest_point, second_closest_point);
@@ -371,9 +370,9 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 				double fraction = closest_waypoint_to_path_point/length_between_waypoints;
 				resultPoint.x = (second_closest_point.x-closest_point.x)*fraction + closest_point.x;
 				resultPoint.y = (second_closest_point.y-closest_point.y)*fraction + closest_point.y;
-				result = true;
 			}
-		}	*/
+			result = true;
+		}	//*/
 			
 	}
 	else if (this->path.size() == 1) {
@@ -391,14 +390,15 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 	if (!this->has_feedback_path_point) {
 		this->has_feedback_path_point = this->getClosestPathPoint(this->getFeedbackPoint(), 
 															this->feedback_path_point);
+														
 		if (this->has_feedback_path_point) {
 			if (this->has_previous_feedback_path_point && this->has_next_waypoint) {
 				double previous_distance = distance(this->previous_feedback_path_point, *this->next_waypoint);
 				double current_distance = distance(this->feedback_path_point, *this->next_waypoint);
-				//ROS_INFO("Curr %f Prev %f", current_distance, previous_distance);
+				ROS_INFO("Curr %f Prev %f", current_distance, previous_distance);
 				if (previous_distance < current_distance) {
 					this->feedback_path_point = this->previous_feedback_path_point;
-					//ROS_INFO("Roll back");
+					ROS_INFO("Roll back");
 				}
 			}
 			this->previous_feedback_path_point = this->feedback_path_point;
@@ -406,7 +406,12 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 		}
 		else {
 			ROS_WARN("failed to get feedback path point");
-		}
+			if (this->has_previous_feedback_path_point) {
+				ROS_WARN("Assigning to previous feedback path point");
+				this->feedback_path_point = this->previous_feedback_path_point;
+				this->has_feedback_path_point = true;
+			}
+		}//*/
 	}
 	return this->feedback_path_point;
 }

@@ -10,13 +10,12 @@ PredefinedCmdController::PredefinedCmdController():
 final_state(),
 has_final_state(false),
 _current_cmd(),
-is_final_state(true),
 state_reached(false),
 force_state(false),
 _geometry(NULL),
 previousState(),
 angular_velocity(DEFAULT_WHEEL_VELOCITY),
-awaitingState(AwaitingNone),
+awaitingState(AwaitingNothing),
 needPreviousState(false)
 {
 }
@@ -28,7 +27,12 @@ PredefinedCmdController::~PredefinedCmdController()
 
 bool PredefinedCmdController::needsMoreControl()
 {
-	return this->force_state || !this->is_final_state;
+	return this->force_state || !this->isFinalState();
+}
+
+bool PredefinedCmdController::isFinalState()
+{
+	return this->awaitingState == AwaitingNothing || this->force_state;
 }
 
 void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
@@ -45,9 +49,8 @@ void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::
 		if (cmd != this->_current_cmd || cmd == lunabotics::proto::AllWheelControl::STOP) { //Always allow stop
 			this->_current_cmd = cmd;
 			if (safeSwitch) {
-				this->setAwaitingState(AwaitingDriving);
+				this->setAwaitingState(AwaitingStop);
 				this->needPreviousState = true;
-				this->is_final_state = false;
 				this->removeFinalState();
 				this->state_reached = false;
 				this->force_state = false;
@@ -62,13 +65,13 @@ void PredefinedCmdController::setNewCommand(lunabotics::proto::AllWheelControl::
 void PredefinedCmdController::abort()
 {
 	this->_current_cmd = lunabotics::proto::AllWheelControl::STOP;
-	this->is_final_state = true;
+	this->setAwaitingState(AwaitingNothing);
 }
 
 void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 {
 	switch(this->awaitingState) {
-		case AwaitingDriving: {
+		case AwaitingStop: {
 			this->state_reached =
 				fabs(state.driving.left_front) <= DRIVING_ACCURACY &&
 				fabs(state.driving.right_front) <= DRIVING_ACCURACY &&
@@ -77,7 +80,7 @@ void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 		}
 		break;
 		
-		case AwaitingSteering: {
+		case AwaitingSteer: {
 			this->state_reached = this->has_final_state &&
 				fabs(state.steering.left_front-this->final_state.steering.left_front) <= STEERING_ACCURACY &&
 				fabs(state.steering.right_front-this->final_state.steering.right_front) <= STEERING_ACCURACY &&
@@ -90,8 +93,20 @@ void PredefinedCmdController::giveFeedback(lunabotics::AllWheelState state)
 		}
 		break;
 		
-		case AwaitingNone: {
+		case AwaitingDrive: {
+			this->state_reached = this->has_final_state &&
+				fabs(state.steering.left_front-this->final_state.steering.left_front) <= STEERING_ACCURACY &&
+				fabs(state.steering.right_front-this->final_state.steering.right_front) <= STEERING_ACCURACY &&
+				fabs(state.steering.left_rear-this->final_state.steering.left_rear) <= STEERING_ACCURACY &&
+				fabs(state.steering.right_rear-this->final_state.steering.right_rear) <= STEERING_ACCURACY &&
+				fabs(state.driving.left_front-this->final_state.driving.left_front) <= DRIVING_ACCURACY &&
+				fabs(state.driving.right_front-this->final_state.driving.right_front) <= DRIVING_ACCURACY &&
+				fabs(state.driving.left_rear-this->final_state.driving.left_rear) <= DRIVING_ACCURACY &&
+				fabs(state.driving.right_rear-this->final_state.driving.right_rear) <= DRIVING_ACCURACY;
 		}
+		break;
+		
+		default: break;
 	}
 	this->previousState = state;
 }
@@ -116,38 +131,36 @@ bool PredefinedCmdController::control(lunabotics::AllWheelState &signal)
 	}
 	else if (this->needsMoreControl()) {
 				
-		if (this->awaitingState == AwaitingDriving || this->awaitingState == AwaitingSteering) {
-			signal.driving.left_front = 0;
-			signal.driving.right_front = 0;
-			signal.driving.left_rear = 0;
-			signal.driving.right_rear = 0;
-			if (this->awaitingState == AwaitingDriving) {
+		signal = this->standByState();
+		lunabotics::AllWheelState desiredState = this->stateForCommand(this->_current_cmd);
+		
+		switch (this->awaitingState) {
+			case AwaitingStop:
 				this->copySteeringAngles(this->previousState, signal);
-			}
+				this->removeFinalState();
+			break;
+			
+			case AwaitingSteer:
+				this->copySteeringAngles(desiredState, signal);
+				this->setFinalState(signal);
+			break;
+			
+			case AwaitingDrive:
+				signal = desiredState;
+				this->setFinalState(signal);
+			break;
+				
+			case AwaitingNothing:
+				signal = desiredState;
+				this->removeFinalState();
+			break;
 		}
 				
-		lunabotics::AllWheelState desiredState = this->stateForCommand(this->_current_cmd);
-		if (this->awaitingState != AwaitingDriving) {
-			this->copySteeringAngles(desiredState, signal);
-		}
-		if (this->awaitingState == AwaitingNone) {
-			this->copyDrivingVelocities(desiredState, signal);
-		}
-		
-		if (this->awaitingState == AwaitingDriving) {
-			this->removeFinalState();
-		}
-		else {
-			this->setFinalState(signal);
-		}
-		
-		this->is_final_state = this->awaitingState == AwaitingNone;
-		
 		if (this->state_reached) {
 			switch(this->awaitingState) {
-				case AwaitingDriving: this->setAwaitingState(AwaitingSteering); break;
-				case AwaitingSteering: this->setAwaitingState(AwaitingNone); break;
-				default: this->setAwaitingState(AwaitingNone); break;
+				case AwaitingStop: this->setAwaitingState(AwaitingSteer); break;
+				case AwaitingSteer: this->setAwaitingState(AwaitingDrive); break;
+				default: this->setAwaitingState(AwaitingNothing); break;
 			}
 			this->state_reached = false;
 		}
@@ -162,8 +175,9 @@ void PredefinedCmdController::setAwaitingState(AwaitingState newState)
 {
 	if (this->awaitingState != newState) {
 		this->awaitingState = newState;
-		//ROS_INFO("Now awaiting %s", this->awaitingState == AwaitingDriving ?
-		//		"driving" : this->awaitingState == AwaitingSteering ? "steering" : "nothing");
+		ROS_INFO("Now waiting %s", this->awaitingState == AwaitingStop ? "until stops" :
+		 this->awaitingState == AwaitingSteer ? "until steers" :
+		 this->awaitingState == AwaitingDrive ? "until drives" : "nothing");
 	}
 }
 
@@ -185,7 +199,7 @@ void PredefinedCmdController::removeFinalState()
 
 lunabotics::AllWheelState PredefinedCmdController::stateForCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd)
 {
-	lunabotics::AllWheelState result;
+	lunabotics::AllWheelState result = this->standByState();
 	switch (cmd) {
 		case lunabotics::proto::AllWheelControl::CRAB_LEFT: {
 			result.steering.left_front = -M_PI_2;
@@ -243,11 +257,7 @@ lunabotics::AllWheelState PredefinedCmdController::stateForCommand(lunabotics::p
 		}
 		break;
 		
-		case lunabotics::proto::AllWheelControl::DRIVE_FORWARD: {
-			result.steering.left_front = 0;
-			result.steering.right_front = 0;
-			result.steering.left_rear = 0;
-			result.steering.right_rear = 0;			
+		case lunabotics::proto::AllWheelControl::DRIVE_FORWARD: {	
 			result.driving.left_front = this->angular_velocity;
 			result.driving.right_front = this->angular_velocity;
 			result.driving.left_rear = this->angular_velocity;
@@ -256,10 +266,6 @@ lunabotics::AllWheelState PredefinedCmdController::stateForCommand(lunabotics::p
 		break;
 		
 		case lunabotics::proto::AllWheelControl::DRIVE_BACKWARD: {
-			result.steering.left_front = 0;
-			result.steering.right_front = 0;
-			result.steering.left_rear = 0;
-			result.steering.right_rear = 0;
 			result.driving.left_front = -this->angular_velocity;
 			result.driving.right_front = -this->angular_velocity;
 			result.driving.left_rear = -this->angular_velocity;
@@ -268,20 +274,27 @@ lunabotics::AllWheelState PredefinedCmdController::stateForCommand(lunabotics::p
 		break;
 		
 		case lunabotics::proto::AllWheelControl::STOP: {
-			result.steering.left_front = 0;
-			result.steering.right_front = 0;
-			result.steering.left_rear = 0;
-			result.steering.right_rear = 0;
-			result.driving.left_front = 0;
-			result.driving.right_front = 0;
-			result.driving.left_rear = 0;
-			result.driving.right_rear = 0;
+			//Leave standby
 		}
 		break;
 		
 		default:
 		break;
 	}
+	return result;
+}
+
+lunabotics::AllWheelState PredefinedCmdController::standByState()
+{
+	lunabotics::AllWheelState result;
+	result.steering.left_front = 0;
+	result.steering.right_front = 0;
+	result.steering.left_rear = 0;
+	result.steering.right_rear = 0;	
+	result.driving.left_front = 0;
+	result.driving.right_front = 0;
+	result.driving.left_rear = 0;
+	result.driving.right_rear = 0;
 	return result;
 }
 

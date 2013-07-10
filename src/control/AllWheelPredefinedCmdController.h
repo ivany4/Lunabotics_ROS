@@ -10,9 +10,10 @@ namespace lunabotics {
 #define DEFAULT_WHEEL_VELOCITY	3
 
 enum AwaitingState {
-	AwaitingDriving,
-	AwaitingSteering,
-	AwaitingNone
+	AwaitingStop,
+	AwaitingSteer,
+	AwaitingDrive,
+	AwaitingNothing
 };
 	
 class PredefinedCmdController {
@@ -20,7 +21,6 @@ class PredefinedCmdController {
 		lunabotics::AllWheelState final_state; 
 		bool has_final_state;
 		lunabotics::proto::AllWheelControl::PredefinedControlType _current_cmd;
-		bool is_final_state;
 		bool state_reached;
 		bool force_state;
 		AllWheelGeometryPtr _geometry;
@@ -37,6 +37,7 @@ class PredefinedCmdController {
 		PredefinedCmdController();
 		~PredefinedCmdController();
 		bool needsMoreControl();
+		bool isFinalState();
 		bool control(lunabotics::AllWheelState &signal);
 		void abort();
 		void setNewCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd);
@@ -44,8 +45,8 @@ class PredefinedCmdController {
 		void giveFeedback(lunabotics::AllWheelState state);
 		void setGeometry(AllWheelGeometryPtr geometry);
 		void setWheelVelocity(double velocity);
-		void setCrabAngle(double angle);
 		lunabotics::AllWheelState stateForCommand(lunabotics::proto::AllWheelControl::PredefinedControlType cmd);
+		lunabotics::AllWheelState standByState();
 };
 typedef PredefinedCmdController * PredefinedCmdControllerPtr;
 
