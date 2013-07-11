@@ -643,8 +643,8 @@ double PathFollowingGeometry::getFeedforwardPrediction()
 		this->getCurveRadius();
 		if (this->has_curve_radius) {
 		
-			float l1 = this->robotGeometry->left_front().x;
-			float l2 = fabs(this->robotGeometry->left_rear().x);
+			float l1 = this->robotGeometry->getJoints().left_front.x;
+			float l2 = fabs(this->robotGeometry->getJoints().left_rear.x);
 			
 			//Equation 15
 			double A = -(MASS*l1*C_ALPHA_F-l2*C_ALPHA_R)/(2*pow((l1+l2), 2)*C_ALPHA_F*C_ALPHA_R);

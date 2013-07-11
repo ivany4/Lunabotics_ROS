@@ -3,7 +3,8 @@
 
 #include "../types.h"
 
-#define OCC_THRESHOLD	50
+#define OCC_THRESHOLD	50	//Used to separate center nodes
+#define OCC_THRESHOLD_2	80	//Used to check C-space orientation affordability
 
 namespace lunabotics {
 	
@@ -18,6 +19,9 @@ private:
 	double G;
 	double H;
 	bool has_F;
+	bool isPossible(int x, int y, MapData map);
+	bool isPossible(int x, int y, Rect robotDimensions, MapData map);
+	bool robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map);
 public:
 	int x;
 	int y;
@@ -35,7 +39,8 @@ public:
 	int operator!=(const Node &rhs) const;
 	int operator<(const Node &rhs) const;
 	friend std::ostream &operator<<(std::ostream &, const Node &);
-	NodeList neighbours(int grid_width, int grid_height, OccupancyArr grid);
+	NodeList neighbours(MapData map);
+	NodeList neighbours(MapData map, Rect robotDimensions);
 	Node parent(NodeList parents);
 	void setG(double G);
 	void setH(double H);

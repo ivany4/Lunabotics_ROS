@@ -31,7 +31,47 @@ struct Point {
 	float y;
 	bool operator==(const Point &b) const {return fabs(x-b.x) < 0.00001 && fabs(y-b.y) < 0.00001;}
 	bool operator!=(const Point &b) const {return fabs(x-b.x) >= 0.00001 || fabs(y-b.y) >= 0.00001;}
+	friend Point operator+(const Point &c1, const Point &c2);
+	friend Point operator-(const Point &c1, const Point &c2);
+	friend Point operator*(const double &c, const Point &p);
+	friend Point operator*(const Point &p, const double &c);
+	friend Point operator/(const double &c, const Point &p);
+	friend Point operator/(const Point &p, const double &c);
+	friend Point operator*(const int &c, const Point &p);
+	friend Point operator*(const Point &p, const int &c);
+	friend Point operator/(const int &c, const Point &p);
+	friend Point operator/(const Point &p, const int &c);
 	//std::ostream &operator<<(std::ostream &, const Point &p) { output << "(" << p.x << "," << p.y << ")"; return output; }
+};
+
+inline Point CreatePoint(float x, float y)
+{
+	Point result;
+	result.x = x;
+	result.y = y;
+	return result;
+}
+inline Point CreateZeroPoint()
+{
+	return CreatePoint(0,0);
+}
+
+inline Point operator+(const Point &c1, const Point &c2){return CreatePoint(c1.x+c2.x, c1.y+c2.y);}
+inline Point operator-(const Point &c1, const Point &c2){return CreatePoint(c1.x-c2.x, c1.y-c2.y);}
+inline Point operator*(const double &c, const Point &p){return CreatePoint(p.x*c, p.y*c);}
+inline Point operator*(const Point &p, const double &c){return CreatePoint(p.x*c, p.y*c);}
+inline Point operator/(const double &c, const Point &p){return c==0?CreateZeroPoint():CreatePoint(p.x/c, p.y/c);}
+inline Point operator/(const Point &p, const double &c){return c==0?CreateZeroPoint():CreatePoint(p.x/c, p.y/c);}
+inline Point operator*(const int &c, const Point &p){return CreatePoint(p.x*c, p.y*c);}
+inline Point operator*(const Point &p, const int &c){return CreatePoint(p.x*c, p.y*c);}
+inline Point operator/(const int &c, const Point &p){return c==0?CreateZeroPoint():CreatePoint(p.x/c, p.y/c);}
+inline Point operator/(const Point &p, const int &c){return c==0?CreateZeroPoint():CreatePoint(p.x/c, p.y/c);}
+
+struct Rect {
+	Point left_front;
+	Point right_front;
+	Point left_rear;
+	Point right_rear;
 };
 
 struct Pose {
@@ -44,17 +84,16 @@ struct IndexedPoint {
 	int index;
 };
 
-inline Point CreatePoint(float x, float y)
-{
-	Point result;
-	result.x = x;
-	result.y = y;
-	return result;
-}
 
-inline Point CreateZeroPoint()
+
+inline Rect CreateRect(Point left_front, Point right_front, Point left_rear, Point right_rear)
 {
-	return CreatePoint(0,0);
+	Rect result;
+	result.left_front = left_front;
+	result.right_front = right_front;
+	result.left_rear = left_rear;
+	result.right_rear = right_rear;
+	return result;
 }
 
 inline geometry_msgs::Point geometry_msgs_Point_from_Point(Point p)
@@ -127,6 +166,22 @@ typedef std::vector<Pose> PoseArr;
 typedef std::vector<int8_t> OccupancyArr;
 typedef std::vector<IndexedPoint> IndexedPointArr;
 typedef PointArr::iterator PointArrIt;
+
+struct MapData {
+	OccupancyArr cells;
+	int width;
+	int height;
+	double resolution;
+	int8_t at(int x, int y) {
+		unsigned int idx = width*y+x;
+		if (idx >= this->cells.size()) {
+			ROS_ERROR("Trying to get cell beyond the map boundaries");
+			return 0;
+		}
+		return this->cells.at(this->width*y+x);
+	}
+	int8_t at(Point p) {return this->at(p.x, p.y);}
+};
 
 inline int sign(double value, double accuracy) {
 	if (value > accuracy) return 1;

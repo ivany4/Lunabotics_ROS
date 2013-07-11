@@ -33,8 +33,10 @@ cached_map_up_to_date(false),
 sequence(0), autonomyEnabled(false), steeringMode(lunabotics::proto::ACKERMANN), 
 pointTurnMotionState(lunabotics::proto::Telemetry::STOPPED), currentPose(), segmentsIt(), segments(),
 waypointsIt(), waypoints(), desiredWaypoints(), motionConstraints(), minICRRadius(0.0f),
-ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0), crabbedBefore(false)
+ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0), crabbedBefore(false),
+useCSpace(false)
 {
+	this->parseArgs();
 	
 	Point zeroPoint = CreatePoint(0, 0);
 	this->currentPose.position = zeroPoint;
@@ -249,7 +251,7 @@ void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
 
 void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 {
-	ROS_WARN("------> CMD GOT");
+	ROS_INFO("------> CMD GOT");
 	
 	this->controlStop();
 	this->ackermannJustStarted = true;
@@ -277,8 +279,12 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	Point start = CreatePoint(start_x, start_y);
 	//ROS_INFO("Starting point is %d,%d", start_x, start_y);
 	
-	PathPtr path = new Path(this->cached_map.data, this->cached_map.info.width,
-							this->cached_map.info.height, start);
+	MapData data;
+	data.cells = this->cached_map.data;
+	data.width = this->cached_map.info.width;
+	data.height = this->cached_map.info.height;
+	data.resolution = resolution;
+	PathPtr path = this->useCSpace ? new Path(data, start, this->robotGeometry->getMaxDimensions()) : new Path(data, start);
 	
 	for (unsigned int k = 0; k < msg->waypoints.size(); k++) {
 		Point goal = Point_from_geometry_msgs_Point(msg->waypoints.at(k));
@@ -472,13 +478,17 @@ void MotionControlNode::runOnce()
 		else {			
 			lunabotics::RobotGeometry msg;
 			//ROS_INFO("Sending Rover Geometry");
-			msg.left_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->left_front());
-			msg.left_rear_joint = geometry_msgs_Point_from_Point(this->robotGeometry->left_rear());
-			msg.right_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->right_front());
-			msg.right_rear_joint = geometry_msgs_Point_from_Point(this->robotGeometry->right_rear());
-			msg.wheel_radius = this->robotGeometry->wheel_radius();
-			msg.wheel_offset = this->robotGeometry->wheel_offset();
-			msg.wheel_width = this->robotGeometry->wheel_width();
+			msg.left_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->getJoints().left_front);
+			msg.left_rear_joint = geometry_msgs_Point_from_Point(this->robotGeometry->getJoints().left_rear);
+			msg.right_front_joint = geometry_msgs_Point_from_Point(this->robotGeometry->getJoints().right_front);
+			msg.right_rear_joint = geometry_msgs_Point_from_Point(this->robotGeometry->getJoints().right_rear);
+			msg.left_front_dim = geometry_msgs_Point_from_Point(this->robotGeometry->getMaxDimensions().left_front);
+			msg.left_rear_dim = geometry_msgs_Point_from_Point(this->robotGeometry->getMaxDimensions().left_rear);
+			msg.right_front_dim = geometry_msgs_Point_from_Point(this->robotGeometry->getMaxDimensions().right_front);
+			msg.right_rear_dim = geometry_msgs_Point_from_Point(this->robotGeometry->getMaxDimensions().right_rear);
+			msg.wheel_radius = this->robotGeometry->getWheelRadius();
+			msg.wheel_offset = this->robotGeometry->getWheelOffset();
+			msg.wheel_width = this->robotGeometry->getWheelWidth();
 			//ROS_INFO("--> wheel offset %f", msg.wheel_offset);
 			//ROS_INFO("--> wheel radius %f", msg.wheel_radius);
 			//ROS_INFO("--> wheel width %f", msg.wheel_width);
@@ -531,7 +541,7 @@ void MotionControlNode::finalizeRoute()
 {
 	//ROS_INFO("Route completed");
 	this->controlStop();
-	ROS_WARN("<------ ROUTE DONE");
+	ROS_INFO("<------ ROUTE DONE");
 	
 	//Send empty path to clear map in GUI
 	lunabotics::PathTopic pathMsg;
@@ -782,7 +792,7 @@ void MotionControlNode::controlAckermannAllWheel()
 				}
 				
 				double alpha = M_PI_2-gamma;
-				double offset_x = this->robotGeometry->left_front().x;
+				double offset_x = this->robotGeometry->getJoints().left_front.x;
 				offset_y = tan(alpha)*offset_x;
 				offset_y_exists = true;
 			}
@@ -1179,6 +1189,14 @@ bool MotionControlNode::getMapIfNeeded()
 		}
 	}
 	return true;
+}
+
+void MotionControlNode::parseArgs()
+{
+	if (this->commandOptionExists(this->argv, this->argv + this->argc, "-s")) {
+		this->useCSpace = true;
+		ROS_INFO("Using CSpace path planning");
+	}
 }
 
 void MotionControlNode::run()

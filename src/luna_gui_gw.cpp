@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 						
 						if (pathFollowingMsg.is_driving) {
 							if (pathFollowingMsg.has_min_icr_radius) {
-								ROS_INFO("Setting %f", pathFollowingMsg.min_icr_radius);
+								//ROS_INFO("Setting %f", pathFollowingMsg.min_icr_radius);
 								state->set_min_icr_offset(pathFollowingMsg.min_icr_radius);
 							}
 							if (pathFollowingMsg.has_point_turn_state) {
@@ -311,14 +311,22 @@ int main(int argc, char **argv)
 					
 					if (sendGeometry) {
 						lunabotics::proto::Telemetry::Geometry *positions = tm.mutable_geometry_data();
-						positions->mutable_left_front_joint()->set_x(geometry.left_front_joint.x);
-						positions->mutable_left_front_joint()->set_y(geometry.left_front_joint.y);
-						positions->mutable_left_rear_joint()->set_x(geometry.left_rear_joint.x);
-						positions->mutable_left_rear_joint()->set_y(geometry.left_rear_joint.y);
-						positions->mutable_right_front_joint()->set_x(geometry.right_front_joint.x);
-						positions->mutable_right_front_joint()->set_y(geometry.right_front_joint.y);
-						positions->mutable_right_rear_joint()->set_x(geometry.right_rear_joint.x);
-						positions->mutable_right_rear_joint()->set_y(geometry.right_rear_joint.y);
+						positions->mutable_joints()->mutable_left_front()->set_x(geometry.left_front_joint.x);
+						positions->mutable_joints()->mutable_left_front()->set_y(geometry.left_front_joint.y);
+						positions->mutable_joints()->mutable_left_rear()->set_x(geometry.left_rear_joint.x);
+						positions->mutable_joints()->mutable_left_rear()->set_y(geometry.left_rear_joint.y);
+						positions->mutable_joints()->mutable_right_front()->set_x(geometry.right_front_joint.x);
+						positions->mutable_joints()->mutable_right_front()->set_y(geometry.right_front_joint.y);
+						positions->mutable_joints()->mutable_right_rear()->set_x(geometry.right_rear_joint.x);
+						positions->mutable_joints()->mutable_right_rear()->set_y(geometry.right_rear_joint.y);
+						positions->mutable_max_dimensions()->mutable_left_front()->set_x(geometry.left_front_dim.x);
+						positions->mutable_max_dimensions()->mutable_left_front()->set_y(geometry.left_front_dim.y);
+						positions->mutable_max_dimensions()->mutable_left_rear()->set_x(geometry.left_rear_dim.x);
+						positions->mutable_max_dimensions()->mutable_left_rear()->set_y(geometry.left_rear_dim.y);
+						positions->mutable_max_dimensions()->mutable_right_front()->set_x(geometry.right_front_dim.x);
+						positions->mutable_max_dimensions()->mutable_right_front()->set_y(geometry.right_front_dim.y);
+						positions->mutable_max_dimensions()->mutable_right_rear()->set_x(geometry.right_rear_dim.x);
+						positions->mutable_max_dimensions()->mutable_right_rear()->set_y(geometry.right_rear_dim.y);
 						positions->set_wheel_radius(geometry.wheel_radius);
 						positions->set_wheel_offset(geometry.wheel_offset);
 						positions->set_wheel_width(geometry.wheel_width);

@@ -16,13 +16,13 @@ typedef std::vector<IndexedNode> IndexedNodeArr;
 
 class Path {
 private:
-	int width;
-	int height;
+	MapData map;
 	bool initialized;
-	OccupancyArr map;
+	bool use_cspace;
 	NodeArr nodes;
 	NodeArr corner_nodes;
 	IndexedNodeArr obstacle_nodes;
+	Rect robot_dimensions;
 	
 	bool lineIntersectsNodeAt(Line line, int x, int y);
 	bool linesIntersect(Line line1, Line line2);
@@ -36,7 +36,8 @@ private:
 	NodeArr removeStraightPathWaypoints(NodeArr originalGraph);
 public:
 	Path();
-	Path(OccupancyArr map, int width, int height, Point start);
+	Path(MapData map, Point start);
+	Path(MapData map, Point start, Rect robotDimensions);
 	NodeArr cornerNodes();
 	NodeArr allNodes();
 	void appendGoal(Point goal);
@@ -45,7 +46,6 @@ public:
 	PointArr allPoints(float resolution);
 	IndexedPointArr closestObstaclePoints(float resolution);
 	bool is_initialized();
-	int8_t mapAt(int x, int y);
 };
 
 typedef Path * PathPtr;

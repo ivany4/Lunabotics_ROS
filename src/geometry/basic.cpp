@@ -24,6 +24,11 @@ Point lunabotics::rotatePoint(Point point, double angle, ROTATION_DIRECTION dir)
 	return CreatePoint(point.x*cos(angle)+point.y*sin(angle)*dir, -point.x*sin(angle)*dir+point.y*cos(angle));
 }
 
+Point lunabotics::rotatePoint(Point point, double angle)
+{
+	return rotatePoint(point, angle, CCW);
+}
+
 Point lunabotics::midPoint(Point p1, Point p2)
 {
 	return CreatePoint((p1.x+p2.x)/2, (p1.y+p2.y)/2);
@@ -47,6 +52,51 @@ bool lunabotics::in_triangle(Point p, double edge1, double edge2, double theta)
 	return condition_1 && condition_2 && condition_3;
 }
 
+int lunabotics::point_on_line(Point p, Line l)
+{
+	//Determinant of a matrix (Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax)
+	//If det == 0, point lies on the line, else on one side of the line
+	return (l.p2.x-l.p1.x)*(p.y-l.p1.y)-(l.p2.y-l.p1.y)*(p.x-l.p1.x);
+}
+
+bool lunabotics::point_inside_convex(Point p, PointArr convex)
+{
+	int j = 0;
+	for (unsigned int i = 1, j = 0; j < convex.size() && i < convex.size(); i++, j++) {
+		Point pt1 = convex.at(i);
+		Point pt2 = convex.at(j);
+		if (((pt1.y <= p.y && p.y < pt2.y) || (pt2.y <= p.y && p.y < pt1.y) ) &&
+		    (p.x < (pt2.x-pt1.x)*(p.y-pt1.y)/(pt2.y-pt1.y)+pt1.x)) {
+				return true;
+		}
+	}
+	return false;
+}
+
+
+
+bool lunabotics::in_rectangle(Point p, Rect r)
+{
+	PointArr convex;
+	convex.push_back(r.left_front);
+	convex.push_back(r.right_front);
+	convex.push_back(r.right_rear);
+	convex.push_back(r.left_rear);		
+	return point_inside_convex(p, convex);
+	/*
+	Line top = CreateLine(r.left_front, r.right_front);
+	Line bottom = CreateLine(r.left_rear, r.right_rear);
+	Line left = CreateLine(r.left_front, r.left_rear);
+	Line right = CreateLine(r.right_front, r.right_rear);
+	
+	if (point_on_line(p, top) <= 0 && //Below top
+		point_on_line(p, bottom) >= 0 && //Above bottom
+		point_on_line(p, left) <= 0 && //Right from left edge
+		point_on_line(p, right) >= 0) { //Left from right edge
+		return true;
+	}
+	return false;*/
+}
 
 //Angle at point1 
 double lunabotics::angleFromTriangle(Point point1, Point point2, Point point3)

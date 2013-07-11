@@ -85,6 +85,7 @@ private:
 	ros::Time previousYawTime;
 	double linearVelocity;
 	bool crabbedBefore;
+	bool useCSpace;
 	
 	lunabotics::PredefinedCmdControllerPtr predefinedControl;
 	lunabotics::PIDControllerPtr ackermannPID;
@@ -125,6 +126,7 @@ private:
 	
 	
 	void runOnce();
+	void parseArgs();
 public:
 	MotionControlNode(int argc, char **argv, std::string name, int frequency);
 	~MotionControlNode();

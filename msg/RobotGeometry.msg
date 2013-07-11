@@ -2,6 +2,10 @@ geometry_msgs/Point left_front_joint
 geometry_msgs/Point right_front_joint
 geometry_msgs/Point left_rear_joint
 geometry_msgs/Point right_rear_joint
+geometry_msgs/Point left_front_dim
+geometry_msgs/Point right_front_dim
+geometry_msgs/Point left_rear_dim
+geometry_msgs/Point right_rear_dim
 float32 wheel_offset
 float32 wheel_radius
 float32 wheel_width

@@ -9,13 +9,12 @@
 namespace lunabotics {
 	class AllWheelGeometry {
 		private:
-			Point lf;
-			Point lr;
-			Point rf;
-			Point rr;
-			float _wheel_offset;
-			float _wheel_radius;
-			float _wheel_width;
+			Rect joints;
+			Rect max_dimensions;
+			float wheel_offset;
+			float wheel_radius;
+			float wheel_width;
+			bool need_max_dimensions_update;
 			
 		
 		public:
@@ -32,15 +31,14 @@ namespace lunabotics {
 			void set_wheel_offset(float new_offset);
 			void set_wheel_radius(float new_radius);
 			void set_wheel_width(float new_width);
-			Point left_front();
-			Point left_rear();
-			Point right_front();
-			Point right_rear();
+			Rect getJoints();
+			Rect getMaxDimensions();
 			Point point_outside_base_link(Point ICR);
-			float wheel_offset();
-			float wheel_radius();
-			float wheel_width();
+			float getWheelOffset();
+			float getWheelRadius();
+			float getWheelWidth();
 			float maxAvailableCurvature();
+			
 			
 	};
 	

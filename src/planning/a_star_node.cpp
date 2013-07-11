@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "a_star_node.h"
+#include "../geometry/basic.h"
 #include <iostream>
 #include <list>
 #include <vector>
@@ -27,7 +28,7 @@ Node::Node(const Node &copyin):F(copyin.F), G(copyin.G), H(copyin.H), has_F(copy
 namespace lunabotics {
 std::ostream &operator<<(std::ostream &output, const Node &aaa)
 {
-   output << "(" << aaa.x << "," << aaa.y << " ess " << aaa.essential << ")";
+   output << "(" << aaa.x << "," << aaa.y << ")";// << " ess " << aaa.essential << ")";
    return output;
 }
 }
@@ -62,30 +63,30 @@ int Node::operator!=(const Node &rhs) const
    return 0;
 }
 
-NodeList Node::neighbours(int grid_width, int grid_height, OccupancyArr grid)
+NodeList Node::neighbours(MapData map)
 {
 	NodeList result;
 	if (this->x > 0) {
 		int new_x = this->x-1;
-		if (grid.at(new_x+this->y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, this->y, map)) {
 			result.push_back(Node(new_x, this->y));
 		}
 	}
 	if (this->y > 0) {
 		int new_y = this->y-1;
-		if (grid.at(this->x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(this->x, new_y, map)) {
 			result.push_back(Node(this->x, new_y));
 		}
 	}
-	if (this->x < grid_width-1) {
+	if (this->x < map.width-1) {
 		int new_x = this->x+1;
-		if (grid.at(new_x+this->y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, this->y, map)) {
 			result.push_back(Node(new_x, this->y));
 		}
 	}
-	if (this->y < grid_height-1) {
+	if (this->y < map.height-1) {
 		int new_y = this->y+1;
-		if (grid.at(this->x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(this->x, new_y, map)) {
 			result.push_back(Node(this->x, new_y));
 		}
 	}
@@ -94,28 +95,28 @@ NodeList Node::neighbours(int grid_width, int grid_height, OccupancyArr grid)
 	if (this->x > 0 && this->y > 0) {
 		int new_x = this->x-1;
 		int new_y = this->y-1;
-		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, new_y, map)) {
 			result.push_back(Node(new_x, new_y));
 		}
 	}
-	if (this->x < grid_width-1 && this->y < grid_height-1) {
+	if (this->x < map.width-1 && this->y < map.height-1) {
 		int new_x = this->x+1;
 		int new_y = this->y+1;
-		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, new_y, map)) {
 			result.push_back(Node(new_x, new_y));
 		}
 	}
-	if (this->x > 0 && this->y < grid_height-1) {
+	if (this->x > 0 && this->y < map.height-1) {
 		int new_x = this->x-1;
 		int new_y = this->y+1;
-		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, new_y, map)) {
 			result.push_back(Node(new_x, new_y));
 		}
 	}
-	if (this->x < grid_width-1 && this->y > 0) {
+	if (this->x < map.width-1 && this->y > 0) {
 		int new_x = this->x+1;
 		int new_y = this->y-1;
-		if (grid.at(new_x+new_y*grid_width) < OCC_THRESHOLD) {
+		if (this->isPossible(new_x, new_y, map)) {
 			result.push_back(Node(new_x, new_y));
 		}
 	}
@@ -124,6 +125,140 @@ NodeList Node::neighbours(int grid_width, int grid_height, OccupancyArr grid)
 
 
 	return result;
+}
+
+NodeList Node::neighbours(MapData map, Rect robotDimensions)
+{
+	NodeList result;
+	if (this->x > 0) {
+		int new_x = this->x-1;
+		if (this->isPossible(new_x, this->y, robotDimensions, map)) {
+			result.push_back(Node(new_x, this->y));
+		}
+	}
+	if (this->y > 0) {
+		int new_y = this->y-1;
+		if (this->isPossible(this->x, new_y, robotDimensions, map)) {
+			result.push_back(Node(this->x, new_y));
+		}
+	}
+	if (this->x < map.width-1) {
+		int new_x = this->x+1;
+		if (this->isPossible(new_x, this->y, robotDimensions, map)) {
+			result.push_back(Node(new_x, this->y));
+		}
+	}
+	if (this->y < map.height-1) {
+		int new_y = this->y+1;
+		if (this->isPossible(this->x, new_y, robotDimensions, map)) {
+			result.push_back(Node(this->x, new_y));
+		}
+	}
+#ifdef USE_8_DIRECTIONS
+		
+	if (this->x > 0 && this->y > 0) {
+		int new_x = this->x-1;
+		int new_y = this->y-1;
+		if (this->isPossible(new_x, new_y, robotDimensions, map)) {
+			result.push_back(Node(new_x, new_y));
+		}
+	}
+	if (this->x < map.width-1 && this->y < map.height-1) {
+		int new_x = this->x+1;
+		int new_y = this->y+1;
+		if (this->isPossible(new_x, new_y, robotDimensions, map)) {
+			result.push_back(Node(new_x, new_y));
+		}
+	}
+	if (this->x > 0 && this->y < map.height-1) {
+		int new_x = this->x-1;
+		int new_y = this->y+1;
+		if (this->isPossible(new_x, new_y, robotDimensions, map)) {
+			result.push_back(Node(new_x, new_y));
+		}
+	}
+	if (this->x < map.width-1 && this->y > 0) {
+		int new_x = this->x+1;
+		int new_y = this->y-1;
+		if (this->isPossible(new_x, new_y, robotDimensions, map)) {
+			result.push_back(Node(new_x, new_y));
+		}
+	}
+		
+#endif
+
+
+	return result;
+}
+
+
+bool Node::isPossible(int x, int y, MapData map)
+{
+	return map.at(x, y) < OCC_THRESHOLD;
+}
+
+bool Node::isPossible(int x, int y, Rect robotDimensions, MapData map)
+{
+	int dx = x-this->x;
+	int dy = y-this->y;
+	double orientation = atan2(dy, dx);
+	
+	return this->isPossible(x, y, map) && 
+			this->robotFitsAtNode(this->x, this->y, orientation, robotDimensions, map) && 
+			this->robotFitsAtNode(x, y, orientation, robotDimensions, map);
+}
+
+bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map)
+{
+	Point bias = CreatePoint(x, y)*map.resolution;
+	Point left_front = (rotatePoint(r.left_front, orientation)+bias)/map.resolution;
+	Point right_front = (rotatePoint(r.right_front, orientation)+bias)/map.resolution;
+	Point left_rear = (rotatePoint(r.left_rear, orientation)+bias)/map.resolution;
+	Point right_rear = (rotatePoint(r.right_rear, orientation)+bias)/map.resolution;
+	
+	ROS_WARN("Checking if robot fits at %d,%d oriented at %.2f", x, y, orientation);
+	
+    std::stringstream sstr;
+	sstr << "Robot grid dims: " << left_front << ", " << right_front << ", " << left_rear << ", " << right_rear;
+	ROS_INFO("%s", sstr.str().c_str());
+	
+	int min_x = std::min(std::min(std::min(left_front.x, right_front.x), left_rear.x), right_rear.x);
+	int min_y = std::min(std::min(std::min(left_front.y, right_front.y), left_rear.y), right_rear.y);
+	int max_x = std::max(std::max(std::max(left_front.x, right_front.x), left_rear.x), right_rear.x);
+	int max_y = std::max(std::max(std::max(left_front.y, right_front.y), left_rear.y), right_rear.y);
+	
+	
+	if (min_y != left_front.y && min_y != right_front.y) {
+		//Flip vertically
+		std::swap(left_front, left_rear);
+		std::swap(right_front, right_rear);
+	}
+	if (min_x != left_front.x && min_x != left_rear.x) {
+		//Flip horizontally
+		std::swap(left_front, right_front);
+		std::swap(left_rear, right_rear);
+	}
+	Rect rct = CreateRect(left_front, right_front, left_rear, right_rear);
+	
+	
+	for (int i = std::max(0, min_y); i < std::min(max_y, map.height); i++) {
+		for (int j = std::max(0, min_x); j < std::min(max_x, map.width); j++) {
+			if (map.at(j, i) < OCC_THRESHOLD_2) {
+				//Empty area, no worries
+				continue;
+			}
+			
+			ROS_INFO("Checking obstacle %d,%d", j, i);
+			
+			Point cell_point = CreatePoint(j, i);
+			if (in_rectangle(cell_point, rct)) {
+				ROS_ERROR("Will be colliding");
+				return false;
+			}
+		}
+	}
+	
+	return true;
 }
 
 Node Node::parent(NodeList parents) {

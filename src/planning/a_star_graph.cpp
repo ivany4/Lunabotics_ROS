@@ -9,24 +9,29 @@
 using namespace lunabotics;
 
 //---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
-Path::Path(): width(0), height(0), initialized(false), map(), nodes(), corner_nodes()
+Path::Path(): map(), initialized(false), nodes(), corner_nodes()
 {
 }
 
-Path::Path(OccupancyArr map, int width, int height, Point start): width(width), height(height), initialized(true), map(map), nodes(), corner_nodes()
+Path::Path(MapData map, Point start): map(map), initialized(true), use_cspace(false), nodes(), corner_nodes(), robot_dimensions()
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
-	if (map.at(start.x+start.y*width) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+    
+    this->nodes.push_back(Node(start));
+}
 
-    this->width = width;
-    this->height = height;
+Path::Path(MapData map, Point start, Rect robotDimensions): map(map), initialized(true), use_cspace(true), nodes(), corner_nodes(), robot_dimensions(robotDimensions)
+{
+	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
+	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
     
     this->nodes.push_back(Node(start));
 }
 
 void Path::appendGoal(Point goal)
 {
-    if (map.at(goal.x+goal.y*width) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
+    if (map.at(goal) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
     
     if (this->initialized) {
 		
@@ -36,7 +41,7 @@ void Path::appendGoal(Point goal)
 		NodeArr graph;
 		
 	    
-	    Node goal_node = Node(goal.x, goal.y);  
+	    Node goal_node = Node(goal);  
 	    goal_node.essential = true;
 	    Node start_node = this->nodes.at(this->nodes.size()-1);
 	    start_node.parent_x = start_node.x;
@@ -72,7 +77,7 @@ void Path::appendGoal(Point goal)
 	        open_set.remove(current);
 	        closed_set.push_back(current);
 	        
-	        NodeList neighbours = current.neighbours(this->width, this->height, map);
+	        NodeList neighbours = this->use_cspace ? current.neighbours(this->map, this->robot_dimensions) : current.neighbours(this->map);
 	        
 	        for (NodeList::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 				Node neighbour = *it;
@@ -141,28 +146,28 @@ IndexedNodeArr Path::closestObstacleNodes()
 			int x = curr_waypoint.x;
 			int y = curr_waypoint.y;
 			NodeArr test_points;
-			if (x > 0 && this->mapAt(x-1, y) > OCC_THRESHOLD) {
+			if (x > 0 && this->map.at(x-1, y) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x-1, y));
 			}
-			if (x < this->width-1 && this->mapAt(x+1, y) > OCC_THRESHOLD) {
+			if (x < this->map.width-1 && this->map.at(x+1, y) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x+1, y));
 			}
-			if (y > 0 && this->mapAt(x, y-1) > OCC_THRESHOLD) {
+			if (y > 0 && this->map.at(x, y-1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x, y-1));
 			}
-			if (y < this->height-1 && this->mapAt(x, y+1) > OCC_THRESHOLD) {
+			if (y < this->map.height-1 && this->map.at(x, y+1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x, y+1));
 			}
-			if (x > 0 && y > 0 && this->mapAt(x-1, y-1) > OCC_THRESHOLD) {
+			if (x > 0 && y > 0 && this->map.at(x-1, y-1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x-1, y-1));
 			}
-			if (x < this->width-1 && y < this->height-1 && this->mapAt(x+1, y+1) > OCC_THRESHOLD) {
+			if (x < this->map.width-1 && y < this->map.height-1 && this->map.at(x+1, y+1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x+1, y+1));
 			}
-			if (x > 0 && y < this->height-1 && this->mapAt(x-1, y+1) > OCC_THRESHOLD) {
+			if (x > 0 && y < this->map.height-1 && this->map.at(x-1, y+1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x-1, y+1));
 			}
-			if (x < this->width-1 && y > 0 && this->mapAt(x+1, y-1) > OCC_THRESHOLD) {
+			if (x < this->map.width-1 && y > 0 && this->map.at(x+1, y-1) > OCC_THRESHOLD) {
 				test_points.push_back(Node(x+1, y-1));
 			}
 			
@@ -287,7 +292,7 @@ bool Path::isObstacleBetweenNodes(Node node1, Node node2)
 		int begin = std::min(node1.y, node2.y);
 		int end = std::max(node1.y, node2.y);
 		for (int y = begin+1; y < end; y++) {
-			int8_t occupancy = this->mapAt(node1.x, y);
+			int8_t occupancy = this->map.at(node1.x, y);
 			//ROS_INFO("Occupancy of (%d,%d) is %d", node1.x, y, occupancy);
 			if (occupancy > OCC_THRESHOLD) {
 				return true;
@@ -317,12 +322,12 @@ bool Path::isObstacleBetweenNodes(Node node1, Node node2)
 				int x2 = ceil((i-b)/k);
 				int8_t occupancy = 0;
 				if (this->lineIntersectsNodeAt(l, x1, i)) {
-					occupancy = this->mapAt(x1, i);
+					occupancy = this->map.at(x1, i);
 					//ROS_INFO("Occupancy of (%d,%d) is %d", x1, i, occupancy);
 				}
 				if (occupancy <= OCC_THRESHOLD) {
 					if (this->lineIntersectsNodeAt(l, x2, i)) {
-						occupancy = this->mapAt(x2, i);
+						occupancy = this->map.at(x2, i);
 						//ROS_INFO("Occupancy of (%d,%d) is %d", x2, i, occupancy);
 					}
 				}
@@ -347,12 +352,12 @@ bool Path::isObstacleBetweenNodes(Node node1, Node node2)
 				
 				int8_t occupancy = 0;
 				if (this->lineIntersectsNodeAt(l, i, y1)) {
-					occupancy = this->mapAt(i, y1);
+					occupancy = this->map.at(i, y1);
 					//ROS_INFO("Occupancy of (%d,%d) is %d", i, y1, occupancy);
 				}
 				if (occupancy <= OCC_THRESHOLD) {
 					if (this->lineIntersectsNodeAt(l, i, y2)) {
-						occupancy = this->mapAt(i, y2);
+						occupancy = this->map.at(i, y2);
 						//ROS_INFO("Occupancy of (%d,%d) is %d", i, y2, occupancy);
 					}
 				}
@@ -438,15 +443,15 @@ bool Path::in_set(NodeList set, Node node) {
 }
 	
 double Path::distance(Node node1, Node node2) {
-    if (node1.x >= 0 && node1.x < this->width && 
-       node2.x >= 0 && node2.x < this->width && 
-       node1.y >=0 && node1.y < this->height && 
-       node2.y >= 0 && node2.y < this->height) {
+    if (node1.x >= 0 && node1.x < this->map.width && 
+       node2.x >= 0 && node2.x < this->map.width && 
+       node1.y >=0 && node1.y < this->map.height && 
+       node2.y >= 0 && node2.y < this->map.height) {
 		int dx = node1.x-node2.x;
 		int dy = node1.y-node2.y;
 		return sqrt(pow(dx, 2) + pow(dy, 2));
     }
-    return this->width*this->height;
+    return this->map.width*this->map.height;
 }
 
 NodeArr Path::removeStraightPathWaypoints(NodeArr originalGraph)
@@ -499,16 +504,6 @@ NodeArr Path::reconstruct_path(NodeList came_from, Node current)
 }
 
 //-------------------- OTHER METHODS --------------------------//
-
-int8_t Path::mapAt(int x, int y)
-{
-	unsigned int idx = width*y+x;
-	if (idx >= this->map.size()) {
-		ROS_ERROR("Trying to get cell beyond the map boundaries");
-		return 0;
-	}
-	return this->map.at(width*y+x);
-}
 
 void lunabotics::PrintNodes(NodeArr arr, std::string label)
 {
