@@ -103,7 +103,7 @@ void Path::appendGoal(Point goal)
 				int safe_radius = ceil(fabs(this->robot_dimensions.left_front.x*2)*this->map.resolution);
 				double repulsion_penalty = 0;
 				if (this->obstacles_in_circle(neighbour, safe_radius, obstacle_dist)) {
-					repulsion_penalty = 100.0/obstacle_dist;
+					repulsion_penalty = 5.0/obstacle_dist;
 					ROS_WARN("Obstacle at distance %f. Penalty %f", obstacle_dist, repulsion_penalty);
 				}
 				
@@ -139,7 +139,7 @@ void Path::appendGoal(Point goal)
 							  direct = direct && (secondPrevious.isPossible(neighbour, this->robot_dimensions, this->map) || fabs(orient2-orient1) < 0.0001);
 							}
 							
-							if (false && direct) {
+							if (direct) {
 								std::stringstream sstr;
 								sstr << secondPrevious << " and " << neighbour << ". Removing " << current;
 								//ROS_INFO("Direct connection between %s", sstr.str().c_str());
