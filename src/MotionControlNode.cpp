@@ -284,7 +284,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	data.width = this->cached_map.info.width;
 	data.height = this->cached_map.info.height;
 	data.resolution = resolution;
-	PathPtr path = this->useCSpace ? new Path(data, start, this->robotGeometry->getMaxDimensions()) : new Path(data, start);
+	PathPtr path = this->useCSpace && this->steeringMode != lunabotics::proto::ACKERMANN ? new Path(data, start, this->robotGeometry->getMaxDimensions()) : new Path(data, start);
 	
 	for (unsigned int k = 0; k < msg->waypoints.size(); k++) {
 		Point goal = Point_from_geometry_msgs_Point(msg->waypoints.at(k));
@@ -415,7 +415,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			
 			 this->waypointsIt = this->waypoints.begin()+1;
 			 this->pathFollowingGeometry->setNextWaypoint(this->waypointsIt);		
-		//	ROS_INFO("Returned path: %s", sstr.str().c_str());
+			ROS_INFO("Returned path: %s", sstr.str().c_str());
 			//Point waypoint = this->waypoints.at(0);
 			//ROS_INFO("Heading towards (%.1f,%.1f)", (*this->waypointsIt).x, (*this->waypointsIt).y);
 			

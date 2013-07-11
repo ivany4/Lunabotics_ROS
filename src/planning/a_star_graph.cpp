@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include "float.h"
+#include "../geometry/basic.h"
 using namespace lunabotics;
 
 //---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
@@ -49,7 +50,6 @@ void Path::appendGoal(Point goal)
 	    start_node.essential = true;
 		
 		
-		
 	    start_node.setH(this->distance(start_node, goal_node));	//Distance
 
 	    open_set.push_back(start_node);
@@ -76,8 +76,10 @@ void Path::appendGoal(Point goal)
 			
 	        open_set.remove(current);
 	        closed_set.push_back(current);
+					
 	        
-	        NodeList neighbours = this->use_cspace ? current.neighbours(this->map, this->robot_dimensions) : current.neighbours(this->map);
+	        NodeList neighbours =// this->use_cspace ? current.neighbours(this->map, this->robot_dimensions) : 
+	        current.neighbours(this->map);
 	        
 	        for (NodeList::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 				Node neighbour = *it;
@@ -88,14 +90,42 @@ void Path::appendGoal(Point goal)
 				double tentative_G = current.getG() + this->distance(current, neighbour);
 				
 				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.getG()) {
-					came_from.push_back(current);
-					neighbour.parent_x = current.x;
-					neighbour.parent_y = current.y;
+					if (!this->in_set(came_from, current)) {
+						came_from.push_back(current);
+					}
+					
+					neighbour.setParent(current);
 					neighbour.setG(tentative_G);
 					neighbour.setH(this->distance(neighbour, goal_node));
-					if (!this->in_set(open_set, neighbour)) {
-						open_set.push_back(neighbour);
+					
+			        if (came_from.size() >= 3) {
+						Node secondPrevious = current.parent(came_from);
+						if (secondPrevious != current) {
+							bool direct = !current.essential && !this->isObstacleBetweenNodes(secondPrevious, neighbour);
+									
+							if (this->use_cspace) { 
+							  //Check if this transition will be possible at required orientation (or if orientation is not changed)
+							  double orient1 = atan2((neighbour.y-current.y), (neighbour.x-current.x));
+							  double orient2 = atan2((current.y-secondPrevious.y), (current.x-secondPrevious.x));
+							  direct = direct && (secondPrevious.isPossible(neighbour, this->robot_dimensions, this->map) || fabs(orient2-orient1) < 0.0001);
+							}
+							
+							if (direct) {
+								std::stringstream sstr;
+								sstr << secondPrevious << " and " << neighbour << ". Removing " << current;
+								//ROS_INFO("Direct connection between %s", sstr.str().c_str());
+								neighbour.setParent(secondPrevious);
+							}
+						}
 					}
+					
+					//Need updated node here
+					if (this->in_set(open_set, neighbour)) {
+						open_set.remove(neighbour);
+					}
+					open_set.push_back(neighbour);
+					
+					
 				}
 			}
 	    }
@@ -207,6 +237,8 @@ NodeArr Path::allNodes()
 
 NodeArr Path::cornerNodes()
 {
+	return this->nodes;
+	
 	if (this->corner_nodes.empty() && this->nodes.size() > 1) {
 		//ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
 		NodeArr graph = this->removeStraightPathWaypoints(this->nodes);		
@@ -225,8 +257,15 @@ NodeArr Path::cornerNodes()
 			sstr.str(std::string());
 			sstr << currentWaypoint;
 			sstr << "->" << furthestWaypoint;
+			
 			bool direct = !(this->isEssentialNodeInBetween(currentWaypointIdx, furthesWaypointIdx, graph) ||
 			 this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint));
+			 
+			if (this->use_cspace) { 
+			  //Check if this transition will be possible at required orientation
+			  direct = direct && currentWaypoint.isPossible(furthestWaypoint, this->robot_dimensions, this->map);
+			}
+		  
 			if (!direct) {
 			//	ROS_INFO("%s crosses obstacles", sstr.str().c_str());
 				if (++furthesWaypointIdx == currentWaypointIdx-1) {
@@ -401,16 +440,26 @@ bool Path::lineIntersectsNodeAt(Line line, int x, int y)
 	Point rt = CreatePoint(x+0.5, y-0.5);
 	Point lb = CreatePoint(x-0.5, y+0.5);
 	Point rb = CreatePoint(x+0.5, y+0.5);
-	
+
 	Line leftEdge = CreateLine(lt, lb);
 	Line rightEdge = CreateLine(rt, rb);
 	Line topEdge = CreateLine(lt, rt);
 	Line bottomEdge = CreateLine(lb, rb);
-	
+
 	return this->linesIntersect(line, leftEdge) ||
 		   this->linesIntersect(line, rightEdge) ||
 		   this->linesIntersect(line, topEdge) ||
 		   this->linesIntersect(line, bottomEdge);
+	
+	
+	/*
+	Point lt = CreatePoint(x-0.5, y+0.5);
+	Point rt = CreatePoint(x+0.5, y+0.5);
+	Point lb = CreatePoint(x-0.5, y-0.5);
+	Point rb = CreatePoint(x+0.5, y-0.5);
+	
+	Rect s = CreateRect(lt, rt, lb, rb);
+	return line_crosses_square(line, s);*/
 }
 
 

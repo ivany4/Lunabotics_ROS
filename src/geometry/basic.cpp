@@ -113,3 +113,30 @@ double lunabotics::angleFromTriangle(double edge1, double edge2, double edge3)
 	//Cosine rule
 	return acos((pow(edge2,2)+pow(edge1,2)-pow(edge3,2))/(2*edge2*edge1));
 }
+
+double lunabotics::intersectionY(double line_x, Line l)
+{
+    if (l.p2.x == l.p1.x) return DBL_MAX;
+    return l.p1.y + (line_x - l.p1.x)*(l.p2.y - l.p1.y)/(l.p2.x - l.p1.x);
+}
+
+double lunabotics::intersectionX(double line_y, Line l)
+{
+    if (l.p2.x == l.p1.x) return DBL_MAX;
+    return l.p1.x + (line_y - l.p1.y)*(l.p2.y - l.p1.y)/(l.p2.x - l.p1.x);
+}
+
+bool lunabotics::line_crosses_square(Line l, Rect r)
+{
+	double min_x = std::min(std::min(std::min(r.left_front.x, r.right_front.x), r.left_rear.x), r.right_rear.x);
+	double min_y = std::min(std::min(std::min(r.left_front.y, r.right_front.y), r.left_rear.y), r.right_rear.y);
+	double max_x = std::max(std::max(std::max(r.left_front.x, r.right_front.x), r.left_rear.x), r.right_rear.x);
+	double max_y = std::max(std::max(std::max(r.left_front.y, r.right_front.y), r.left_rear.y), r.right_rear.y);
+	
+    int intersections = 0;
+    if(intersectionX(min_y, l) < max_x && intersectionX(min_y, l) > min_x) return true;
+    if(intersectionX(max_y, l) < max_x && intersectionX(max_y, l) > min_x) return true;
+    if(intersectionY(min_x, l) < max_y && intersectionY(min_x, l) > min_y) return true;
+    if(intersectionY(max_x, l) < max_y && intersectionY(max_x, l) > min_y) return true;
+    return intersections;
+}

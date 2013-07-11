@@ -693,6 +693,5 @@ bool PathFollowingGeometry::getTangentAtPoint(Point point, double &heading)
 		heading = lineHeading + angle;			
 		return true;
 	}
-	return false;
-		
+	return false;		
 }

@@ -42,11 +42,13 @@ public:
 	NodeList neighbours(MapData map);
 	NodeList neighbours(MapData map, Rect robotDimensions);
 	Node parent(NodeList parents);
+	bool isPossible(Node n, Rect robotDimensions, MapData map);
 	void setG(double G);
 	void setH(double H);
 	double getF();
 	double getG();
 	double getH();
+	void setParent(Node n);
 };
 
 }

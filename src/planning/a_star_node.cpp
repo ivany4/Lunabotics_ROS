@@ -208,6 +208,11 @@ bool Node::isPossible(int x, int y, Rect robotDimensions, MapData map)
 			this->robotFitsAtNode(x, y, orientation, robotDimensions, map);
 }
 
+bool Node::isPossible(Node n, Rect robotDimensions, MapData map)
+{
+	return this->isPossible(n.x, n.y, robotDimensions, map);
+}
+
 bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map)
 {
 	Point bias = CreatePoint(x, y)*map.resolution;
@@ -216,7 +221,7 @@ bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map
 	Point left_rear = (rotatePoint(r.left_rear, orientation)+bias)/map.resolution;
 	Point right_rear = (rotatePoint(r.right_rear, orientation)+bias)/map.resolution;
 	
-	ROS_WARN("Checking if robot fits at %d,%d oriented at %.2f", x, y, orientation);
+	ROS_INFO("Checking if robot fits at %d,%d oriented at %.2f", x, y, orientation);
 	
     std::stringstream sstr;
 	sstr << "Robot grid dims: " << left_front << ", " << right_front << ", " << left_rear << ", " << right_rear;
@@ -252,11 +257,14 @@ bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map
 			
 			Point cell_point = CreatePoint(j, i);
 			if (in_rectangle(cell_point, rct)) {
-				ROS_ERROR("Will be colliding");
+				ROS_ERROR("Will be colliding (occ %d)", map.at(j, i));
 				return false;
 			}
 		}
 	}
+	
+	
+	ROS_WARN("Recording waypoint %d,%d", x, y);
 	
 	return true;
 }
@@ -309,4 +317,9 @@ double Node::getH()
 	return this->H;
 }
 
+void Node::setParent(Node n)
+{
+	this->parent_x = n.x;
+	this->parent_y = n.y;
+}
 

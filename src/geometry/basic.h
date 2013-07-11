@@ -17,6 +17,9 @@ namespace lunabotics {
 	bool point_inside_convex(Point p, PointArr convex);
 	double angleFromTriangle(Point point1, Point point2, Point point3); //Angle at point1 
 	double angleFromTriangle(double edge1, double edge2, double edge3); //Angle between edge1 and edge2
+	double intersectionY(double line_x, Line l);
+	double intersectionX(double line_y, Line l);
+	bool line_crosses_square(Line l, Rect s);
 }
 
 #endif //_BASIC_H_
