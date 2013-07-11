@@ -30,6 +30,14 @@ Path::Path(MapData map, Point start, Rect robotDimensions): map(map), initialize
     this->nodes.push_back(Node(start));
 }
 
+Path::Path(MapData map, Point start, Rect robotDimensions, bool useCSpace): map(map), initialized(true), use_cspace(useCSpace), nodes(), corner_nodes(), robot_dimensions(robotDimensions)
+{
+	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
+	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+    
+    this->nodes.push_back(Node(start));
+}
+
 void Path::appendGoal(Point goal)
 {
     if (map.at(goal) > OCC_THRESHOLD) { ROS_ERROR("Goal cell is occupied"); this->initialized = false; }
@@ -61,6 +69,9 @@ void Path::appendGoal(Point goal)
 	    while (!open_set.empty()) {
 	        open_set.sort();
 			Node current = open_set.front();
+			
+			ROS_INFO("Picking (%d,%d). G = %f", current.x, current.y, current.getG());
+			
 			sstr.str(std::string());
 			sstr << current;
 			//ROS_INFO("Node with smallest F=%.3f is %s", current.getF(), sstr.str().c_str());
@@ -83,11 +94,29 @@ void Path::appendGoal(Point goal)
 	        
 	        for (NodeList::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 				Node neighbour = *it;
+				
 				if (this->in_set(closed_set, neighbour)) {
 					continue;
 				}
 				
-				double tentative_G = current.getG() + this->distance(current, neighbour);
+				double obstacle_dist;
+				int safe_radius = ceil(fabs(this->robot_dimensions.left_front.x*2)*this->map.resolution);
+				double repulsion_penalty = 0;
+				if (this->obstacles_in_circle(neighbour, safe_radius, obstacle_dist)) {
+					repulsion_penalty = 100.0/obstacle_dist;
+					ROS_WARN("Obstacle at distance %f. Penalty %f", obstacle_dist, repulsion_penalty);
+				}
+				
+				double tentative_G = current.getG() + this->distance(current, neighbour) + repulsion_penalty;
+				
+				ROS_INFO("Dist from beginning %f, curr G %f, tentative G %f <> %f", this->distance(current, neighbour), current.getG(), tentative_G, neighbour.getG());
+				
+				//Node original;
+				//if (this->in_set(closed_set, neighbour, original)) {
+					//if (original.getG() <= tentative_G) {
+						//continue;
+					//}
+				//}
 				
 				if (!this->in_set(open_set, neighbour) || tentative_G <= neighbour.getG()) {
 					if (!this->in_set(came_from, current)) {
@@ -110,7 +139,7 @@ void Path::appendGoal(Point goal)
 							  direct = direct && (secondPrevious.isPossible(neighbour, this->robot_dimensions, this->map) || fabs(orient2-orient1) < 0.0001);
 							}
 							
-							if (direct) {
+							if (false && direct) {
 								std::stringstream sstr;
 								sstr << secondPrevious << " and " << neighbour << ". Removing " << current;
 								//ROS_INFO("Direct connection between %s", sstr.str().c_str());
@@ -490,6 +519,15 @@ bool Path::in_set(NodeList set, Node node) {
 	NodeList::iterator it = find(set.begin(), set.end(), node);
 	return it != set.end();
 }
+
+bool Path::in_set(NodeList set, Node node, Node &original) {
+	NodeList::iterator it = find(set.begin(), set.end(), node);
+	bool result = it != set.end();
+	if (result) {
+		original = *it;
+	}
+	return result;
+}
 	
 double Path::distance(Node node1, Node node2) {
     if (node1.x >= 0 && node1.x < this->map.width && 
@@ -550,6 +588,25 @@ NodeArr Path::reconstruct_path(NodeList came_from, Node current)
 		path.push_back(current);
 	}
 	return path;
+}
+
+bool Path::obstacles_in_circle(Node center, int radius, double &closestDistance)
+{
+	bool result = false;
+	closestDistance = -1;
+	for (int i = std::max(0, center.y-radius); i < center.y+radius && i < this->map.height; i++) {
+		for (int j = std::max(0, center.x-radius); j < center.x+radius && j < this->map.width; j++) {
+			if (in_circle(CreatePoint(j, i), Point_from_Node(center), radius) && this->map.at(j, i) > OCC_THRESHOLD_2) {
+				Node n = Node(j, i);
+				double dist = this->distance(n, center);
+				if (closestDistance == -1 || dist < closestDistance) {
+					closestDistance = dist;
+					result = true;
+				}				
+			}
+		}
+	}
+	return result;
 }
 
 //-------------------- OTHER METHODS --------------------------//

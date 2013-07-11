@@ -282,7 +282,7 @@ Node Node::parent(NodeList parents) {
 // This function is required for built-in STL list functions like sort
 int Node::operator<(const Node &rhs) const
 {
-   if (this->F < rhs.F) return 1;
+	if (this->G+this->H < rhs.G+rhs.F) return 1;
    return 0;
 }
 

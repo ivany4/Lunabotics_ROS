@@ -51,6 +51,8 @@ public:
 	void setParent(Node n);
 };
 
+inline Point Point_from_Node(Node n) {return CreatePoint(n.x, n.y);}
+
 }
 
 #endif //_PLANNING_NODE_H_

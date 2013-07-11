@@ -27,6 +27,7 @@ private:
 	bool lineIntersectsNodeAt(Line line, int x, int y);
 	bool linesIntersect(Line line1, Line line2);
 	bool in_set(NodeList set, Node node);
+	bool in_set(NodeList set, Node node, Node &original);
 	double distance(Node node1, Node node2);
 	NodeArr reconstruct_path(NodeList came_from, Node current);
 	bool isObstacleBetweenNodes(Node node1, Node node2);
@@ -38,6 +39,7 @@ public:
 	Path();
 	Path(MapData map, Point start);
 	Path(MapData map, Point start, Rect robotDimensions);
+	Path(MapData map, Point start, Rect robotDimensions, bool useCSpace);
 	NodeArr cornerNodes();
 	NodeArr allNodes();
 	void appendGoal(Point goal);
@@ -46,6 +48,7 @@ public:
 	PointArr allPoints(float resolution);
 	IndexedPointArr closestObstaclePoints(float resolution);
 	bool is_initialized();
+	bool obstacles_in_circle(Node center, int radius, double &closestDistance);
 };
 
 typedef Path * PathPtr;
