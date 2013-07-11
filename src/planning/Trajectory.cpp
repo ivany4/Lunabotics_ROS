@@ -64,7 +64,7 @@ void Trajectory::updateSegmentsMetaInfo(float max_curvature)
 		else {
 			arr = s.curve->getPoints();
 		}
-		ROS_INFO("Setting start idx %d", s.start_idx);
+	//	ROS_INFO("Setting start idx %d", s.start_idx);
 		s.start_idx = this->_cached_points.size();
 		s.finish_idx = s.start_idx+arr.size();
 		this->_segments.at(i) = s;

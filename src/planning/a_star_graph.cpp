@@ -61,7 +61,7 @@ void Path::appendGoal(Point goal)
 			//ROS_INFO("Node with smallest F=%.3f is %s", current.getF(), sstr.str().c_str());
 	
 	        if (current == goal_node) {
-				ROS_INFO("Found goal %s. Setting essential", sstr.str().c_str());
+				//ROS_INFO("Found goal %s. Setting essential", sstr.str().c_str());
 				current.essential = true;
 				graph = this->reconstruct_path(came_from, current);
 			//	ROS_INFO("Path reconstructed");

@@ -89,7 +89,7 @@ ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0
 	//Create service clients
 	this->clientMap = this->nodeHandle->serviceClient<nav_msgs::GetMap>(SERVICE_MAP);
 	
-	ROS_INFO("Motion Control Ready");
+	//ROS_INFO("Motion Control Ready");
 }
 
 MotionControlNode::~MotionControlNode()
@@ -138,7 +138,7 @@ void MotionControlNode::callbackSteeringMode(const lunabotics::SteeringMode::Con
 	this->motionConstraints.lin_velocity_limit = msg->linear_speed_limit;
 	this->motionConstraints.bezier_segments_num = msg->bezier_segments;
 	
-	ROS_INFO("Switching control mode to %s", steeringModeToString(this->steeringMode).c_str());
+	//ROS_INFO("Switching control mode to %s", steeringModeToString(this->steeringMode).c_str());
 }
 
 
@@ -236,12 +236,12 @@ void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
 			controlMsg.driving.right_rear = vel_rear_right;
 			
 			
-			ROS_INFO("VELOCITY %.2f | %.2f | %.2f | %.2f", vel_front_left, vel_front_right, vel_rear_left, vel_rear_right);
+			//ROS_INFO("VELOCITY %.2f | %.2f | %.2f | %.2f", vel_front_left, vel_front_right, vel_rear_left, vel_rear_right);
 			
 			this->publisherAllWheelMotion.publish(controlMsg);
 		}
 		else {
-			ROS_WARN("ICR position is in the dead zone, this control is not possible!");
+			//ROS_WARN("ICR position is in the dead zone, this control is not possible!");
 		}
 	}
 	
@@ -249,6 +249,8 @@ void MotionControlNode::callbackICR(const lunabotics::ICRControl::ConstPtr &msg)
 
 void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 {
+	ROS_WARN("------> CMD GOT");
+	
 	this->controlStop();
 	this->ackermannJustStarted = true;
 	this->waypoints.clear();
@@ -265,7 +267,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 		this->trajectory = new Trajectory();
 	}
 	
-	ROS_INFO("Getting %d waypoints cmd", (int)msg->waypoints.size());
+	//ROS_INFO("Getting %d waypoints cmd", (int)msg->waypoints.size());
 	this->getMapIfNeeded();
 	float resolution = this->cached_map.info.resolution;
 	int start_x = std::min(round(this->currentPose.position.x/resolution), (double)this->cached_map.info.width-1);
@@ -273,7 +275,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	start_x = std::max(0, start_x);
 	start_y = std::max(0, start_y);
 	Point start = CreatePoint(start_x, start_y);
-	ROS_INFO("Starting point is %d,%d", start_x, start_y);
+	//ROS_INFO("Starting point is %d,%d", start_x, start_y);
 	
 	PathPtr path = new Path(this->cached_map.data, this->cached_map.info.width,
 							this->cached_map.info.height, start);
@@ -284,25 +286,25 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 		//	  this->currentPose.position.x, this->currentPose.position.y,
 		//	  goal.x, goal.y);
 		
-		ROS_INFO("Getting path of %d segment between (%.1f,%.1f) and (%.1f,%.1f)", k, start.x, start.y, goal.x, goal.y);
+		//ROS_INFO("Getting path of %d segment between (%.1f,%.1f) and (%.1f,%.1f)", k, start.x, start.y, goal.x, goal.y);
 		
 		path->appendGoal(goal);
 		
 		start = goal;
 	}
 	if (path->allNodes().size() == 0) {
-		ROS_INFO("Path is not found");
+		//ROS_INFO("Path is not found");
 	}
 	else {
-		ROS_INFO("Path got");
+		//ROS_INFO("Path got");
 		
 		if (path->is_initialized()) {
-			ROS_INFO("Path correct");
+			//ROS_INFO("Path correct");
 			std::stringstream sstr;
 			
 			PointArr pts;
 			PointArr corner_points = path->cornerPoints(resolution);
-			ROS_INFO("Called corner Pts");
+			//ROS_INFO("Called corner Pts");
 
 			//Transform into bezier curves
 			if (this->steeringMode == lunabotics::proto::ACKERMANN || this->steeringMode == lunabotics::proto::AUTO) {
@@ -402,7 +404,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			this->pathFollowingGeometry->setPath(this->waypoints);
 			
 			if (this->steeringMode == lunabotics::proto::ACKERMANN) {
-				ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->trajectory->maxCurvature(), 1/this->trajectory->maxCurvature());
+				//ROS_WARN("Trajectory max curvature %f (Min ICR radius %f m)", this->trajectory->maxCurvature(), 1/this->trajectory->maxCurvature());
 			}
 			
 			 this->waypointsIt = this->waypoints.begin()+1;
@@ -423,7 +425,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			this->publisherPathFollowingTelemetry.publish(telemetryMsg);
 		}
 		else {
-			ROS_WARN("Couldn't find a path'");
+			//ROS_WARN("Couldn't find a path'");
 		}
 	}
 	delete path;
@@ -464,7 +466,7 @@ void MotionControlNode::runOnce()
 				this->predefinedControl->setGeometry(this->robotGeometry);
 			}
 			catch (tf::TransformException e) {
-				ROS_WARN("%s", e.what());
+				//ROS_WARN("%s", e.what());
 			}
 		}
 		else {			
@@ -489,10 +491,10 @@ void MotionControlNode::runOnce()
 		if (this->waypointsIt < this->waypoints.end()) {
 		
 			if (isnan((* this->waypointsIt).x) || isnan((* this->waypointsIt).y)) {
-				ROS_WARN("Waypoint undetermined");
+				//ROS_WARN("Waypoint undetermined");
 			}
 			else if (isnan(this->currentPose.position.x) || isnan(this->currentPose.position.y)) {
-				ROS_WARN("Current position undetermined");
+				//ROS_WARN("Current position undetermined");
 			}
 			else {
 				if (this->segmentsIt < this->segments.end()) {
@@ -511,7 +513,7 @@ void MotionControlNode::runOnce()
 			}
 		}
 		else {
-			ROS_ERROR("Way iterator out of bounds");
+			//ROS_ERROR("Way iterator out of bounds");
 			this->controlStop();
 		}
 	}
@@ -529,6 +531,7 @@ void MotionControlNode::finalizeRoute()
 {
 	//ROS_INFO("Route completed");
 	this->controlStop();
+	ROS_WARN("<------ ROUTE DONE");
 	
 	//Send empty path to clear map in GUI
 	lunabotics::PathTopic pathMsg;
@@ -795,7 +798,7 @@ void MotionControlNode::controlAckermannAllWheel()
 				
 				if (abs_offset_y > 0.0001 && (abs_offset_y < this->minICRRadius || this->minICRRadius < 0.0001)) {
 					this->minICRRadius = abs_offset_y;
-					ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
+					//ROS_INFO("Radius %f (corrected radius %f)", abs_offset_y, ICR.y);
 					telemetryMsg.min_icr_radius = abs_offset_y;
 					telemetryMsg.has_min_icr_radius = true;
 				}
@@ -996,7 +999,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				Point deviationPoint = this->pathFollowingGeometry->getDeviationPathPoint();
 				
 				if (this->predefinedControl->isFinalState()) {
-					ROS_WARN("Driving is in final state");
+					//ROS_WARN("Driving is in final state");
 				}
 				if ((this->predefinedControl->isFinalState() || this->crabbedBefore) &&  //Wait for the transition to the driving state before starting to crab
 					// fabs(y_err) > 0.05 &&
@@ -1007,7 +1010,7 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 					ctrl.velocity = DEFAULT_WHEEL_VELOCITY;
 					ctrl.heading = -sign(y_err)*std::min(fabs(y_err)*5.0, GEOMETRY_INNER_ANGLE_MAX);
 					
-					ROS_INFO("Crabbing with heading %f", ctrl.heading);
+					//ROS_INFO("Crabbing with heading %f", ctrl.heading);
 					
 					this->publisherCrab.publish(ctrl);
 					publishCommonMsg = false;
@@ -1016,10 +1019,10 @@ void MotionControlNode::controlPointTurnAllWheel(double distance, double theta)
 				}
 				else {
 					if (this->crabbedBefore) {
-						ROS_WARN("Continuing to driving straight");
+						//ROS_WARN("Continuing to driving straight");
 					}
 					else {					
-						ROS_WARN("Starting to driving straight");
+						//ROS_WARN("Starting to driving straight");
 					}
 					
 					msg.predefined_cmd = lunabotics::proto::AllWheelControl::DRIVE_FORWARD;
@@ -1166,13 +1169,13 @@ bool MotionControlNode::getMapIfNeeded()
 {
 	if (!this->cached_map_up_to_date) {
 		if (!this->clientMap.call(this->serviceMap)) {
-			ROS_WARN("Failed to get a map from the service");
+			//ROS_WARN("Failed to get a map from the service");
 			return false;
 		}
 		else {
 			this->cached_map = this->serviceMap.response.map;
 			this->cached_map_up_to_date = true;
-			ROS_INFO("Got map from service (%d cells)", (int)this->cached_map.data.size());
+			//ROS_INFO("Got map from service (%d cells)", (int)this->cached_map.data.size());
 		}
 	}
 	return true;

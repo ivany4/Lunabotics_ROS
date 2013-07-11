@@ -377,10 +377,10 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 	}
 	else if (this->path.size() == 1) {
 		resultPoint = this->path.at(0);
-		ROS_WARN("Path size is 1. Assigning it as the closest point");
+		//ROS_WARN("Path size is 1. Assigning it as the closest point");
 	}	
 	else {
-		ROS_WARN("PAth size is less than 1. Not able to find closest path point");
+		//ROS_WARN("PAth size is less than 1. Not able to find closest path point");
 	}
 	return result;
 }
@@ -405,9 +405,9 @@ Point PathFollowingGeometry::getFeedbackPathPoint()
 			this->has_previous_feedback_path_point = true;
 		}
 		else {
-			ROS_WARN("failed to get feedback path point");
+			//ROS_WARN("failed to get feedback path point");
 			if (this->has_previous_feedback_path_point) {
-				ROS_WARN("Assigning to previous feedback path point");
+				//ROS_WARN("Assigning to previous feedback path point");
 				this->feedback_path_point = this->previous_feedback_path_point;
 				this->has_feedback_path_point = true;
 			}
@@ -422,7 +422,7 @@ Point PathFollowingGeometry::getDeviationPathPoint()
 		this->has_deviation_path_point = this->getClosestPathPoint(this->current_pose.position, 
 															this->deviation_path_point);
 		if (!this->has_deviation_path_point) {
-			ROS_ERROR("Failed to get deviation path point");
+			//ROS_ERROR("Failed to get deviation path point");
 		}
 	}
 	return this->deviation_path_point;
@@ -601,7 +601,7 @@ Point PathFollowingGeometry::getFeedforwardCurveCenterPoint()
 			this->has_feedforward_center = true;
 		}
 		else {
-			ROS_WARN("Can't get curve center. Expected 5 detection points.");
+			//ROS_WARN("Can't get curve center. Expected 5 detection points.");
 		}
 	}
 	return this->feedforward_center;			
@@ -630,7 +630,7 @@ double PathFollowingGeometry::getCurveRadius()
 			this->has_curve_radius = true;
 		}
 		else {
-			ROS_WARN("Failed to calculate radius. Detection points are empty");
+			//ROS_WARN("Failed to calculate radius. Detection points are empty");
 		}
 	}
 	return this->curve_radius;

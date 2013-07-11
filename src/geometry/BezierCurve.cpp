@@ -96,7 +96,7 @@ BezierCurvePtr lunabotics::CreateConstrainedBezierCurve(Point q0, Point q1, Poin
 	p.y += ty;
 	q1.x = 0;
 	q1.y = 0;
-	ROS_INFO("after translation q0=%f,%f, q2=%f,%f, p=%f,%f", q0.x, q0.y, q2.x, q2.y, p.x, p.y);
+	//ROS_INFO("after translation q0=%f,%f, q2=%f,%f, p=%f,%f", q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
 	
 	bool flipped = false; //Tells if control points were swapped and bezier curve shoul be flipped
@@ -121,7 +121,7 @@ BezierCurvePtr lunabotics::CreateConstrainedBezierCurve(Point q0, Point q1, Poin
 	q2 = rotatePoint(q2, rotate_by, CW);
 	p = rotatePoint(p, rotate_by, CW);
 	
-	ROS_INFO("rotate_by=%f, q0=%f,%f, q2=%f,%f, p=%f,%f", rotate_by, q0.x, q0.y, q2.x, q2.y, p.x, p.y);
+	//ROS_INFO("rotate_by=%f, q0=%f,%f, q2=%f,%f, p=%f,%f", rotate_by, q0.x, q0.y, q2.x, q2.y, p.x, p.y);
 	
 	//Tetragonal concave polygonal data
 	double alpha_bar = q0.x;

@@ -163,9 +163,9 @@ void PredefinedCmdController::setAwaitingState(AwaitingState newState)
 {
 	if (this->awaitingState != newState) {
 		this->awaitingState = newState;
-		ROS_INFO("Now waiting %s", this->awaitingState == AwaitingStop ? "until stops" :
-		 this->awaitingState == AwaitingSteer ? "until steers" :
-		 this->awaitingState == AwaitingDrive ? "until drives" : "nothing");
+		//ROS_INFO("Now waiting %s", this->awaitingState == AwaitingStop ? "until stops" :
+		// this->awaitingState == AwaitingSteer ? "until steers" :
+		// this->awaitingState == AwaitingDrive ? "until drives" : "nothing");
 	}
 }
 
