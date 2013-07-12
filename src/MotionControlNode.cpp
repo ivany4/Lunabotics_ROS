@@ -299,7 +299,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 		start = goal;
 	}
 	if (path->allNodes().size() == 0) {
-		//ROS_INFO("Path is not found");
+		ROS_WARN("Path is not found");
 	}
 	else {
 		//ROS_INFO("Path got");
@@ -309,7 +309,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 			std::stringstream sstr;
 			
 			PointArr pts;
-			PointArr corner_points = path->cornerPoints(resolution);
+			PointArr corner_points = path->allPoints();
 			//ROS_INFO("Called corner Pts");
 
 			//Transform into bezier curves
@@ -321,8 +321,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 				if (size > 2) {
 					Point startPoint = corner_points.at(0);
 					Point endPoint = corner_points.at(size-1);
-					IndexedPointArr closest_obstacles = path->closestObstaclePoints(resolution);
-					unsigned int obst_size = closest_obstacles.size();
+					IndexedPointArr closest_obstacles = path->closestObstaclePoints();
 					
 					pts.push_back(startPoint);
 				
@@ -333,23 +332,10 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 						Point curr = corner_points.at(i);
 						Point next = corner_points.at(i+1);
 						
-						bool hasObstacle = false;
 						Point obstaclePoint;
 						
-						//Since obstacle is the center of occupied cell, we want p to be at its edge
-						if (obst_size > 0) {
-							int start = std::min(obst_size-1, i-1);
-							for (int j = start; j >= 0; j--) {
-								IndexedPoint indexedObstacle = closest_obstacles.at(j);
-								if (indexedObstacle.index == (int)i) {
-									hasObstacle = true;
-									obstaclePoint = indexedObstacle.point;
-									break;
-								}
-							}
-						}
-						
-						
+						bool hasObstacle = pointAtIndex(closest_obstacles, i, obstaclePoint);
+											
 						if (i == 1) {
 							q0 = prev;
 						}
@@ -365,9 +351,8 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 						
 						TrajectorySegment s;
 						if (hasObstacle) {
-							Point p = midPoint(obstaclePoint, curr);
-							s.curve = CreateConstrainedBezierCurve(q0, curr, q2, p, this->motionConstraints.bezier_segments_num);
-							//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f)", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, p.x, p.y);
+							s.curve = CreateConstrainedBezierCurve(q0, curr, q2, obstaclePoint, this->motionConstraints.bezier_segments_num);
+							//ROS_INFO("Curve from tetragonal q0=(%f,%f) q1=(%f,%f), q2=(%f,%f), p=(%f,%f) index=%d", q0.x, q0.y, curr.x, curr.y, q2.x, q2.y, obstaclePoint.x, obstaclePoint.y, i);
 						}
 						else {
 							s.curve = new BezierCurve(q0, curr, q2, this->motionConstraints.bezier_segments_num);

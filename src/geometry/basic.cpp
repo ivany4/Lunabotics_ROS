@@ -39,6 +39,23 @@ double lunabotics::areaOfTriangle(Point A, Point B, Point C)
 	return fabs((A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2);
 }
 
+//Given that the base is p1-p3
+double lunabotics::heightOfTriangle(Triangle t, bool allow_inside_only)
+{
+	double area = areaOfTriangle(t.p1, t.p2, t.p3);
+	double base = distance(t.p1, t.p3);
+	double height = 2*area/base;
+	if (allow_inside_only) {
+		Point intersection;
+		if (height_base_intersection(t.p2, CreateLine(t.p1, t.p3), height, intersection)) {
+			if (!in_triangle(t, intersection)) {
+				height = std::min(distance(t.p2, t.p1), distance(t.p2, t.p3));
+			}
+		}
+	}
+	return height;
+}
+
 bool lunabotics::in_circle(Point p, Point center, double radius)
 {
 	return distance(p, center) <= radius;
@@ -51,6 +68,71 @@ bool lunabotics::in_triangle(Point p, double edge1, double edge2, double theta)
 	bool condition_3 = p.y*(edge1 + edge2*cos(theta)) + p.x*edge2*sin(theta) - edge1*edge2*sin(theta) < 0;
 	return condition_1 && condition_2 && condition_3;
 }
+
+bool lunabotics::in_triangle(Triangle t, Point p)
+{
+	PointArr convex;
+	convex.push_back(t.p1);
+	convex.push_back(t.p2);
+	convex.push_back(t.p3);
+	return point_inside_convex(p, convex);
+}
+
+void lunabotics::getLineProperties(Line l, double &k, double &b, bool &is_vertical)
+{
+	if (l.p1.x == l.p2.x) {
+		is_vertical = true;
+		return;
+	}
+	else {
+		k = (l.p1.y-l.p2.y)/(l.p1.x-l.p2.x);
+		b = l.p1.y-k*l.p1.x;
+	}
+}
+
+bool lunabotics::solve_quadratic_polynomium(double a, double b, double c, double &x1, double &x2)
+{
+	double D = pow(b, 2)-4*a*c;
+	if (D < 0) return false;
+	
+	x1 = (-b+sqrt(D))/(2*a);
+	x2 = (-b-sqrt(D))/(2*a);
+	
+	return true;
+}
+
+bool lunabotics::height_base_intersection(Point peak, Line base, double height, Point &intersection)
+{
+	double k, bb;
+	bool is_vertical;
+	getLineProperties(base, k, bb, is_vertical);
+	if (is_vertical) {
+		intersection = CreatePoint(base.p1.x, peak.y);
+		return true;
+	}
+	
+	double a = pow(k, 2)+1;
+	double b = 2*(peak.x-k*(peak.y-bb));
+	double c = pow((peak.y-bb), 2)-pow(height, 2);
+	
+	double x1, x2;
+	
+	if (solve_quadratic_polynomium(a, b, c, x1, x2)) {
+		double y1 = k*x1+b;
+		double y2 = k*x2+b;
+		
+		Point p1 = CreatePoint(x1, y1);
+		Point p2 = CreatePoint(x2, y2);
+		
+		double dist1 = distance(p1, base.p1)+distance(p1, base.p2);
+		double dist2 = distance(p2, base.p1)+distance(p2, base.p2);
+		
+		intersection = dist1 < dist2 ? p1 : p2;
+		return true;		
+	}
+	return false;		
+}
+
 
 int lunabotics::point_on_line(Point p, Line l)
 {

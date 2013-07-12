@@ -82,9 +82,16 @@ struct Pose {
 struct IndexedPoint {
 	Point point;
 	int index;
+	bool operator==(const IndexedPoint &b) const {return index == b.index;} //Used for 'find' function
 };
 
-
+inline IndexedPoint CreateIndexedPoint(Point p, int idx)
+{
+	IndexedPoint ip;
+	ip.point = p;
+	ip.index = idx;
+	return ip;
+}
 
 inline Rect CreateRect(Point left_front, Point right_front, Point left_rear, Point right_rear)
 {
@@ -161,11 +168,26 @@ inline geometry_msgs::PoseStamped PoseStamped_from_Point(Point p, int &seq, std:
 	return pose;
 }
 
+
 typedef std::vector<Point> PointArr;
 typedef std::vector<Pose> PoseArr;
 typedef std::vector<int8_t> OccupancyArr;
 typedef std::vector<IndexedPoint> IndexedPointArr;
 typedef PointArr::iterator PointArrIt;
+
+
+inline bool pointAtIndex(IndexedPointArr arr, int idx, Point &p)
+{
+	IndexedPoint ip = CreateIndexedPoint(CreateZeroPoint(), idx);
+	IndexedPointArr::iterator it = find(arr.begin(), arr.end(), ip);
+	if (it != arr.end()) {
+		p = (*it).point;
+		//ROS_INFO("Extracting point at index %d = %.2f,%.2f", idx, p.x, p.y);
+		return true;
+	}
+	//ROS_ERROR("Can't find point with index %d", idx);
+	return false;
+}
 
 struct MapData {
 	OccupancyArr cells;
@@ -191,6 +213,20 @@ inline int sign(double value, double accuracy) {
 
 inline int sign(double value) {
 	return sign(value, 0.0001);
+}
+
+struct Triangle {
+	Point p1;
+	Point p2;
+	Point p3;
+};
+
+inline Triangle CreateTriangle(Point p1, Point p2, Point p3) {
+	Triangle t;
+	t.p1 = p1;
+	t.p2 = p2;
+	t.p3 = p3;
+	return t;
 }
 
 }

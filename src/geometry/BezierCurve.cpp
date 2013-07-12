@@ -133,7 +133,8 @@ BezierCurvePtr lunabotics::CreateConstrainedBezierCurve(Point q0, Point q1, Poin
 	double alpha = alpha_bar;
 	double beta = beta_bar;
 	
-	if (in_triangle(p, alpha_bar, beta_bar, theta)) {
+	if (//in_triangle(CreateTriangle(q0, q1, q2), p)) {
+		in_triangle(p, alpha_bar, beta_bar, theta)) {
 		
 		//Calculate substitutions
 		double theta_big = (-cos_theta+sqrt(pow(cos_theta, 2)+8))/2;
@@ -158,6 +159,9 @@ BezierCurvePtr lunabotics::CreateConstrainedBezierCurve(Point q0, Point q1, Poin
 			}
 		}
 		beta = std::min(beta_p(alpha, K_alpha, K_beta), beta_bar);
+	}
+	else {
+		//ROS_WARN("Point %.2f,%.2f not in triangle", p.x, p.y);
 	}
 	
 	//Obtain control points

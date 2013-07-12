@@ -221,11 +221,11 @@ bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map
 	Point left_rear = (rotatePoint(r.left_rear, orientation)+bias)/map.resolution;
 	Point right_rear = (rotatePoint(r.right_rear, orientation)+bias)/map.resolution;
 	
-	ROS_INFO("Checking if robot fits at %d,%d oriented at %.2f", x, y, orientation);
+	//ROS_INFO("Checking if robot fits at %d,%d oriented at %.2f", x, y, orientation);
 	
     std::stringstream sstr;
 	sstr << "Robot grid dims: " << left_front << ", " << right_front << ", " << left_rear << ", " << right_rear;
-	ROS_INFO("%s", sstr.str().c_str());
+	//ROS_INFO("%s", sstr.str().c_str());
 	
 	int min_x = std::min(std::min(std::min(left_front.x, right_front.x), left_rear.x), right_rear.x);
 	int min_y = std::min(std::min(std::min(left_front.y, right_front.y), left_rear.y), right_rear.y);
@@ -253,11 +253,11 @@ bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map
 				continue;
 			}
 			
-			ROS_INFO("Checking obstacle %d,%d", j, i);
+			//ROS_INFO("Checking obstacle %d,%d", j, i);
 			
 			Point cell_point = CreatePoint(j, i);
 			if (in_rectangle(cell_point, rct)) {
-				ROS_ERROR("Will be colliding (occ %d)", map.at(j, i));
+				//ROS_ERROR("Will be colliding (occ %d)", map.at(j, i));
 				return false;
 			}
 		}

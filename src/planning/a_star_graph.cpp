@@ -10,19 +10,17 @@
 using namespace lunabotics;
 
 //---------------------------- CONSTRUCTOR / DESCTRUCTOR ------------------------//
-Path::Path(): map(), initialized(false), nodes(), corner_nodes()
+Path::Path(): map(), initialized(false), nodes(), points()
 {
 }
 
-Path::Path(MapData map, Point start): map(map), initialized(true), use_cspace(false), nodes(), corner_nodes(), robot_dimensions()
-{
-	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
-	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
-    
-    this->nodes.push_back(Node(start));
-}
-
-Path::Path(MapData map, Point start, Rect robotDimensions): map(map), initialized(true), use_cspace(true), nodes(), corner_nodes(), robot_dimensions(robotDimensions)
+Path::Path(MapData map, Point start): 
+map(map), 
+initialized(true), 
+use_cspace(false), 
+nodes(), 
+points(), 
+robot_dimensions()
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
 	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
@@ -30,7 +28,27 @@ Path::Path(MapData map, Point start, Rect robotDimensions): map(map), initialize
     this->nodes.push_back(Node(start));
 }
 
-Path::Path(MapData map, Point start, Rect robotDimensions, bool useCSpace): map(map), initialized(true), use_cspace(useCSpace), nodes(), corner_nodes(), robot_dimensions(robotDimensions)
+Path::Path(MapData map, Point start, Rect robotDimensions): 
+map(map), 
+initialized(true), 
+use_cspace(true), 
+nodes(),
+points(), 
+robot_dimensions(robotDimensions)
+{
+	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
+	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
+    
+    this->nodes.push_back(Node(start));
+}
+
+Path::Path(MapData map, Point start, Rect robotDimensions, bool useCSpace):
+map(map),
+initialized(true), 
+use_cspace(useCSpace),
+nodes(), 
+points(), 
+robot_dimensions(robotDimensions)
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
 	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
@@ -70,7 +88,7 @@ void Path::appendGoal(Point goal)
 	        open_set.sort();
 			Node current = open_set.front();
 			
-			ROS_INFO("Picking (%d,%d). G = %f", current.x, current.y, current.getG());
+			//ROS_INFO("Picking (%d,%d). G = %f", current.x, current.y, current.getG());
 			
 			sstr.str(std::string());
 			sstr << current;
@@ -100,16 +118,16 @@ void Path::appendGoal(Point goal)
 				}
 				
 				double obstacle_dist;
-				int safe_radius = ceil(fabs(this->robot_dimensions.left_front.x*2)*this->map.resolution);
+				int safe_radius = ceil(fabs(this->robot_dimensions.left_front.x)/this->map.resolution);
 				double repulsion_penalty = 0;
 				if (this->obstacles_in_circle(neighbour, safe_radius, obstacle_dist)) {
-					repulsion_penalty = 5.0/obstacle_dist;
-					ROS_WARN("Obstacle at distance %f. Penalty %f", obstacle_dist, repulsion_penalty);
+					repulsion_penalty = (safe_radius*5)/obstacle_dist;
+					//ROS_WARN("Obstacle at distance %f. Penalty %f (Safe radius is %d cells)", obstacle_dist, repulsion_penalty, safe_radius);
 				}
 				
 				double tentative_G = current.getG() + this->distance(current, neighbour) + repulsion_penalty;
 				
-				ROS_INFO("Dist from beginning %f, curr G %f, tentative G %f <> %f", this->distance(current, neighbour), current.getG(), tentative_G, neighbour.getG());
+				//ROS_INFO("Dist from beginning %f, curr G %f, tentative G %f <> %f", this->distance(current, neighbour), current.getG(), tentative_G, neighbour.getG());
 				
 				//Node original;
 				//if (this->in_set(closed_set, neighbour, original)) {
@@ -169,19 +187,41 @@ void Path::appendGoal(Point goal)
 
 //-------------------- GETTER / SETTER --------------------------//
 
-PointArr Path::cornerPoints(float resolution)
-{
-	return this->pointRepresentation(this->cornerNodes(), resolution);
+PointArr Path::allPoints()
+{	
+	if (this->points.size() < 1) {
+		this->points = this->pointRepresentation(this->allNodes());
+	}
+	return this->points;
 }
 
-PointArr Path::allPoints(float resolution)
+IndexedPointArr Path::closestObstaclePoints()
 {
-	return this->pointRepresentation(this->allNodes(), resolution);
-}
-
-IndexedPointArr Path::closestObstaclePoints(float resolution)
-{
-	return this->pointRepresentation(this->closestObstacleNodes(), resolution);
+	if (this->obstacle_points.size() > 0) {
+		return this->obstacle_points;
+	}
+	else if (this->allNodes().size() > 2) {
+		PointArr obstacles;
+		for (unsigned int i = 1; i < this->allNodes().size()-1; i++) {
+			Node prev_node = this->allNodes().at(i-1);
+			Node curr_node = this->allNodes().at(i);
+			Node next_node = this->allNodes().at(i+1);
+						
+			Point obstacle;
+			if (this->obstacle_in_triangle(prev_node, curr_node, next_node, obstacle)) {
+				IndexedPoint t;
+				t.point = obstacle*this->map.resolution;
+				t.index = i;
+				
+				std::stringstream sstr;
+				sstr << curr_node;
+				ROS_INFO("Closest point for %s is (%.2f,%.2f) (Index %d)", sstr.str().c_str(), obstacle.x, obstacle.y, i);
+				
+				this->obstacle_points.push_back(t);
+			}
+		}
+	}
+	return this->obstacle_points;
 }
 
 bool Path::is_initialized()
@@ -189,147 +229,9 @@ bool Path::is_initialized()
 	return this->initialized;
 }
 
-IndexedNodeArr Path::closestObstacleNodes()
-{
-	if (this->obstacle_nodes.size() > 0) {
-		return this->obstacle_nodes;
-	}
-	else if (this->nodes.size() > 2) {
-		NodeArr waypoints = this->cornerNodes();
-		NodeArr obstacles;
-		for (unsigned int i = 1; i < waypoints.size()-1; i++) {
-			Node prev_waypoint = waypoints.at(i-1);
-			Node curr_waypoint = waypoints.at(i);
-			Node next_waypoint = waypoints.at(i+1);
-			
-			int x = curr_waypoint.x;
-			int y = curr_waypoint.y;
-			NodeArr test_points;
-			if (x > 0 && this->map.at(x-1, y) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x-1, y));
-			}
-			if (x < this->map.width-1 && this->map.at(x+1, y) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x+1, y));
-			}
-			if (y > 0 && this->map.at(x, y-1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x, y-1));
-			}
-			if (y < this->map.height-1 && this->map.at(x, y+1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x, y+1));
-			}
-			if (x > 0 && y > 0 && this->map.at(x-1, y-1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x-1, y-1));
-			}
-			if (x < this->map.width-1 && y < this->map.height-1 && this->map.at(x+1, y+1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x+1, y+1));
-			}
-			if (x > 0 && y < this->map.height-1 && this->map.at(x-1, y+1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x-1, y+1));
-			}
-			if (x < this->map.width-1 && y > 0 && this->map.at(x+1, y-1) > OCC_THRESHOLD) {
-				test_points.push_back(Node(x+1, y-1));
-			}
-			
-			double min_dist = DBL_MAX;
-			Node closest_node;
-			if (test_points.size() > 0) {
-				closest_node = test_points.at(0);
-				for (NodeArr::iterator it = test_points.begin(); it < test_points.end(); it++) {
-					Node test_point = *it;
-					double dist = distance(prev_waypoint, test_point)+distance(curr_waypoint, test_point)+distance(next_waypoint, test_point);
-					if (dist < min_dist) {
-						min_dist = dist;
-						closest_node = test_point;
-					}
-				}
-				IndexedNode t;
-				t.node = closest_node;
-				
-				//std::stringstream sstr;
-				//sstr << curr_waypoint << " is " << closest_node;
-				//ROS_INFO("Closest node for %s", sstr.str().c_str());
-				
-				
-				
-				t.index = i;
-				this->obstacle_nodes.push_back(t);
-			}
-		}
-	}
-	return this->obstacle_nodes;
-}
-
 NodeArr Path::allNodes()
 {
 	return this->nodes;
-}
-
-NodeArr Path::cornerNodes()
-{
-	return this->nodes;
-	
-	if (this->corner_nodes.empty() && this->nodes.size() > 1) {
-		//ROS_INFO("%d nodes (without current position %d)", (int)this->nodes.size(), (int)this->nodes.size()-1);
-		NodeArr graph = this->removeStraightPathWaypoints(this->nodes);		
-		
-		//ROS_INFO("After removing straight path nodes %d", (int)graph.size());
-		int currentWaypointIdx = graph.size()-1;
-		int finalWaypointIdx = 0;
-		Node currentWaypoint = graph.at(currentWaypointIdx);
-		Node finalWaypoint = graph.at(finalWaypointIdx);
-		Node furthestWaypoint = finalWaypoint;
-		//ROS_INFO("Current waypoint %d, final %d", currentWaypointIdx, finalWaypointIdx);
-		int furthesWaypointIdx = finalWaypointIdx;
-		NodeArr newGraph;
-	    std::stringstream sstr;
-		while (currentWaypoint != furthestWaypoint) {
-			sstr.str(std::string());
-			sstr << currentWaypoint;
-			sstr << "->" << furthestWaypoint;
-			
-			bool direct = !(this->isEssentialNodeInBetween(currentWaypointIdx, furthesWaypointIdx, graph) ||
-			 this->isObstacleBetweenNodes(currentWaypoint, furthestWaypoint));
-			 
-			if (this->use_cspace) { 
-			  //Check if this transition will be possible at required orientation
-			  direct = direct && currentWaypoint.isPossible(furthestWaypoint, this->robot_dimensions, this->map);
-			}
-		  
-			if (!direct) {
-			//	ROS_INFO("%s crosses obstacles", sstr.str().c_str());
-				if (++furthesWaypointIdx == currentWaypointIdx-1) {
-					sstr.str(std::string());
-					sstr << currentWaypoint;
-				//	ROS_INFO("Saving %s", sstr.str().c_str());
-					newGraph.push_back(currentWaypoint);
-					currentWaypoint = graph.at(--currentWaypointIdx);
-					furthestWaypoint = finalWaypoint;
-					furthesWaypointIdx = finalWaypointIdx;
-					sstr.str(std::string());
-					sstr << currentWaypoint;
-				//	ROS_INFO("No more intermediate waypoints. Jumping to %s", sstr.str().c_str());
-				}
-				else {
-					furthestWaypoint = graph.at(furthesWaypointIdx);
-				}
-			}
-			else {
-			//	ROS_INFO("%s doesn't cross obstacles", sstr.str().c_str());
-				newGraph.push_back(currentWaypoint);
-				currentWaypoint = furthestWaypoint;
-				currentWaypointIdx = furthesWaypointIdx;
-				furthestWaypoint = finalWaypoint;
-				furthesWaypointIdx = finalWaypointIdx;
-				sstr.str(std::string());
-				sstr << currentWaypoint;
-			//	ROS_INFO("Jumping to %s", sstr.str().c_str());
-			}
-		}
-		newGraph.push_back(finalWaypoint);
-		std::reverse(newGraph.begin(), newGraph.end());
-		this->corner_nodes = newGraph;
-	}
-	return this->corner_nodes;
 }
 
 //-------------------- PRIVATE METHODS --------------------------//
@@ -439,24 +341,24 @@ bool Path::isObstacleBetweenNodes(Node node1, Node node2)
 	return false;	
 }
 
-PointArr Path::pointRepresentation(NodeArr graph, float resolution)
+PointArr Path::pointRepresentation(NodeArr graph)
 {
 	PointArr points;
 	for (unsigned int i = 0; i < graph.size(); i++) {
 		Node node = graph.at(i);
-		Point point = CreatePoint(node.x*resolution, node.y*resolution);
+		Point point = Point_from_Node(node)*this->map.resolution;
 		points.push_back(point);
 	}
 	return points;
 }
 
-IndexedPointArr Path::pointRepresentation(IndexedNodeArr graph, float resolution)
+IndexedPointArr Path::pointRepresentation(IndexedNodeArr graph)
 {
 	IndexedPointArr points;
 	for (unsigned int i = 0; i < graph.size(); i++) {
 		IndexedNode node = graph.at(i);
 		IndexedPoint point;
-		point.point = CreatePoint(node.node.x*resolution, node.node.y*resolution);
+		point.point = CreatePoint(node.node.x*this->map.resolution, node.node.y*this->map.resolution);
 		point.index = node.index;
 		points.push_back(point);
 	}
@@ -596,13 +498,72 @@ bool Path::obstacles_in_circle(Node center, int radius, double &closestDistance)
 	closestDistance = -1;
 	for (int i = std::max(0, center.y-radius); i < center.y+radius && i < this->map.height; i++) {
 		for (int j = std::max(0, center.x-radius); j < center.x+radius && j < this->map.width; j++) {
-			if (in_circle(CreatePoint(j, i), Point_from_Node(center), radius) && this->map.at(j, i) > OCC_THRESHOLD_2) {
+			if (in_circle(CreatePoint(j, i), Point_from_Node(center), radius) && this->map.at(j, i) > OCC_THRESHOLD) {
 				Node n = Node(j, i);
 				double dist = this->distance(n, center);
 				if (closestDistance == -1 || dist < closestDistance) {
 					closestDistance = dist;
 					result = true;
 				}				
+			}
+		}
+	}
+	return result;
+}
+
+//P2 being a corner node
+bool Path::obstacle_in_triangle(Node n1, Node n2, Node n3, Point &obstacle)
+{
+	bool result = false;
+	double closestDistance = -1;
+	double closestDistToEdge = -1;
+	int min_x = std::min(std::min(n1.x, n2.x), n3.x);
+	int min_y = std::min(std::min(n1.y, n2.y), n3.y);
+	int max_x = std::max(std::max(n1.x, n2.x), n3.x);
+	int max_y = std::max(std::max(n1.y, n2.y), n3.y);
+	Triangle t = CreateTriangle(Point_from_Node(n1), Point_from_Node(n2), Point_from_Node(n3));
+	
+	Point p1 = CreatePoint(0.5, 0.5);
+	Point p2 = CreatePoint(0.5, -0.5);
+		
+	for (int i = min_y; i <= max_y; i++) {
+		for (int j = min_x; j <= max_x; j++) {
+			Point test_point = CreatePoint(j, i);
+			if (this->map.at(j, i) > OCC_THRESHOLD && in_triangle(t, test_point)) {
+				//ROS_WARN("Node %d,%d is in bezier triangle", j, i);
+				
+				//Since obstacle is the center of occupied cell, we want p to be at its edge
+				Point corners[] = {test_point+p1,test_point-p1,test_point+p2,test_point-p2};
+				Point closestPoint;
+				for (unsigned int ci = 0; ci < 4; ci++) {
+					//double dist_to_path_1 = heightOfTriangle(CreateTriangle(t.p1, corners[ci], t.p2), false);
+					//double dist_to_path_2 = heightOfTriangle(CreateTriangle(t.p2, corners[ci], t.p3), false);
+					double dist = //dist_to_path_1+dist_to_path_2+distance(corners[ci], t.p2);
+					
+					distance(corners[ci], t.p2);
+					if (closestDistance == -1 || (closestDistance-dist) > 0.0001) {
+						closestDistance = dist;
+						closestDistToEdge = std::min(heightOfTriangle(CreateTriangle(t.p1, corners[ci], t.p2), false), heightOfTriangle(CreateTriangle(t.p2, corners[ci], t.p3), false));
+						obstacle = corners[ci];
+						result = true;
+					}
+					else if ((closestDistance-dist) <= 0.0001) {
+						//Should be closer to the longer edge
+						double distToEdge = std::min(heightOfTriangle(CreateTriangle(t.p1, corners[ci], t.p2), false), heightOfTriangle(CreateTriangle(t.p2, corners[ci], t.p3), false));
+							
+						//ROS_WARN("Same distance obstacle");
+						if (distToEdge < closestDistToEdge) {
+							//ROS_WARN("%.1f,%.1f is closer to the longer edge than %.1f,%.1f (%.3f vs %.3f)", corners[ci].x, corners[ci].y, obstacle.x, obstacle.y, distToEdge, closestDistToEdge);
+							closestDistToEdge = distToEdge;
+							obstacle = corners[ci];
+							result = true;
+						}	
+						//else {
+							//ROS_WARN("%.1f,%.1f is NOT closer to the longer edge than %.1f,%.1f,  (%.3f vs %.3f)", corners[ci].x, corners[ci].y, obstacle.x, obstacle.y, distToEdge, closestDistToEdge);
+						//}
+					}
+				}
+				//ROS_INFO("Closest dist is %.2f from %.1f,%.1f", closestDistance, obstacle.x, obstacle.y);
 			}
 		}
 	}
