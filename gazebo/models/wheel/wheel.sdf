@@ -56,10 +56,12 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
+                    <!--<script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
                         <name>Gazebo/Yellow</name>
-                    </script>
+                    </script>-->
+                   <!-- <ambient>0.655 0.361 0.004 0.5</ambient>-->
+                    <diffuse>0.655 0.361 0.004 1.0</diffuse>
                 </material>
             </visual>
             <velocity_decay>
