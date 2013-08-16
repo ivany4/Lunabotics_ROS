@@ -283,14 +283,22 @@ PointArr PathFollowingGeometry::interpolate(Point p1, Point p2)
 	for (unsigned int i = 1; i < num_points-1; i++) {
 		double fraction = (double)(i/(double)num_points);
 		//ROS_INFO("Fraction %f", fraction);
-		double x = p1.x+(p2.x-p1.x)*fraction;
-		double y = p1.y+(p2.y-p1.y)*fraction;
-		result.push_back(CreatePoint(x, y));
+		Point p = p1+(p2-p1)*fraction;
+		result.push_back(p);
 	}
 	result.push_back(p2);
 	return result;
 }
 
+void PathFollowingGeometry::distanceSorted(Point referencePoint, PointArr &pointSet, DistancedPointArr &result)
+{
+	result.clear();
+	for (PointArrIt it = pointSet.begin()+1; it < pointSet.end(); it++) {
+		double new_distance = distance(referencePoint, *it);
+		result.push_back(CreateDistancedPoint(*it, new_distance));
+	}
+	result.sort();
+}
 
 Point PathFollowingGeometry::getClosestPointFromSet(Point referencePoint, PointArr pointSet)
 {
@@ -321,6 +329,71 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 	bool result = false;
 	if (this->path.size() >= 2) {
 		
+		
+		Point closest_point = this->getClosestPointFromSet(referencePoint, this->path);
+		PointArrIt closest_point_it = find(this->path.begin(), this->path.end(), closest_point);
+		double dist1 = -1;
+		double dist2 = -1;
+		Line l1;
+		Line l2;
+		if (closest_point_it != this->path.begin()) {
+			//Previous piece
+			PointArrIt it1 = closest_point_it-1;
+			l1 = CreateLine(*it1, closest_point);
+			dist1 = linePointDist(l1, referencePoint, true);
+		}
+		if (closest_point_it != this->path.end()) {
+			//Next piece
+			PointArrIt it2 = closest_point_it+1;
+			l2 = CreateLine(*it2, closest_point);
+			dist2 = linePointDist(l2, referencePoint, true);
+		}
+		
+		if (dist1 < 0 && dist2 < 0) {
+			resultPoint = closest_point;
+		}
+		else if (dist1 >= 0 && dist2 >= 0) {
+			resultPoint = projection(referencePoint, dist1 < dist2 ? l1 : l2);
+		}
+		else if (dist1 >= 0) {
+			resultPoint = projection(referencePoint, l1);
+		}
+		else {
+			resultPoint = projection(referencePoint, l2);
+		}
+		return true;
+		
+		/*
+		DistancedPointArr arr;
+		this->distanceSorted(referencePoint, this->path, arr);
+		Point closest_point = arr.front().point;
+		DistancedPointArr::iterator it = arr.begin();
+		std::advance(it, 1);
+		Point second_closest_point = (*it).point;
+		
+		PointArr candidates = this->interpolate(closest_point, second_closest_point);
+		resultPoint = this->getClosestPointFromSet(referencePoint, candidates);
+		result = true;
+		*/
+		
+		/*
+		double closest_distance = DBL_MAX;
+		for (PointArrIt it = this->path.begin(); it < this->path.end()-1; it++) {
+			Point p1 = *it;
+			Point p2 = *(it+1);
+			Triangle t = CreateTriangle(p1, referencePoint, p2);
+			double distance = heightOfTriangle(t, true);
+			if (distance < closest_distance) {
+				Point p;
+				if (height_base_intersection(referencePoint, CreateLine(p1, p2), distance, p)) {
+					closest_distance = distance;
+					resultPoint = p;
+				}				
+			}
+		}*/
+		
+		
+		/*
 		Point closest_point = this->getClosestPointFromSet(referencePoint, this->path);
 		Point second_closest_point = this->path.at(0);
 		if (this->has_next_waypoint) {
@@ -377,6 +450,7 @@ bool PathFollowingGeometry::getClosestPathPoint(Point referencePoint, Point &res
 	}
 	else if (this->path.size() == 1) {
 		resultPoint = this->path.at(0);
+		result = true;
 		//ROS_WARN("Path size is 1. Assigning it as the closest point");
 	}	
 	else {

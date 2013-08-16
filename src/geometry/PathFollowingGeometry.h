@@ -83,6 +83,7 @@ class PathFollowingGeometry {
 		bool getTangentAtPoint(Point point, double &heading);
 		PointArr interpolate(Point p1, Point p2);
 		Point getClosestPointFromSet(Point referencePoint, PointArr pointSet);
+		void distanceSorted(Point referencePoint, PointArr &pointSet, DistancedPointArr &result);
 	public:
 		PathFollowingGeometry(AllWheelGeometryPtr geometry);
 		PathFollowingGeometry(AllWheelGeometryPtr geometry, float feedback_offset, float feedback_multiplier, float feedforward_offset, float feedforward_fraction);

@@ -23,6 +23,7 @@ private:
 	PointArr points;
 	IndexedPointArr obstacle_points;
 	Rect robot_dimensions;
+	double initialOrientation;
 	
 	bool obstacle_in_triangle(Node p1, Node p2, Node p3, Point &obstacle);
 	bool lineIntersectsNodeAt(Line line, int x, int y);
@@ -40,7 +41,7 @@ public:
 	Path();
 	Path(MapData map, Point start);
 	Path(MapData map, Point start, Rect robotDimensions);
-	Path(MapData map, Point start, Rect robotDimensions, bool useCSpace);
+	Path(MapData map, Point start, Rect robotDimensions, bool useCSpace, double initialOrientation);
 	NodeArr allNodes();
 	void appendGoal(Point goal);
 	IndexedNodeArr closestObstacleNodes();

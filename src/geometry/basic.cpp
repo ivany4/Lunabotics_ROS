@@ -143,7 +143,6 @@ int lunabotics::point_on_line(Point p, Line l)
 
 bool lunabotics::point_inside_convex(Point p, PointArr convex)
 {
-	int j = 0;
 	for (unsigned int i = 1, j = 0; j < convex.size() && i < convex.size(); i++, j++) {
 		Point pt1 = convex.at(i);
 		Point pt2 = convex.at(j);
@@ -221,4 +220,39 @@ bool lunabotics::line_crosses_square(Line l, Rect r)
     if(intersectionY(min_x, l) < max_y && intersectionY(min_x, l) > min_y) return true;
     if(intersectionY(max_x, l) < max_y && intersectionY(max_x, l) > min_y) return true;
     return intersections;
+}
+
+double lunabotics::dot_product(Point A, Point B, Point C)
+{
+	return dot_product(B-A, C-B);
+}
+double lunabotics::dot_product(Point A, Point B)
+{
+	return A.x*B.x+A.y*B.y;
+}
+
+double lunabotics::cross_product(Point A, Point B, Point C)
+{
+	Point AB = B-A;
+	Point AC = C-A;
+	return AB.x*AC.y-AB.y*AC.x;
+}
+
+double lunabotics::linePointDist(Line AB, Point C, bool isSegment)
+{
+	double dist = cross_product(AB.p1,AB.p2,C) / distance(AB.p1, AB.p2);
+	if(isSegment){
+		double dot1 = dot_product(AB.p1,AB.p2,C);
+		if(dot1 > 0) return distance(AB.p2,C);
+		double dot2 = dot_product(AB.p1,AB.p2,C);
+		if(dot2 > 0) return distance(AB.p1,C);
+	}
+	return fabs(dist);
+}
+
+Point lunabotics::projection(Point q, Line l)
+{
+	double L = distance(l.p1, l.p2);
+	double r = ((l.p1.y-q.y)*(l.p1.y-l.p2.y)-(l.p1.x-q.x)*(l.p2.x-l.p1.x))/pow(L, 2);
+	return CreatePoint(l.p1.x+r*(l.p2.x-l.p1.x), l.p1.y+r*(l.p2.y-l.p1.y));
 }

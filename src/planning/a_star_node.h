@@ -21,7 +21,6 @@ private:
 	bool has_F;
 	bool isPossible(int x, int y, MapData map);
 	bool isPossible(int x, int y, Rect robotDimensions, MapData map);
-	bool robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map);
 public:
 	int x;
 	int y;
@@ -52,6 +51,7 @@ public:
 };
 
 inline Point Point_from_Node(Node n) {return CreatePoint(n.x, n.y);}
+bool robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map);
 
 }
 

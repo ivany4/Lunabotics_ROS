@@ -229,6 +229,21 @@ inline Triangle CreateTriangle(Point p1, Point p2, Point p3) {
 	return t;
 }
 
+struct DistancedPoint {
+	Point point;
+	double distance;
+	bool operator<(const DistancedPoint &b) const {return distance < b.distance;}
+};
+
+inline DistancedPoint CreateDistancedPoint(Point p, double d) {
+	DistancedPoint dp;
+	dp.point = p;
+	dp.distance = d;
+	return dp;
+}
+
+typedef std::list<DistancedPoint> DistancedPointArr;
+
 }
 
 

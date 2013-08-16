@@ -204,8 +204,8 @@ bool Node::isPossible(int x, int y, Rect robotDimensions, MapData map)
 	double orientation = atan2(dy, dx);
 	
 	return this->isPossible(x, y, map) && 
-			this->robotFitsAtNode(this->x, this->y, orientation, robotDimensions, map) && 
-			this->robotFitsAtNode(x, y, orientation, robotDimensions, map);
+			robotFitsAtNode(this->x, this->y, orientation, robotDimensions, map) && 
+			robotFitsAtNode(x, y, orientation, robotDimensions, map);
 }
 
 bool Node::isPossible(Node n, Rect robotDimensions, MapData map)
@@ -213,7 +213,7 @@ bool Node::isPossible(Node n, Rect robotDimensions, MapData map)
 	return this->isPossible(n.x, n.y, robotDimensions, map);
 }
 
-bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map)
+bool lunabotics::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map)
 {
 	Point bias = CreatePoint(x, y)*map.resolution;
 	Point left_front = (rotatePoint(r.left_front, orientation)+bias)/map.resolution;
@@ -264,7 +264,7 @@ bool Node::robotFitsAtNode(int x, int y, double orientation, Rect r, MapData map
 	}
 	
 	
-	ROS_WARN("Recording waypoint %d,%d", x, y);
+	//ROS_WARN("Recording waypoint %d,%d", x, y);
 	
 	return true;
 }

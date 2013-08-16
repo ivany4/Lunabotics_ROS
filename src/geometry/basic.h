@@ -25,6 +25,11 @@ namespace lunabotics {
 	double intersectionY(double line_x, Line l);
 	double intersectionX(double line_y, Line l);
 	bool line_crosses_square(Line l, Rect s);
+	double dot_product(Point A, Point B, Point C);
+	double cross_product(Point A, Point B, Point C);
+	Point projection(Point q, Line l);
+	double linePointDist(Line AB, Point C, bool isSegment);
+	double dot_product(Point A, Point B);
 }
 
 #endif //_BASIC_H_

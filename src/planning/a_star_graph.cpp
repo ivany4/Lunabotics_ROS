@@ -20,7 +20,8 @@ initialized(true),
 use_cspace(false), 
 nodes(), 
 points(), 
-robot_dimensions()
+robot_dimensions(),
+initialOrientation(0)
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
 	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
@@ -34,7 +35,8 @@ initialized(true),
 use_cspace(true), 
 nodes(),
 points(), 
-robot_dimensions(robotDimensions)
+robot_dimensions(robotDimensions),
+initialOrientation(0)
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
 	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
@@ -42,13 +44,14 @@ robot_dimensions(robotDimensions)
     this->nodes.push_back(Node(start));
 }
 
-Path::Path(MapData map, Point start, Rect robotDimensions, bool useCSpace):
+Path::Path(MapData map, Point start, Rect robotDimensions, bool useCSpace, double initialOrientation):
 map(map),
 initialized(true), 
 use_cspace(useCSpace),
 nodes(), 
 points(), 
-robot_dimensions(robotDimensions)
+robot_dimensions(robotDimensions),
+initialOrientation(initialOrientation)
 {
 	//ROS_INFO("Looking for a path (%d,%d)->(%d,%d)", start.x, start.y, goal.x, goal.y);	
 	if (map.at(start) > OCC_THRESHOLD) { ROS_ERROR("Start cell is occupied"); this->initialized = false; }
@@ -154,6 +157,14 @@ void Path::appendGoal(Point goal)
 							  //Check if this transition will be possible at required orientation (or if orientation is not changed)
 							  double orient1 = atan2((neighbour.y-current.y), (neighbour.x-current.x));
 							  double orient2 = atan2((current.y-secondPrevious.y), (current.x-secondPrevious.x));
+							  
+							  if (came_from.size() == 1) {
+								  //If just starting and rotating in place. Check that we don't bump into smth while rotating
+								  //Checking the orientation half-way
+								  double orient3 = normalizedAngle((orient1+this->initialOrientation)/2);
+								  direct = direct && (fabs(orient3-orient1) < 0.0001 || robotFitsAtNode(current.x, current.y, orient3, this->robot_dimensions, this->map));
+							  }
+							  
 							  direct = direct && (secondPrevious.isPossible(neighbour, this->robot_dimensions, this->map) || fabs(orient2-orient1) < 0.0001);
 							}
 							
