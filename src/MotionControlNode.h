@@ -86,6 +86,8 @@ private:
 	double linearVelocity;
 	bool crabbedBefore;
 	bool useCSpace;
+	bool has_orient_to_waypoint;
+	lunabotics::PointArrIt orient_to_waypoint;
 	
 	lunabotics::PredefinedCmdControllerPtr predefinedControl;
 	lunabotics::PIDControllerPtr ackermannPID;

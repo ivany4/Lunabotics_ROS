@@ -34,7 +34,7 @@ sequence(0), autonomyEnabled(false), steeringMode(lunabotics::proto::ACKERMANN),
 pointTurnMotionState(lunabotics::proto::Telemetry::STOPPED), currentPose(), segmentsIt(), segments(),
 waypointsIt(), waypoints(), desiredWaypoints(), motionConstraints(), minICRRadius(0.0f),
 ackermannJustStarted(false), previousYaw(0), previousYawTime(), linearVelocity(0), crabbedBefore(false),
-useCSpace(false)
+useCSpace(false), has_orient_to_waypoint(false), orient_to_waypoint()
 {
 	this->parseArgs();
 	
@@ -258,6 +258,7 @@ void MotionControlNode::callbackGoal(const lunabotics::Goal::ConstPtr &msg)
 	this->waypoints.clear();
 	this->minICRRadius = 0;
 	this->predefinedControl->abort();
+	this->has_orient_to_waypoint = false;
 	
 	lunabotics::PathTopic pathMsg;
 	pathMsg.path.header.stamp = ros::Time::now();
@@ -541,10 +542,20 @@ void MotionControlNode::finalizeRoute()
 void MotionControlNode::controlAckermann()
 {
 	if (this->ackermannJustStarted) {
+		if (!this->has_orient_to_waypoint) {
+			this->orient_to_waypoint = this->waypointsIt;
+			while(this->orient_to_waypoint != this->waypoints.end()) {
+				if (distance(*this->orient_to_waypoint, this->currentPose.position) >= this->cached_map.info.resolution) {
+					this->has_orient_to_waypoint = true;
+					break;
+				}
+				this->orient_to_waypoint++;
+			}
+		}
 		
-		double dx = (*this->waypointsIt).x-this->currentPose.position.x;
-		double dy = (*this->waypointsIt).y-this->currentPose.position.y;
-		double angle = normalizedAngle(atan2(dy, dx)-this->currentPose.orientation);
+		double dx = (*this->orient_to_waypoint).x-this->currentPose.position.x;
+		double dy = (*this->orient_to_waypoint).y-this->currentPose.position.y;
+		double angle = atan2(dy, dx)-this->currentPose.orientation;
 		
 		//Turn in place only if facing more than 30 deg away from the trajectory
 		if (fabs(angle) > this->motionConstraints.point_turn_angle_accuracy) {
